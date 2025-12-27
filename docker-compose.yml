@@ -52,6 +52,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-https://localhost:3443}
       BASE_URL: ${BASE_URL:-https://localhost:3443}
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
 
   # Web Frontend
   web:

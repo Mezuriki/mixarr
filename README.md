@@ -157,9 +157,6 @@ The default `docker-compose.yml` is configured for production. For development w
 ```bash
 # Build and start all services
 docker compose up -d --build
-
-# Run database migrations
-docker compose exec api npx prisma migrate deploy
 ```
 
 ### Development Mode
@@ -432,4 +429,4 @@ NEXT_PUBLIC_API_URL="http://localhost:3010"
 
 ## License
 
-MIT License - see LICENSE file for details
+GPLv3 - see LICENSE file for details
