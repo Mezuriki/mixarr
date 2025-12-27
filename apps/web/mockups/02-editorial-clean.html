@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editorial Clean - Lidarr Spotify Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Editorial Clean - Light Mode */
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F8F8F8;
+      --bg-card: #FFFFFF;
+      --bg-sidebar: #FAFAFA;
+      --text-primary: #1A1A1A;
+      --text-secondary: #555555;
+      --text-muted: #888888;
+      --accent: #E63946;
+      --accent-light: #FFE5E7;
+      --accent-dark: #C1121F;
+      --border: #EBEBEB;
+      --border-light: #F5F5F5;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.08);
+      --spotify: #1DB954;
+      --tidal: #000000;
+      --deezer: #FF0092;
+      --lastfm: #D51007;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #111111;
+      --bg-secondary: #1A1A1A;
+      --bg-card: #1A1A1A;
+      --bg-sidebar: #0D0D0D;
+      --text-primary: #FAFAFA;
+      --text-secondary: #AAAAAA;
+      --text-muted: #666666;
+      --accent: #FF6B6B;
+      --accent-light: #3D1F1F;
+      --accent-dark: #E63946;
+      --border: #2A2A2A;
+      --border-light: #222222;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+      --shadow-lg: 0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Manrope', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--bg-sidebar);
+      padding: 48px 0 32px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      border-right: 1px solid var(--border);
+    }
+
+    .logo {
+      padding: 0 32px 48px;
+    }
+
+    .logo h1 {
+      font-size: 1.1rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .logo-subtitle {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 0 20px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      margin-bottom: 2px;
+      border-radius: 4px;
+    }
+
+    .nav-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .nav-icon {
+      font-size: 1.1rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 16px;
+    }
+
+    .nav-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      padding: 0 16px;
+      margin-bottom: 12px;
+    }
+
+    .sidebar-footer {
+      padding: 24px 28px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+      font-size: 0.85rem;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .user-role {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      padding: 60px 80px;
+      max-width: 1400px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 60px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-size: 3.5rem;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    .header-left p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 400px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 14px 28px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-radius: 0;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--text-primary);
+      border-radius: 0;
+    }
+
+    .btn-secondary:hover {
+      background: var(--text-primary);
+      color: var(--bg-primary);
+    }
+
+    .theme-toggle {
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--text-primary);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      margin-bottom: 60px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      padding: 40px 32px;
+      position: relative;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 32px;
+      right: 32px;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover::after {
+      transform: scaleX(1);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .stat-value {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 3rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-change {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-change strong {
+      color: var(--accent);
+    }
+
+    /* Content Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 48px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-header h2 {
+      font-size: 1.5rem;
+      font-style: italic;
+    }
+
+    .section-link {
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .section-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Activity List */
+    .activity-list {
+      list-style: none;
+    }
+
+    .activity-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 20px;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-number {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      width: 32px;
+    }
+
+    .activity-content h4 {
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .activity-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .activity-service {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      border-radius: 2px;
+    }
+
+    .activity-service.spotify { background: rgba(29, 185, 84, 0.1); color: #1DB954; }
+    .activity-service.tidal { background: rgba(0,0,0,0.05); color: #000; }
+    .activity-service.lastfm { background: rgba(213, 16, 7, 0.1); color: #D51007; }
+    .activity-service.deezer { background: rgba(255, 0, 146, 0.1); color: #FF0092; }
+
+    .activity-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .activity-status.success { color: #16a34a; }
+    .activity-status.running { color: var(--accent); }
+
+    /* Connections */
+    .connections-list {
+      list-style: none;
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .connection-item:last-child {
+      border-bottom: none;
+    }
+
+    .connection-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      border: 1px solid var(--border);
+    }
+
+    .connection-icon.lidarr { border-color: #00A652; color: #00A652; }
+    .connection-icon.spotify { border-color: #1DB954; color: #1DB954; }
+    .connection-icon.tidal { border-color: #000; color: #000; }
+    .connection-icon.lastfm { border-color: #D51007; color: #D51007; }
+
+    .connection-info {
+      flex: 1;
+    }
+
+    .connection-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+
+    .connection-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .connection-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+    }
+
+    /* Color Palette Display */
+    .palette-section {
+      margin-top: 60px;
+      padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .palette-section h3 {
+      font-size: 1.25rem;
+      font-style: italic;
+      margin-bottom: 32px;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 1px;
+      background: var(--border);
+      margin-bottom: 32px;
+    }
+
+    .palette-swatch {
+      flex: 1;
+      height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .typography-sample h1 {
+      font-size: 3rem;
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+
+    .typography-sample h2 {
+      font-size: 1.75rem;
+      margin-bottom: 16px;
+      color: var(--text-secondary);
+    }
+
+    .typography-sample p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>Lidarr</h1>
+        <div class="logo-subtitle">Music Discovery</div>
+      </div>
+      
+      <nav class="nav">
+        <a href="#" class="nav-item active">
+          <span class="nav-icon">◉</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⟳</span>
+          Subscriptions
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">☰</span>
+          Queue
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◎</span>
+          Discover
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⌕</span>
+          Search
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">System</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚡</span>
+          Connections
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚙</span>
+          Settings
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◷</span>
+          Jobs
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">▤</span>
+          Logs
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">Admin</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◔</span>
+          Users
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div>
+            <div class="user-name">Admin</div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h1>Dashboard</h1>
+          <p>Your music library at a glance. Track discoveries, manage subscriptions, and explore new artists.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">Sync</button>
+          <button class="btn btn-primary">New Subscription</button>
+          <button class="theme-toggle" onclick="toggleTheme()">◐</button>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Artists</div>
+          <div class="stat-value">2,847</div>
+          <div class="stat-change"><strong>+124</strong> this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value">156</div>
+          <div class="stat-change"><strong>23</strong> new today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Subscriptions</div>
+          <div class="stat-value">12</div>
+          <div class="stat-change">All active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Jobs</div>
+          <div class="stat-value">89</div>
+          <div class="stat-change"><strong>100%</strong> success</div>
+        </div>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <div>
+          <div class="section-header">
+            <h2>Recent Activity</h2>
+            <a href="#" class="section-link">View All</a>
+          </div>
+          <ul class="activity-list">
+            <li class="activity-item">
+              <span class="activity-number">01</span>
+              <div class="activity-content">
+                <h4>Discover Weekly Sync</h4>
+                <span class="activity-meta">Found 23 new artists • 5 min ago</span>
+              </div>
+              <span class="activity-service spotify">Spotify</span>
+              <span class="activity-status success">Complete</span>
+            </li>
+            <li class="activity-item">
+              <span class="activity-number">02</span>
+              <div class="activity-content">
+                <h4>Top Charts Import</h4>
+                <span class="activity-meta">Added 8 artists to queue • 2 hr ago</span>
+              </div>
+              <span class="activity-service lastfm">Last.fm</span>
+              <span class="activity-status success">Complete</span>
+            </li>
+            <li class="activity-item">
+              <span class="activity-number">03</span>
+              <div class="activity-content">
+                <h4>Discovery Mix Processing</h4>
+                <span class="activity-meta">Processing 15 artists • Started 1 min ago</span>
+              </div>
+              <span class="activity-service tidal">Tidal</span>
+              <span class="activity-status running">Running</span>
+            </li>
+            <li class="activity-item">
+              <span class="activity-number">04</span>
+              <div class="activity-content">
+                <h4>Chart Artists Sync</h4>
+                <span class="activity-meta">Found 50 new artists • 6 hr ago</span>
+              </div>
+              <span class="activity-service deezer">Deezer</span>
+              <span class="activity-status success">Complete</span>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-header">
+            <h2>Connections</h2>
+            <a href="#" class="section-link">Manage</a>
+          </div>
+          <ul class="connections-list">
+            <li class="connection-item">
+              <div class="connection-icon lidarr">L</div>
+              <div class="connection-info">
+                <div class="connection-name">Lidarr</div>
+                <div class="connection-status">2,847 artists synced</div>
+              </div>
+              <span class="connection-badge">Active</span>
+            </li>
+            <li class="connection-item">
+              <div class="connection-icon spotify">S</div>
+              <div class="connection-info">
+                <div class="connection-name">Spotify</div>
+                <div class="connection-status">OAuth connected</div>
+              </div>
+              <span class="connection-badge">Active</span>
+            </li>
+            <li class="connection-item">
+              <div class="connection-icon tidal">T</div>
+              <div class="connection-info">
+                <div class="connection-name">TIDAL</div>
+                <div class="connection-status">OAuth connected</div>
+              </div>
+              <span class="connection-badge">Active</span>
+            </li>
+            <li class="connection-item">
+              <div class="connection-icon lastfm">L</div>
+              <div class="connection-info">
+                <div class="connection-name">Last.fm</div>
+                <div class="connection-status">API active</div>
+              </div>
+              <span class="connection-badge">Active</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Style Reference -->
+      <div class="palette-section">
+        <h3>Editorial Clean — Style Reference</h3>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: #FFFFFF; color: #888;">White</div>
+          <div class="palette-swatch" style="background: #F8F8F8; color: #888;">Off-White</div>
+          <div class="palette-swatch" style="background: #1A1A1A; color: #fff;">Black</div>
+          <div class="palette-swatch" style="background: #E63946; color: #fff;">Red Accent</div>
+          <div class="palette-swatch" style="background: #FFE5E7; color: #E63946;">Red Light</div>
+        </div>
+        <div class="typography-sample">
+          <h1>Libre Baskerville</h1>
+          <h2>Classic Serif Elegance</h2>
+          <p>Body text uses Manrope, a modern geometric sans-serif with excellent readability. This editorial aesthetic evokes sophisticated magazines and high-quality publications, prioritizing typography and whitespace over decorative elements.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '◐';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '◑';
+      }
+    }
+  </script>
+</body>
+</html>

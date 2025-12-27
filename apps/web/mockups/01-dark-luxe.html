@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Luxe - Lidarr Spotify Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Dark Luxe - Light Mode */
+      --bg-primary: #FAFAF8;
+      --bg-secondary: #F0EDE8;
+      --bg-card: #FFFFFF;
+      --bg-sidebar: #1A1A1A;
+      --text-primary: #1A1A1A;
+      --text-secondary: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --text-sidebar: #E8E4DD;
+      --accent-gold: #C9A227;
+      --accent-gold-light: #E8D48A;
+      --accent-gold-dark: #9A7B1C;
+      --border: #E5E2DB;
+      --border-light: #F0EDE8;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
+      --spotify: #1DB954;
+      --tidal: #00FFFF;
+      --deezer: #FF0092;
+      --lastfm: #D51007;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0D0D0D;
+      --bg-secondary: #161616;
+      --bg-card: #1A1A1A;
+      --bg-sidebar: #0A0A0A;
+      --text-primary: #F5F3EF;
+      --text-secondary: #A8A8A8;
+      --text-muted: #6B6B6B;
+      --text-sidebar: #E8E4DD;
+      --border: #2A2A2A;
+      --border-light: #1F1F1F;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Source Sans 3', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      padding: 32px 0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      border-right: 1px solid rgba(201, 162, 39, 0.1);
+    }
+
+    .logo {
+      padding: 0 28px 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 24px;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      color: var(--text-sidebar);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 0 16px;
+    }
+
+    .nav-section {
+      margin-bottom: 28px;
+    }
+
+    .nav-section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+      padding: 0 12px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 400;
+      transition: all 0.2s ease;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(201, 162, 39, 0.15) 0%, rgba(201, 162, 39, 0.05) 100%);
+      color: var(--accent-gold);
+      border-left: 2px solid var(--accent-gold);
+      margin-left: -2px;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      opacity: 0.8;
+    }
+
+    .sidebar-footer {
+      padding: 20px 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #1A1A1A;
+      font-size: 0.9rem;
+    }
+
+    .user-details {
+      flex: 1;
+    }
+
+    .user-name {
+      font-weight: 500;
+      color: var(--text-sidebar);
+      font-size: 0.9rem;
+    }
+
+    .user-role {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: 260px;
+      padding: 40px 48px;
+      max-width: calc(100vw - 260px);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+    }
+
+    .header-left h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left p {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%);
+      color: #1A1A1A;
+      box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(201, 162, 39, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+
+    .theme-toggle {
+      padding: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent-gold);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-gold), var(--accent-gold-light));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--accent-gold);
+    }
+
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .stat-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.75rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      margin-top: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(201, 162, 39, 0.1);
+      color: var(--accent-gold);
+    }
+
+    /* Content Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-header {
+      padding: 24px 28px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h2 {
+      font-size: 1.25rem;
+      color: var(--text-primary);
+    }
+
+    .card-link {
+      font-size: 0.85rem;
+      color: var(--accent-gold);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .card-link:hover {
+      color: var(--accent-gold-dark);
+    }
+
+    .card-body {
+      padding: 24px 28px;
+    }
+
+    /* Activity List */
+    .activity-list {
+      list-style: none;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border-light);
+      transition: all 0.2s ease;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-item:hover {
+      padding-left: 8px;
+    }
+
+    .activity-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.spotify { background: rgba(29, 185, 84, 0.1); }
+    .activity-icon.tidal { background: rgba(0, 255, 255, 0.1); }
+    .activity-icon.lastfm { background: rgba(213, 16, 7, 0.1); }
+    .activity-icon.deezer { background: rgba(255, 0, 146, 0.1); }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-meta {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .activity-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .activity-status.success {
+      background: rgba(34, 197, 94, 0.1);
+      color: #16a34a;
+    }
+
+    .activity-status.running {
+      background: rgba(201, 162, 39, 0.1);
+      color: var(--accent-gold);
+    }
+
+    /* Connections */
+    .connections-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .connection-item:hover {
+      transform: translateX(4px);
+    }
+
+    .connection-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .connection-logo.spotify { background: var(--spotify); color: white; }
+    .connection-logo.tidal { background: #000; color: var(--tidal); }
+    .connection-logo.lastfm { background: var(--lastfm); color: white; }
+    .connection-logo.lidarr { background: #00A652; color: white; }
+
+    .connection-info {
+      flex: 1;
+    }
+
+    .connection-name {
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .connection-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .connection-badge {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+    }
+
+    /* Color Palette Display */
+    .palette-section {
+      margin-top: 40px;
+      padding: 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .palette-section h3 {
+      margin-bottom: 20px;
+      font-size: 1.1rem;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .palette-swatch {
+      flex: 1;
+      height: 60px;
+      border-radius: 8px;
+      display: flex;
+      align-items: flex-end;
+      padding: 8px;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .typography-sample {
+      margin-top: 32px;
+    }
+
+    .typography-sample h1 {
+      font-size: 3rem;
+      margin-bottom: 8px;
+    }
+
+    .typography-sample h2 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .typography-sample p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>
+          <span class="logo-icon">♫</span>
+          Lidarr Sync
+        </h1>
+      </div>
+      
+      <nav class="nav">
+        <div class="nav-section">
+          <a href="#" class="nav-item active">
+            <span class="nav-icon">◉</span>
+            Dashboard
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">⟳</span>
+            Subscriptions
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">☰</span>
+            Queue
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">◎</span>
+            Discover
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">⌕</span>
+            Search
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-section-title">System</div>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">⚡</span>
+            Connections
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">⚙</span>
+            Settings
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">◷</span>
+            Jobs
+          </a>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">▤</span>
+            Logs
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-section-title">Admin</div>
+          <a href="#" class="nav-item">
+            <span class="nav-icon">◔</span>
+            Users
+          </a>
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">AD</div>
+          <div class="user-details">
+            <div class="user-name">Admin</div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h1>Dashboard</h1>
+          <p>Welcome back. Here's what's happening with your music library.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">Sync Now</button>
+          <button class="btn btn-primary">+ New Subscription</button>
+          <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🎵</div>
+          <div class="stat-value">2,847</div>
+          <div class="stat-label">Artists in Library</div>
+          <div class="stat-change">↑ 124 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📥</div>
+          <div class="stat-value">156</div>
+          <div class="stat-label">Pending Review</div>
+          <div class="stat-change">23 new today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⟳</div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">Active Subscriptions</div>
+          <div class="stat-change">All healthy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✓</div>
+          <div class="stat-value">89</div>
+          <div class="stat-label">Jobs This Week</div>
+          <div class="stat-change">100% success</div>
+        </div>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Recent Activity</h2>
+            <a href="#" class="card-link">View all →</a>
+          </div>
+          <div class="card-body">
+            <ul class="activity-list">
+              <li class="activity-item">
+                <div class="activity-icon spotify">🎵</div>
+                <div class="activity-content">
+                  <div class="activity-title">Spotify Discover Weekly</div>
+                  <div class="activity-meta">Found 23 new artists • 5 minutes ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon lastfm">📊</div>
+                <div class="activity-content">
+                  <div class="activity-title">Last.fm Top Charts</div>
+                  <div class="activity-meta">Added 8 artists to queue • 2 hours ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon tidal">🌊</div>
+                <div class="activity-content">
+                  <div class="activity-title">TIDAL Discovery Mix</div>
+                  <div class="activity-meta">Processing 15 artists • Started 1 min ago</div>
+                </div>
+                <div class="activity-status running">⟳ Running</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon deezer">💿</div>
+                <div class="activity-content">
+                  <div class="activity-title">Deezer Chart Artists</div>
+                  <div class="activity-meta">Found 50 new artists • 6 hours ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Connections</h2>
+            <a href="#" class="card-link">Manage →</a>
+          </div>
+          <div class="card-body">
+            <div class="connections-grid">
+              <div class="connection-item">
+                <div class="connection-logo lidarr">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Lidarr</div>
+                  <div class="connection-status">2,847 artists synced</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo spotify">S</div>
+                <div class="connection-info">
+                  <div class="connection-name">Spotify</div>
+                  <div class="connection-status">Connected</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo tidal">T</div>
+                <div class="connection-info">
+                  <div class="connection-name">TIDAL</div>
+                  <div class="connection-status">Connected</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo lastfm">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Last.fm</div>
+                  <div class="connection-status">API Active</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Style Reference -->
+      <div class="palette-section">
+        <h3>Dark Luxe — Style Reference</h3>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: #1A1A1A; color: white;">Primary Dark</div>
+          <div class="palette-swatch" style="background: #C9A227; color: #1A1A1A;">Gold Accent</div>
+          <div class="palette-swatch" style="background: #E8D48A; color: #1A1A1A;">Gold Light</div>
+          <div class="palette-swatch" style="background: #FAFAF8; border: 1px solid #E5E2DB;">Background</div>
+          <div class="palette-swatch" style="background: #F0EDE8;">Secondary</div>
+        </div>
+        <div class="typography-sample">
+          <h1>Playfair Display</h1>
+          <h2>Elegant Serif Headlines</h2>
+          <p>Body text uses Source Sans 3, a clean and readable sans-serif that pairs beautifully with the sophisticated display font. This aesthetic evokes premium audio equipment and luxury experiences.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '🌙';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '☀️';
+      }
+    }
+  </script>
+</body>
+</html>

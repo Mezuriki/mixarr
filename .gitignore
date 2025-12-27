@@ -19,7 +19,6 @@ start.sh
 
 # Environment files
 .env
-.env.*
 *.env.local
 
 # Configuration files with secrets

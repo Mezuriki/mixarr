@@ -1,0 +1,26 @@
+# Caddy configuration for Lidarr Spotify Scraper
+# Provides HTTPS with auto-generated self-signed certificates
+# Required for Spotify OAuth which mandates HTTPS for non-localhost URLs
+
+# Listen on all interfaces with HTTPS
+:443 {
+	# Use auto-generated self-signed certificates
+	tls /data/certs/cert.pem /data/certs/key.pem
+
+	# Reverse proxy to the web frontend
+	reverse_proxy web:3000
+
+	# Enable compression
+	encode gzip
+
+	# Logging
+	log {
+		output stdout
+		format console
+	}
+}
+
+# HTTP redirect to HTTPS
+:80 {
+	redir https://{host}:3443{uri} permanent
+}

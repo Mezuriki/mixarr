@@ -1,0 +1,94 @@
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: mixarr-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mixarr}
+      MYSQL_USER: ${MYSQL_USER:-mixarr}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mixarr_password}
+    volumes:
+      - db_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for sessions and job queue
+  redis:
+    image: redis:7-alpine
+    container_name: mixarr-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    container_name: mixarr-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: mysql://${MYSQL_USER:-mixarr}:${MYSQL_PASSWORD:-mixarr_password}@db:3306/${MYSQL_DATABASE:-mixarr}
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-https://localhost:3443}
+      BASE_URL: ${BASE_URL:-https://localhost:3443}
+
+  # Web Frontend
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+    container_name: mixarr-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:3005
+    ports:
+      - "3010:3000"
+
+  # Caddy reverse proxy for HTTPS (required for Spotify OAuth)
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    container_name: mixarr-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "3443:443"
+      - "3080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

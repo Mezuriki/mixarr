@@ -1,0 +1,435 @@
+# Mixarr - Lidarr music discovery and search tool
+
+A complete toolset for discovering new and related music for your Lidarr collection using Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli, and AI recommendations.
+
+## Features
+
+- **Modern Stack**: Next.js 14 + Express.js + TypeScript
+- **Dark Mode**: System-aware with manual toggle
+- **PWA Support**: Installable, offline-capable, push notifications
+- **Real-time Updates**: WebSocket-based job progress
+- **Mobile-First**: Responsive design with collapsible sidebar
+- **Multi-User**: Authentication with admin/user roles
+- **Job Queue**: BullMQ-based background processing
+- **Multi-Service Integration**: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
+- **Library Maintenance**: Analyze and fix Lidarr artists with missing metadata (albums, posters, bios, genres)
+- **Automated Subscriptions**: Scheduled synchronization and discovery from connected services
+- **System Dashboard**: Overview of active subscriptions, recent artists, and system health
+
+## Supported Music Services
+
+### Spotify
+Full OAuth integration for accessing your library, playlists, and personalized recommendations.
+- Followed artists, saved albums, liked songs
+- Any playlist by URL/ID
+- New releases, featured playlists, category browsing
+- Personalized playlists (Discover Weekly, Release Radar, Daily Mix, On Repeat)
+
+> **Note**: Spotify's personalized playlists (Discover Weekly, Daily Mix, etc.) must be **followed/saved** in your Spotify library before the API can access them. Click the heart icon on the playlist in Spotify first.
+
+### TIDAL
+Full OAuth integration for HiFi music discovery.
+- Followed artists, favorite tracks
+- Playlists (individual or all)
+- Discovery mixes, personalized mixes
+- New arrival recommendations
+
+### Deezer
+Public API access works without authentication. OAuth features are currently unavailable as Deezer is not accepting new developer applications.
+
+**Works without login:**
+- Top chart artists
+- Artists by genre
+- Artist search
+
+**Requires OAuth (currently unavailable):**
+- Favorites, listening history, Flow
+- Personal playlists
+
+### Last.fm
+Scrobble-based music discovery and charts.
+- Global and country-specific charts
+- Artists by genre/tag
+- Geographic top artists
+- Your personal library (top artists from scrobbles)
+- Similar artists based on your listening
+
+### Plex/Tautulli
+Discover artists similar to what you've been listening to on Plex.
+- Analyzes your Plex listening history via Tautulli
+- Finds similar artists using Last.fm
+
+### MusicBrainz
+Open music database integration.
+- New release discovery
+- Artist metadata and matching
+
+### AI Recommendations
+LLM-powered artist discovery using OpenAI, Anthropic, or Ollama.
+- Natural language artist recommendations
+- Based on your existing library and preferences
+
+## Structure
+
+```
+├── apps/
+│   ├── web/           # Next.js 14 frontend (React Server Components)
+│   │   ├── src/app/   # App Router pages
+│   │   ├── src/components/  # UI components
+│   │   └── src/lib/   # Utilities, API client, hooks
+│   └── api/           # Express.js backend
+│       ├── src/routes/    # API endpoints
+│       ├── src/services/  # Business logic
+│       ├── src/jobs/      # Background workers
+│       └── prisma/        # Database schema
+├── packages/
+│   ├── shared-types/  # TypeScript interfaces
+│   └── config/        # Shared ESLint/TypeScript configs
+├── docker-compose.yml # Development infrastructure
+└── turbo.json         # Monorepo build orchestration
+```
+
+## Quick Start
+
+### Prerequisites
+- Node.js 20+
+- Docker & Docker Compose
+- npm 10+
+
+### Development Setup
+
+```bash
+# Clone and enter project
+git clone <repo-url>
+cd lidarr-spotify-scraper
+
+# Install dependencies
+npm install
+
+# Start infrastructure (MySQL, Redis)
+docker compose up -d db redis
+
+# Generate Prisma client
+npm run db:generate
+
+# Push database schema
+npm run db:push
+
+# Start development servers
+npm run dev
+```
+
+Access:
+- Frontend: http://localhost:3000
+- API: http://localhost:3010
+- API Health: http://localhost:3010/api/health
+
+### Docker Compose (Full Stack)
+
+```bash
+docker compose up -d
+```
+
+Access:
+- **HTTPS (recommended)**: https://your-ip:3443 (via Caddy reverse proxy)
+- **HTTP**: http://your-ip:3010 (direct access, no SSL)
+
+## Production Deployment
+
+The default `docker-compose.yml` is configured for production. For development with hot-reload, use `docker-compose.dev.yml`.
+
+### Prerequisites
+
+1. **Generate a session secret**:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **Create `.env` file** with required secrets:
+   ```env
+   SESSION_SECRET=<your-generated-secret>
+   MYSQL_ROOT_PASSWORD=<strong-root-password>
+   MYSQL_PASSWORD=<strong-db-password>
+   ```
+
+### Start Production Stack
+
+```bash
+# Build and start all services
+docker compose up -d --build
+
+# Run database migrations
+docker compose exec api npx prisma migrate deploy
+```
+
+### Development Mode
+
+For development with live code reloading:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+### HTTPS Certificates
+
+The stack includes Caddy with auto-generated self-signed certificates. Your browser will show a security warning - this is expected for self-signed certs.
+
+**To use your own certificates:**
+
+1. Place your certificate files in a `certs/` directory
+2. Update the Caddyfile to reference your certs:
+   ```
+   tls /path/to/cert.pem /path/to/key.pem
+   ```
+3. Restart Caddy: `docker compose restart caddy`
+
+### Ports
+
+| Port | Protocol | Description |
+|------|----------|-------------|
+| 3443 | HTTPS | Main access point (Caddy reverse proxy) |
+| 3080 | HTTP | Redirects to HTTPS |
+| 3010 | HTTP | Direct web access (bypasses Caddy) |
+
+## Spotify OAuth Setup
+
+Spotify requires HTTPS for OAuth redirect URIs (except localhost). This stack includes Caddy as a reverse proxy to handle HTTPS automatically.
+
+### Setup Steps
+
+1. **Start the stack**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Configure Base URL** in Settings → Global Settings:
+   ```
+   https://your-ip:3443
+   ```
+
+3. **Create a Spotify App** at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard):
+   - Click "Create App"
+   - Set Redirect URI to: `https://your-ip:3443/api/connections/{connection-id}/spotify/callback`
+   - Copy the Client ID and Client Secret
+
+4. **Add Spotify Connection** in the app:
+   - Go to Connections → Add Spotify
+   - Enter Client ID and Client Secret
+   - Click "Authorize" to complete OAuth flow
+
+### Ports
+
+| Port | Protocol | Description |
+|------|----------|-------------|
+| 3443 | HTTPS | Caddy reverse proxy (use for Spotify OAuth) |
+| 3080 | HTTP | Redirects to HTTPS |
+| 3010 | HTTP | Direct web access (bypasses Caddy) |
+
+> **Note**: Your browser will show a certificate warning for the self-signed certificate. This is expected - click "Advanced" → "Proceed" to continue.
+
+## TIDAL OAuth Setup
+
+TIDAL OAuth requires HTTPS for redirect URIs (similar to Spotify).
+
+### Setup Steps
+
+1. **Create a TIDAL App** at [TIDAL Developer Portal](https://developer.tidal.com/):
+   - Create a new application
+   - Set Redirect URI to: `https://your-ip:3443/api/connections/{connection-id}/tidal/callback`
+   - Copy the Client ID and Client Secret
+
+2. **Add TIDAL Connection** in the app:
+   - Go to Connections → Add TIDAL
+   - Enter Client ID and Client Secret
+   - Click "Authorize" to complete OAuth flow
+
+3. **Create Subscriptions** for TIDAL sources:
+   - Followed Artists
+   - Playlists (individual or all saved)
+   - Discovery/Personalized Mixes
+
+## Application Features
+
+### Review Queue
+Artists discovered by subscriptions land in the Review Queue for manual approval before adding to Lidarr. You can:
+- Preview artist details and albums
+- Add to Lidarr with quality profile selection
+- Dismiss artists you don't want
+- Bulk process multiple artists
+
+### Subscriptions
+Automated artist discovery from 37+ sources across all services. Each subscription runs on a schedule and adds discovered artists to your Review Queue or directly to Lidarr.
+
+### Discover Page
+Browse new music across services:
+- Spotify new releases and featured playlists
+- TIDAL discovery mixes
+- Deezer charts and genres
+- Last.fm charts and tags
+
+### Search
+Universal artist search across:
+- Lidarr (existing library)
+- Spotify, TIDAL, Deezer
+- Last.fm, MusicBrainz
+
+### Label Browsing
+Click any record label to browse all artists on that label.
+
+### User Management
+Multi-user support with admin/user roles. Admins can create users and manage permissions.
+
+### Connections
+Configure API connections for:
+- Lidarr (required)
+- Spotify (OAuth)
+- TIDAL (OAuth)
+- Last.fm (API key)
+- Plex/Tautulli (API key)
+- AI (OpenAI, Anthropic, Ollama)
+
+### Jobs
+Background job monitoring:
+- View running and completed jobs
+- Real-time progress via WebSocket
+- Retry failed jobs
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start all services in development mode |
+| `npm run build` | Build all packages for production |
+| `npm run lint` | Run ESLint across all packages |
+| `npm run typecheck` | Type-check all TypeScript |
+| `npm run test` | Run all tests |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:push` | Push schema to database |
+| `npm run db:migrate` | Run database migrations |
+| `npm run db:studio` | Open Prisma Studio GUI |
+
+## Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```env
+# Database
+DATABASE_URL="mysql://user:password@localhost:3306/lidarr_spotify"
+
+# Redis
+REDIS_URL="redis://localhost:6379"
+
+# Session
+SESSION_SECRET="your-secret-key"
+
+# Frontend
+NEXT_PUBLIC_API_URL="http://localhost:3010"
+```
+## PWA Installation
+
+1. Open the app in Chrome/Edge/Safari
+2. Click "Install" in the address bar or menu
+3. The app will be available as a standalone application
+
+## Architecture
+
+### Frontend (apps/web)
+- **Framework**: Next.js 14 with App Router
+- **Styling**: Tailwind CSS with dark mode
+- **Components**: Custom Shadcn/UI-inspired components
+- **State**: React hooks + Context API
+- **Real-time**: WebSocket hooks for live updates
+
+### Backend (apps/api)
+- **Framework**: Express.js with TypeScript
+- **ORM**: Prisma with MySQL
+- **Auth**: Passport.js (local strategy)
+- **Queue**: BullMQ with Redis
+- **WebSocket**: Socket.IO
+
+### Services
+- **Lidarr**: Artist management and search
+- **Spotify**: Library imports, playlists
+- **TIDAL**: HiFi library, playlists, discovery
+- **Deezer**: Charts, genres, search (public API)
+- **Last.fm**: Charts, tags, geo data, scrobbles
+- **MusicBrainz**: Artist metadata
+
+## Subscription Types
+
+### Last.fm (5)
+- **Top Charts**: Global weekly chart
+- **Country Charts**: Top artists by country
+- **Genre/Tag Artists**: Artists by genre tag
+- **Geographic Artists**: Artists by location
+- **Library Top Artists**: Your top scrobbled artists
+
+### Spotify (13)
+- **Followed Artists**: Your followed artists
+- **Saved Albums Artists**: Artists from saved albums
+- **Liked Songs Artists**: Artists from liked songs
+- **Playlist**: Any playlist by URL
+- **New Releases**: Recently released music
+- **Featured Playlists**: Spotify curated playlists
+- **Category Artists**: Artists from category playlists
+- **Related Artists**: Similar to existing library
+- **Artist Radio**: Artists from artist radio
+- **Discover Weekly**: Personalized weekly recommendations
+- **Release Radar**: New releases from followed artists
+- **Daily Mix**: Daily personalized mixes
+- **On Repeat**: Your most played tracks
+
+### Deezer (8)
+- **Favorites**: ⚠️ Requires OAuth (unavailable)
+- **Listening History**: ⚠️ Requires OAuth (unavailable)
+- **Flow Recommendations**: ⚠️ Requires OAuth (unavailable)
+- **Playlist**: ⚠️ Requires OAuth (unavailable)
+- **All Playlists**: ⚠️ Requires OAuth (unavailable)
+- **Chart Artists**: ✓ Top chart artists (public API)
+- **Genre Artists**: ✓ Artists by genre (public API)
+- **Search Artists**: ✓ Artists by search query (public API)
+
+### TIDAL (7)
+- **Followed Artists**: Your followed artists
+- **Favorite Tracks Artists**: Artists from favorite tracks
+- **Playlist**: Individual playlist
+- **All Playlists**: All saved playlists
+- **Discovery Mix**: Personalized discovery
+- **My Mix**: Personal mix
+- **New Arrivals**: Personalized new releases
+
+### MusicBrainz (1)
+- **New Releases**: Recent releases from MusicBrainz database
+
+### AI (1)
+- **Recommendations**: LLM-powered artist suggestions
+
+### Plex/Tautulli (1)
+- **Listening History Similar**: Artists similar to your Plex listening
+
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/health` | Health check |
+| `POST /api/auth/login` | User login |
+| `GET /api/connections` | List connections |
+| `GET /api/search/artist` | Search artists |
+| `GET /api/subscriptions` | List subscriptions |
+| `GET /api/imports` | List import sources |
+| `GET /api/jobs` | List background jobs |
+| `GET /api/logs` | View application logs |
+| `GET /api/settings` | Get user settings |
+
+## Contributing
+
+1. Create a feature branch from `dev`
+2. Make changes with proper TypeScript types
+3. Run `npm run lint && npm run typecheck`
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details

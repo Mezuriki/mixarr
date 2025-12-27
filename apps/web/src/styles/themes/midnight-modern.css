@@ -1,0 +1,133 @@
+/* Midnight Modern Theme - Clean dark with vibrant accents */
+:root[data-theme="midnight-modern"] {
+  /* Backgrounds */
+  --background: 225 25% 8%;
+  --foreground: 210 40% 96%;
+  --card: 225 25% 11%;
+  --card-foreground: 210 40% 96%;
+  --popover: 225 25% 11%;
+  --popover-foreground: 210 40% 96%;
+  
+  /* Brand colors */
+  --primary: 145 70% 50%;
+  --primary-foreground: 225 25% 8%;
+  --secondary: 225 20% 16%;
+  --secondary-foreground: 210 40% 92%;
+  
+  /* UI colors */
+  --muted: 225 20% 18%;
+  --muted-foreground: 210 20% 55%;
+  --accent: 270 70% 60%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Borders & inputs */
+  --border: 225 20% 18%;
+  --input: 225 20% 14%;
+  --ring: 145 70% 50%;
+  
+  /* Sidebar */
+  --sidebar: 225 25% 6%;
+  --sidebar-foreground: 210 30% 90%;
+  --sidebar-border: 225 20% 15%;
+  
+  --radius: 0.75rem;
+  
+  /* Theme-specific */
+  --midnight-green: #22c55e;
+  --midnight-purple: #a855f7;
+  --midnight-blue: #141b2d;
+}
+
+:root[data-theme="midnight-modern"] body {
+  font-family: var(--font-inter), -apple-system, sans-serif;
+}
+
+:root[data-theme="midnight-modern"] h1,
+:root[data-theme="midnight-modern"] h2,
+:root[data-theme="midnight-modern"] h3,
+:root[data-theme="midnight-modern"] h4 {
+  font-family: var(--font-inter), -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Midnight - Sidebar sleek dark */
+:root[data-theme="midnight-modern"] aside {
+  background: linear-gradient(180deg, #0d1117 0%, #0a0e14 100%) !important;
+  border-right: 1px solid rgba(34, 197, 94, 0.1) !important;
+}
+
+:root[data-theme="midnight-modern"] aside a {
+  border-radius: 0.75rem !important;
+  transition: all 0.2s ease;
+  color: hsl(210 30% 90%) !important;
+}
+
+:root[data-theme="midnight-modern"] aside a:hover {
+  background: rgba(34, 197, 94, 0.08) !important;
+}
+
+:root[data-theme="midnight-modern"] aside a[class*="bg-primary"],
+:root[data-theme="midnight-modern"] aside a[class*="bg-sidebar-primary"] {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3) !important;
+  color: hsl(225 25% 8%) !important;
+}
+
+/* Midnight - Main content area */
+:root[data-theme="midnight-modern"] main {
+  background: hsl(225 25% 8%) !important;
+  color: hsl(210 40% 96%) !important;
+}
+
+/* Midnight - Cards with subtle glow */
+:root[data-theme="midnight-modern"] [class*="rounded-lg"][class*="border"] {
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(34, 197, 94, 0.1);
+  background: linear-gradient(145deg, #151c28 0%, #111827 100%) !important;
+  color: hsl(210 40% 96%) !important;
+  background: linear-gradient(145deg, #151c28 0%, #111827 100%) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="midnight-modern"] [class*="rounded-lg"][class*="border"]:hover {
+  border-color: rgba(34, 197, 94, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(34, 197, 94, 0.05);
+}
+
+/* Midnight - Buttons with glow */
+:root[data-theme="midnight-modern"] button[class*="bg-primary"] {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35) !important;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme="midnight-modern"] button[class*="bg-primary"]:hover {
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+/* Midnight - Secondary/accent uses purple */
+:root[data-theme="midnight-modern"] [class*="bg-accent"],
+:root[data-theme="midnight-modern"] [class*="text-accent"] {
+  color: var(--midnight-purple);
+}
+
+/* Midnight - Inputs */
+:root[data-theme="midnight-modern"] input,
+:root[data-theme="midnight-modern"] select,
+:root[data-theme="midnight-modern"] textarea {
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(34, 197, 94, 0.15);
+  background: #0d1117 !important;
+}
+
+:root[data-theme="midnight-modern"] input:focus,
+:root[data-theme="midnight-modern"] select:focus,
+:root[data-theme="midnight-modern"] textarea:focus {
+  border-color: var(--midnight-green);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15), 0 0 20px rgba(34, 197, 94, 0.1);
+}

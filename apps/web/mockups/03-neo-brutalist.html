@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neo-Brutalist - Lidarr Spotify Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Neo-Brutalist - Light Mode */
+      --bg-primary: #FFFEF5;
+      --bg-secondary: #F0EFE5;
+      --bg-card: #FFFFFF;
+      --bg-sidebar: #000000;
+      --text-primary: #000000;
+      --text-secondary: #444444;
+      --text-muted: #777777;
+      --text-sidebar: #FFFFFF;
+      --accent: #FF5722;
+      --accent-secondary: #2196F3;
+      --accent-tertiary: #4CAF50;
+      --border: #000000;
+      --border-light: #DDDDDD;
+      --shadow: 4px 4px 0 #000000;
+      --shadow-hover: 6px 6px 0 #000000;
+      --spotify: #1DB954;
+      --tidal: #00FFFF;
+      --deezer: #FF0092;
+      --lastfm: #D51007;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1A1A1A;
+      --bg-secondary: #2A2A2A;
+      --bg-card: #2A2A2A;
+      --bg-sidebar: #000000;
+      --text-primary: #FFFFFF;
+      --text-secondary: #BBBBBB;
+      --text-muted: #888888;
+      --text-sidebar: #FFFFFF;
+      --border: #FFFFFF;
+      --border-light: #444444;
+      --shadow: 4px 4px 0 #FFFFFF;
+      --shadow-hover: 6px 6px 0 #FFFFFF;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Work Sans', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Work Sans', sans-serif;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+    }
+
+    code, .mono {
+      font-family: 'Space Mono', monospace;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: var(--bg-sidebar);
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      border-right: 4px solid var(--accent);
+    }
+
+    .logo {
+      padding: 0 20px 24px;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+      margin-bottom: 20px;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      color: var(--text-sidebar);
+      line-height: 1.1;
+    }
+
+    .logo h1 span {
+      display: block;
+      color: var(--accent);
+    }
+
+    .nav {
+      flex: 1;
+      padding: 0 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.1s ease;
+      margin-bottom: 4px;
+      border: 2px solid transparent;
+    }
+
+    .nav-item:hover {
+      color: #FFFFFF;
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .nav-item.active {
+      background: var(--accent);
+      color: #000000;
+      border-color: var(--accent);
+    }
+
+    .nav-icon {
+      font-size: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .nav-divider {
+      height: 2px;
+      background: rgba(255,255,255,0.1);
+      margin: 16px 14px;
+    }
+
+    .nav-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.4);
+      padding: 0 14px;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #000;
+      font-size: 0.9rem;
+      border: 2px solid var(--accent);
+    }
+
+    .user-name {
+      font-weight: 700;
+      color: #FFFFFF;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+    }
+
+    .user-role {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: 220px;
+      padding: 32px 40px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+    }
+
+    .header-left h1 {
+      font-size: 4rem;
+      line-height: 0.9;
+      margin-bottom: 12px;
+    }
+
+    .header-left h1 .outline {
+      -webkit-text-stroke: 2px var(--text-primary);
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-left p {
+      font-family: 'Space Mono', monospace;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 14px 24px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      border: 3px solid var(--border);
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: var(--shadow);
+    }
+
+    .btn:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translate(-2px, -2px);
+    }
+
+    .btn:active {
+      box-shadow: 2px 2px 0 var(--border);
+      transform: translate(2px, 2px);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000000;
+      border-color: #000000;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .theme-toggle {
+      width: 50px;
+      height: 50px;
+      background: var(--bg-card);
+      border: 3px solid var(--border);
+      cursor: pointer;
+      font-size: 1.2rem;
+      box-shadow: var(--shadow);
+      transition: all 0.1s ease;
+    }
+
+    .theme-toggle:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translate(-2px, -2px);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 3px solid var(--border);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: all 0.1s ease;
+      position: relative;
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translate(-2px, -2px);
+    }
+
+    .stat-card:nth-child(1) { border-top: 8px solid var(--accent); }
+    .stat-card:nth-child(2) { border-top: 8px solid var(--accent-secondary); }
+    .stat-card:nth-child(3) { border-top: 8px solid var(--accent-tertiary); }
+    .stat-card:nth-child(4) { border-top: 8px solid #9C27B0; }
+
+    .stat-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-change {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: inline-block;
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+    }
+
+    /* Content Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 3px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 3px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-secondary);
+    }
+
+    .card-header h2 {
+      font-size: 1rem;
+    }
+
+    .card-link {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .card-link:hover {
+      color: var(--text-primary);
+      border-color: var(--text-primary);
+    }
+
+    .card-body {
+      padding: 20px 24px;
+    }
+
+    /* Activity List */
+    .activity-list {
+      list-style: none;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 2px dashed var(--border-light);
+      align-items: center;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-badge {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 900;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .activity-badge.spotify { background: var(--spotify); color: #000; border-color: var(--spotify); }
+    .activity-badge.tidal { background: #000; color: var(--tidal); }
+    .activity-badge.lastfm { background: var(--lastfm); color: #fff; border-color: var(--lastfm); }
+    .activity-badge.deezer { background: var(--deezer); color: #fff; border-color: var(--deezer); }
+
+    .activity-content {
+      flex: 1;
+    }
+
+    .activity-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .activity-meta {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .activity-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 6px 10px;
+      text-transform: uppercase;
+      border: 2px solid;
+    }
+
+    .activity-status.success {
+      background: var(--accent-tertiary);
+      color: #000;
+      border-color: #000;
+    }
+
+    .activity-status.running {
+      background: var(--accent);
+      color: #000;
+      border-color: #000;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Connections */
+    .connections-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      transition: all 0.1s ease;
+    }
+
+    .connection-item:hover {
+      transform: translateX(4px);
+    }
+
+    .connection-logo {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 900;
+      border: 2px solid var(--border);
+    }
+
+    .connection-logo.lidarr { background: #00A652; color: #000; }
+    .connection-logo.spotify { background: var(--spotify); color: #000; }
+    .connection-logo.tidal { background: #000; color: var(--tidal); }
+    .connection-logo.lastfm { background: var(--lastfm); color: #fff; }
+
+    .connection-info {
+      flex: 1;
+    }
+
+    .connection-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    .connection-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .connection-badge {
+      width: 12px;
+      height: 12px;
+      background: var(--accent-tertiary);
+      border: 2px solid #000;
+    }
+
+    /* Color Palette Display */
+    .palette-section {
+      margin-top: 40px;
+      padding: 24px;
+      background: var(--bg-card);
+      border: 3px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .palette-section h3 {
+      margin-bottom: 24px;
+      font-size: 1.1rem;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .palette-swatch {
+      flex: 1;
+      height: 60px;
+      display: flex;
+      align-items: flex-end;
+      padding: 8px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 2px solid #000;
+    }
+
+    .typography-sample h1 {
+      font-size: 3rem;
+      margin-bottom: 8px;
+    }
+
+    .typography-sample h2 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+      -webkit-text-stroke: 1px var(--text-secondary);
+      -webkit-text-fill-color: transparent;
+    }
+
+    .typography-sample p {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>LIDARR<span>SYNC</span></h1>
+      </div>
+      
+      <nav class="nav">
+        <a href="#" class="nav-item active">
+          <span class="nav-icon">■</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">↻</span>
+          Subs
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">≡</span>
+          Queue
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◉</span>
+          Discover
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⌕</span>
+          Search
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">// SYSTEM</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚡</span>
+          Connect
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚙</span>
+          Config
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◷</span>
+          Jobs
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">▤</span>
+          Logs
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">// ADMIN</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">◔</span>
+          Users
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div>
+            <div class="user-name">Admin</div>
+            <div class="user-role">// root</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h1>DASH<span class="outline">BOARD</span></h1>
+          <p>// SYSTEM STATUS: ALL SYSTEMS OPERATIONAL</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">SYNC</button>
+          <button class="btn btn-primary">+ NEW</button>
+          <button class="theme-toggle" onclick="toggleTheme()">◐</button>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">// artists</div>
+          <div class="stat-value">2847</div>
+          <div class="stat-change">+124 /week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">// pending</div>
+          <div class="stat-value">156</div>
+          <div class="stat-change">+23 /today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">// subs</div>
+          <div class="stat-value">12</div>
+          <div class="stat-change">all active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">// jobs</div>
+          <div class="stat-value">89</div>
+          <div class="stat-change">100% ok</div>
+        </div>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>RECENT ACTIVITY</h2>
+            <a href="#" class="card-link">VIEW ALL →</a>
+          </div>
+          <div class="card-body">
+            <ul class="activity-list">
+              <li class="activity-item">
+                <div class="activity-badge spotify">S</div>
+                <div class="activity-content">
+                  <div class="activity-title">Discover Weekly</div>
+                  <div class="activity-meta">23 artists // 5m ago</div>
+                </div>
+                <div class="activity-status success">OK</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-badge lastfm">L</div>
+                <div class="activity-content">
+                  <div class="activity-title">Top Charts</div>
+                  <div class="activity-meta">8 artists // 2h ago</div>
+                </div>
+                <div class="activity-status success">OK</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-badge tidal">T</div>
+                <div class="activity-content">
+                  <div class="activity-title">Discovery Mix</div>
+                  <div class="activity-meta">15 artists // running</div>
+                </div>
+                <div class="activity-status running">RUN</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-badge deezer">D</div>
+                <div class="activity-content">
+                  <div class="activity-title">Chart Artists</div>
+                  <div class="activity-meta">50 artists // 6h ago</div>
+                </div>
+                <div class="activity-status success">OK</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>CONNECTIONS</h2>
+            <a href="#" class="card-link">MANAGE →</a>
+          </div>
+          <div class="card-body">
+            <div class="connections-grid">
+              <div class="connection-item">
+                <div class="connection-logo lidarr">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Lidarr</div>
+                  <div class="connection-status">2847 synced</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo spotify">S</div>
+                <div class="connection-info">
+                  <div class="connection-name">Spotify</div>
+                  <div class="connection-status">oauth ok</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo tidal">T</div>
+                <div class="connection-info">
+                  <div class="connection-name">TIDAL</div>
+                  <div class="connection-status">oauth ok</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo lastfm">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Last.fm</div>
+                  <div class="connection-status">api ok</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Style Reference -->
+      <div class="palette-section">
+        <h3>NEO-BRUTALIST — STYLE REFERENCE</h3>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: #FFFEF5; color: #000;">cream</div>
+          <div class="palette-swatch" style="background: #000000; color: #fff;">black</div>
+          <div class="palette-swatch" style="background: #FF5722; color: #000;">orange</div>
+          <div class="palette-swatch" style="background: #2196F3; color: #000;">blue</div>
+          <div class="palette-swatch" style="background: #4CAF50; color: #000;">green</div>
+        </div>
+        <div class="typography-sample">
+          <h1>WORK SANS</h1>
+          <h2>BOLD GEOMETRIC DISPLAY</h2>
+          <p>Body text uses Space Mono, a monospaced font that reinforces the raw, utilitarian aesthetic. This brutalist style prioritizes function, structure visibility, and bold visual impact over decorative polish.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '◐';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '◑';
+      }
+    }
+  </script>
+</body>
+</html>

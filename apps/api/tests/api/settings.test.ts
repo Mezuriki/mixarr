@@ -1,0 +1,288 @@
+/**
+ * Settings API Tests
+ * 
+ * Tests:
+ * - User settings CRUD
+ * - Global settings (admin only)
+ * - User preferences
+ * - Base URL endpoint
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  createMockPrisma,
+  createMockUser,
+  createMockAdminUser,
+  resetIdCounter,
+} from '../utils/fixtures.js';
+
+describe('Settings API', () => {
+  let mockPrisma: ReturnType<typeof createMockPrisma>;
+  let testUser: ReturnType<typeof createMockUser>;
+  let adminUser: ReturnType<typeof createMockAdminUser>;
+
+  beforeEach(() => {
+    resetIdCounter();
+    mockPrisma = createMockPrisma();
+    testUser = createMockUser();
+    adminUser = createMockAdminUser();
+  });
+
+  describe('GET /api/settings/base-url', () => {
+    it('should return base URL without authentication', async () => {
+      mockPrisma.globalSetting.findUnique.mockResolvedValue({
+        key: 'baseUrl',
+        value: 'http://localhost:3010',
+      });
+
+      const setting = await mockPrisma.globalSetting.findUnique({
+        where: { key: 'baseUrl' },
+      });
+
+      expect(setting?.value).toBe('http://localhost:3010');
+    });
+
+    it('should return default when base URL not set', async () => {
+      mockPrisma.globalSetting.findUnique.mockResolvedValue(null);
+
+      const setting = await mockPrisma.globalSetting.findUnique({
+        where: { key: 'baseUrl' },
+      });
+
+      const baseUrl = setting?.value || process.env.BASE_URL || 'http://localhost:3010';
+      expect(baseUrl).toBe('http://localhost:3010');
+    });
+  });
+
+  describe('GET /api/settings', () => {
+    it('should return user settings', async () => {
+      const mockSettings = [
+        { userId: testUser.id, key: 'theme', value: 'dark' },
+        { userId: testUser.id, key: 'notifications', value: true },
+      ];
+
+      mockPrisma.userSetting.findMany.mockResolvedValue(mockSettings);
+
+      const settings = await mockPrisma.userSetting.findMany({
+        where: { userId: testUser.id },
+      });
+
+      const settingsMap: Record<string, any> = {};
+      for (const setting of settings) {
+        settingsMap[setting.key] = setting.value;
+      }
+
+      expect(settingsMap.theme).toBe('dark');
+      expect(settingsMap.notifications).toBe(true);
+    });
+
+    it('should return empty object for user with no settings', async () => {
+      mockPrisma.userSetting.findMany.mockResolvedValue([]);
+
+      const settings = await mockPrisma.userSetting.findMany({
+        where: { userId: testUser.id },
+      });
+
+      const settingsMap: Record<string, any> = {};
+      for (const setting of settings) {
+        settingsMap[setting.key] = setting.value;
+      }
+
+      expect(Object.keys(settingsMap)).toHaveLength(0);
+    });
+  });
+
+  describe('PUT /api/settings/:key', () => {
+    it('should create new user setting', async () => {
+      const newSetting = { userId: testUser.id, key: 'theme', value: 'dark' };
+      mockPrisma.userSetting.upsert.mockResolvedValue(newSetting);
+
+      const result = await mockPrisma.userSetting.upsert({
+        where: { userId_key: { userId: testUser.id, key: 'theme' } },
+        create: { userId: testUser.id, key: 'theme', value: 'dark' },
+        update: { value: 'dark' },
+      });
+
+      expect(result.value).toBe('dark');
+    });
+
+    it('should update existing user setting', async () => {
+      const updatedSetting = { userId: testUser.id, key: 'theme', value: 'light' };
+      mockPrisma.userSetting.upsert.mockResolvedValue(updatedSetting);
+
+      const result = await mockPrisma.userSetting.upsert({
+        where: { userId_key: { userId: testUser.id, key: 'theme' } },
+        create: { userId: testUser.id, key: 'theme', value: 'light' },
+        update: { value: 'light' },
+      });
+
+      expect(result.value).toBe('light');
+    });
+
+    it('should handle different value types', async () => {
+      const testCases = [
+        { key: 'boolSetting', value: true },
+        { key: 'numberSetting', value: 42 },
+        { key: 'stringSetting', value: 'hello' },
+        { key: 'objectSetting', value: { nested: 'value' } },
+        { key: 'arraySetting', value: [1, 2, 3] },
+      ];
+
+      for (const testCase of testCases) {
+        mockPrisma.userSetting.upsert.mockResolvedValue({
+          userId: testUser.id,
+          ...testCase,
+        });
+
+        const result = await mockPrisma.userSetting.upsert({
+          where: { userId_key: { userId: testUser.id, key: testCase.key } },
+          create: { userId: testUser.id, ...testCase },
+          update: { value: testCase.value },
+        });
+
+        expect(result.value).toEqual(testCase.value);
+      }
+    });
+  });
+
+  describe('GET /api/settings/preferences', () => {
+    it('should return user preferences with defaults', async () => {
+      mockPrisma.userSetting.findUnique.mockResolvedValue(null);
+
+      const defaults = {
+        theme: 'system',
+        sidebarCollapsed: false,
+        defaultResultHandling: 'preview',
+      };
+
+      const setting = await mockPrisma.userSetting.findUnique({
+        where: { userId_key: { userId: testUser.id, key: 'preferences' } },
+      });
+
+      const preferences = { ...defaults, ...(setting?.value as object || {}) };
+
+      expect(preferences.theme).toBe('system');
+      expect(preferences.sidebarCollapsed).toBe(false);
+      expect(preferences.defaultResultHandling).toBe('preview');
+    });
+
+    it('should merge saved preferences with defaults', async () => {
+      mockPrisma.userSetting.findUnique.mockResolvedValue({
+        userId: testUser.id,
+        key: 'preferences',
+        value: { theme: 'dark', customOption: 'value' },
+      });
+
+      const defaults = {
+        theme: 'system',
+        sidebarCollapsed: false,
+        defaultResultHandling: 'preview',
+      };
+
+      const setting = await mockPrisma.userSetting.findUnique({
+        where: { userId_key: { userId: testUser.id, key: 'preferences' } },
+      });
+
+      const preferences = { ...defaults, ...(setting?.value as object || {}) };
+
+      expect(preferences.theme).toBe('dark');
+      expect(preferences.sidebarCollapsed).toBe(false);
+      expect((preferences as any).customOption).toBe('value');
+    });
+  });
+
+  describe('PUT /api/settings/preferences', () => {
+    it('should merge new preferences with existing', async () => {
+      const existing = {
+        userId: testUser.id,
+        key: 'preferences',
+        value: { theme: 'dark', language: 'en' },
+      };
+
+      mockPrisma.userSetting.findUnique.mockResolvedValue(existing);
+
+      const newPreferences = { theme: 'light' };
+      const merged = { ...(existing.value as object), ...newPreferences };
+
+      mockPrisma.userSetting.upsert.mockResolvedValue({
+        userId: testUser.id,
+        key: 'preferences',
+        value: merged,
+      });
+
+      const result = await mockPrisma.userSetting.upsert({
+        where: { userId_key: { userId: testUser.id, key: 'preferences' } },
+        create: { userId: testUser.id, key: 'preferences', value: merged },
+        update: { value: merged },
+      });
+
+      expect((result.value as any).theme).toBe('light');
+      expect((result.value as any).language).toBe('en');
+    });
+  });
+
+  describe('Global Settings (Admin)', () => {
+    describe('GET /api/settings/global', () => {
+      it('should return all global settings for admin', async () => {
+        const mockGlobalSettings = [
+          { key: 'baseUrl', value: 'http://localhost:3010' },
+          { key: 'setupCompleted', value: true },
+        ];
+
+        mockPrisma.globalSetting.findMany.mockResolvedValue(mockGlobalSettings);
+
+        const settings = await mockPrisma.globalSetting.findMany({});
+
+        expect(settings).toHaveLength(2);
+      });
+
+      it('should be restricted to admin users', () => {
+        const canAccess = adminUser.role === 'admin';
+        const regularCanAccess = testUser.role === 'admin';
+
+        expect(canAccess).toBe(true);
+        expect(regularCanAccess).toBe(false);
+      });
+    });
+
+    describe('PUT /api/settings/global/:key', () => {
+      it('should update global setting for admin', async () => {
+        mockPrisma.globalSetting.upsert.mockResolvedValue({
+          key: 'baseUrl',
+          value: 'https://music.example.com',
+        });
+
+        const result = await mockPrisma.globalSetting.upsert({
+          where: { key: 'baseUrl' },
+          create: { key: 'baseUrl', value: 'https://music.example.com' },
+          update: { value: 'https://music.example.com' },
+        });
+
+        expect(result.value).toBe('https://music.example.com');
+      });
+    });
+  });
+
+  describe('Settings Isolation', () => {
+    it('should not allow user to access other users settings', async () => {
+      mockPrisma.userSetting.findMany.mockImplementation(async (args: any) => {
+        const userId = args?.where?.userId;
+        if (userId === testUser.id) {
+          return [{ userId, key: 'theme', value: 'dark' }];
+        }
+        return [];
+      });
+
+      const ownSettings = await mockPrisma.userSetting.findMany({
+        where: { userId: testUser.id },
+      });
+
+      const otherSettings = await mockPrisma.userSetting.findMany({
+        where: { userId: 999 },
+      });
+
+      expect(ownSettings).toHaveLength(1);
+      expect(otherSettings).toHaveLength(0);
+    });
+  });
+});

@@ -1,0 +1,319 @@
+/**
+ * AI Service
+ * 
+ * Handles AI-based artist recommendations using OpenAI and Anthropic APIs.
+ * Ported from v1 routes/routes.py AI functions.
+ */
+
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
+import prisma from '../lib/db.js';
+import { AIStrategy } from '@prisma/client';
+
+export interface AIRecommendation {
+  name: string;
+  source: 'openai' | 'anthropic';
+  strategy: string;
+  sourceArtist?: string;
+}
+
+interface AISettings {
+  openaiApiKey: string | null;
+  openaiEnabled: boolean;
+  openaiStrategy: AIStrategy;
+  anthropicApiKey: string | null;
+  anthropicEnabled: boolean;
+  anthropicStrategy: AIStrategy;
+}
+
+const STRATEGY_PROMPTS: Record<AIStrategy, string> = {
+  similar: 'find 5 similar artists with comparable sound, style, and genre',
+  genre_expansion: 'find 5 artists from related genres and subgenres that would appeal to fans',
+  discovery: 'find 5 completely different but potentially interesting artists for discovery',
+};
+
+export class AIService {
+  private settings: AISettings | null = null;
+  private openaiClient: OpenAI | null = null;
+  private anthropicClient: Anthropic | null = null;
+
+  /**
+   * Load or refresh AI settings from database
+   */
+  async loadSettings(): Promise<AISettings | null> {
+    const settings = await prisma.aISettings.findFirst();
+    if (!settings) {
+      return null;
+    }
+    
+    this.settings = {
+      openaiApiKey: settings.openaiApiKey,
+      openaiEnabled: settings.openaiEnabled,
+      openaiStrategy: settings.openaiStrategy,
+      anthropicApiKey: settings.anthropicApiKey,
+      anthropicEnabled: settings.anthropicEnabled,
+      anthropicStrategy: settings.anthropicStrategy,
+    };
+
+    // Initialize clients if enabled
+    if (this.settings.openaiEnabled && this.settings.openaiApiKey) {
+      this.openaiClient = new OpenAI({ apiKey: this.settings.openaiApiKey });
+    }
+    
+    if (this.settings.anthropicEnabled && this.settings.anthropicApiKey) {
+      this.anthropicClient = new Anthropic({ apiKey: this.settings.anthropicApiKey });
+    }
+
+    return this.settings;
+  }
+
+  /**
+   * Get AI recommendations for a list of artists
+   */
+  async getRecommendations(
+    artistNames: string[],
+    maxRecommendations: number = 20
+  ): Promise<AIRecommendation[]> {
+    if (!this.settings) {
+      await this.loadSettings();
+    }
+
+    if (!this.settings) {
+      return [];
+    }
+
+    const allRecommendations: AIRecommendation[] = [];
+
+    // Get OpenAI recommendations if enabled
+    if (this.settings.openaiEnabled && this.openaiClient) {
+      try {
+        const openaiRecs = await this.getOpenAIRecommendations(
+          artistNames,
+          this.settings.openaiStrategy
+        );
+        allRecommendations.push(...openaiRecs);
+      } catch (error) {
+        console.error('OpenAI recommendations failed:', error);
+      }
+    }
+
+    // Get Anthropic recommendations if enabled
+    if (this.settings.anthropicEnabled && this.anthropicClient) {
+      try {
+        const anthropicRecs = await this.getAnthropicRecommendations(
+          artistNames,
+          this.settings.anthropicStrategy
+        );
+        allRecommendations.push(...anthropicRecs);
+      } catch (error) {
+        console.error('Anthropic recommendations failed:', error);
+      }
+    }
+
+    // Deduplicate by artist name (case-insensitive)
+    const seen = new Set<string>();
+    const uniqueRecs = allRecommendations.filter(rec => {
+      const key = rec.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Limit to max recommendations
+    return uniqueRecs.slice(0, maxRecommendations);
+  }
+
+  /**
+   * Get recommendations from OpenAI
+   */
+  private async getOpenAIRecommendations(
+    artistNames: string[],
+    strategy: AIStrategy
+  ): Promise<AIRecommendation[]> {
+    if (!this.openaiClient) return [];
+
+    const strategyPrompt = STRATEGY_PROMPTS[strategy];
+    const artistList = artistNames.slice(0, 10).join(', ');
+
+    const prompt = `Based on these artists: ${artistList}
+
+For each artist, ${strategyPrompt}.
+
+Return ONLY a JSON array of artist names, nothing else. Format:
+["Artist Name 1", "Artist Name 2", ...]
+
+Return at least 5 unique artists total, maximum 10.`;
+
+    try {
+      const response = await this.openaiClient.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a music expert that recommends artists. Always respond with valid JSON arrays only.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const content = response.choices[0]?.message?.content || '[]';
+      const artists = this.parseArtistList(content);
+
+      return artists.map(name => ({
+        name,
+        source: 'openai' as const,
+        strategy,
+        sourceArtist: artistNames[0],
+      }));
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recommendations from Anthropic
+   */
+  private async getAnthropicRecommendations(
+    artistNames: string[],
+    strategy: AIStrategy
+  ): Promise<AIRecommendation[]> {
+    if (!this.anthropicClient) return [];
+
+    const strategyPrompt = STRATEGY_PROMPTS[strategy];
+    const artistList = artistNames.slice(0, 10).join(', ');
+
+    const prompt = `Based on these artists: ${artistList}
+
+For each artist, ${strategyPrompt}.
+
+Return ONLY a JSON array of artist names, nothing else. Format:
+["Artist Name 1", "Artist Name 2", ...]
+
+Return at least 5 unique artists total, maximum 10.`;
+
+    try {
+      const response = await this.anthropicClient.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }],
+        system: 'You are a music expert that recommends artists. Always respond with valid JSON arrays only.',
+      });
+
+      const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
+      const content = textBlock && 'text' in textBlock ? textBlock.text : '[]';
+      const artists = this.parseArtistList(content);
+
+      return artists.map(name => ({
+        name,
+        source: 'anthropic' as const,
+        strategy,
+        sourceArtist: artistNames[0],
+      }));
+    } catch (error) {
+      console.error('Anthropic API error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Parse artist list from AI response
+   */
+  private parseArtistList(content: string): string[] {
+    try {
+      // Try to extract JSON array from response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(item => typeof item === 'string' && item.trim());
+        }
+      }
+    } catch {
+      // If JSON parsing fails, try to extract artist names line by line
+      const lines = content.split('\n');
+      return lines
+        .map(line => line.replace(/^[\d\.\-\*]+\s*/, '').replace(/["']/g, '').trim())
+        .filter(line => line.length > 0 && line.length < 100);
+    }
+    return [];
+  }
+
+  /**
+   * Check if AI is available (at least one provider enabled)
+   */
+  async isAvailable(): Promise<boolean> {
+    if (!this.settings) {
+      await this.loadSettings();
+    }
+    
+    if (!this.settings) return false;
+    
+    return (
+      (this.settings.openaiEnabled && !!this.settings.openaiApiKey) ||
+      (this.settings.anthropicEnabled && !!this.settings.anthropicApiKey)
+    );
+  }
+
+  /**
+   * Get recommendations with a specific strategy (for subscription use)
+   */
+  async getRecommendationsWithStrategy(
+    artistNames: string[],
+    strategy: 'similar' | 'genre_expansion' | 'discovery',
+    maxRecommendations: number = 20
+  ): Promise<AIRecommendation[]> {
+    if (!this.settings) {
+      await this.loadSettings();
+    }
+
+    if (!this.settings) {
+      return [];
+    }
+
+    const allRecommendations: AIRecommendation[] = [];
+
+    // Get OpenAI recommendations if enabled
+    if (this.settings.openaiEnabled && this.openaiClient) {
+      try {
+        const openaiRecs = await this.getOpenAIRecommendations(
+          artistNames,
+          strategy as AIStrategy
+        );
+        allRecommendations.push(...openaiRecs);
+      } catch (error) {
+        console.error('OpenAI recommendations failed:', error);
+      }
+    }
+
+    // Get Anthropic recommendations if enabled
+    if (this.settings.anthropicEnabled && this.anthropicClient) {
+      try {
+        const anthropicRecs = await this.getAnthropicRecommendations(
+          artistNames,
+          strategy as AIStrategy
+        );
+        allRecommendations.push(...anthropicRecs);
+      } catch (error) {
+        console.error('Anthropic recommendations failed:', error);
+      }
+    }
+
+    // Deduplicate by artist name (case-insensitive)
+    const seen = new Set<string>();
+    const uniqueRecs = allRecommendations.filter(rec => {
+      const key = rec.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Limit to max recommendations
+    return uniqueRecs.slice(0, maxRecommendations);
+  }
+}
+
+// Singleton instance
+export const aiService = new AIService();

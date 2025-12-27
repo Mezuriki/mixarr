@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soft Gradient - Lidarr Spotify Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Soft Gradient - Light Mode */
+      --bg-primary: #F8FAFC;
+      --bg-secondary: #F1F5F9;
+      --bg-card: #FFFFFF;
+      --bg-sidebar: linear-gradient(180deg, #6366F1 0%, #8B5CF6 50%, #A855F7 100%);
+      --text-primary: #1E293B;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --text-sidebar: #FFFFFF;
+      --accent: #6366F1;
+      --accent-light: #EEF2FF;
+      --accent-secondary: #EC4899;
+      --accent-tertiary: #14B8A6;
+      --border: #E2E8F0;
+      --border-light: #F1F5F9;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+      --shadow-lg: 0 20px 50px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --spotify: #1DB954;
+      --tidal: #00FFFF;
+      --deezer: #FF0092;
+      --lastfm: #D51007;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0F172A;
+      --bg-secondary: #1E293B;
+      --bg-card: #1E293B;
+      --bg-sidebar: linear-gradient(180deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%);
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --border: #334155;
+      --border-light: #1E293B;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.25);
+      --shadow-lg: 0 20px 50px rgba(0,0,0,0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-sidebar);
+      padding: 28px 0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+      box-shadow: 4px 0 24px rgba(99, 102, 241, 0.15);
+    }
+
+    .logo {
+      padding: 0 28px 28px;
+      margin-bottom: 20px;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      color: var(--text-sidebar);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 0 16px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      margin-bottom: 4px;
+      border-radius: var(--radius-md);
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.1);
+      color: #FFFFFF;
+      transform: translateX(4px);
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.2);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .nav-icon {
+      font-size: 1.2rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    .nav-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 20px 18px;
+    }
+
+    .nav-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.4);
+      padding: 0 18px;
+      margin-bottom: 10px;
+    }
+
+    .sidebar-footer {
+      padding: 20px 24px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: rgba(255,255,255,0.1);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(10px);
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #EC4899, #F97316);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .user-name {
+      font-weight: 600;
+      color: #FFFFFF;
+      font-size: 0.9rem;
+    }
+
+    .user-role {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: 260px;
+      padding: 40px 48px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 36px;
+    }
+
+    .header-left h1 {
+      font-size: 2.25rem;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-lg);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+      color: white;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .theme-toggle {
+      width: 48px;
+      height: 48px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s ease;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      transform: rotate(180deg);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #6366F1, #8B5CF6); }
+    .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #EC4899, #F43F5E); }
+    .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #14B8A6, #06B6D4); }
+    .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #F59E0B, #EAB308); }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+    }
+
+    .stat-card:nth-child(1) .stat-icon { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.1)); }
+    .stat-card:nth-child(2) .stat-icon { background: linear-gradient(135deg, rgba(236,72,153,0.1), rgba(244,63,94,0.1)); }
+    .stat-card:nth-child(3) .stat-icon { background: linear-gradient(135deg, rgba(20,184,166,0.1), rgba(6,182,212,0.1)); }
+    .stat-card:nth-child(4) .stat-icon { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(234,179,8,0.1)); }
+
+    .stat-value {
+      font-family: 'Nunito', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      margin-top: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .stat-card:nth-child(1) .stat-change { background: rgba(99,102,241,0.1); color: #6366F1; }
+    .stat-card:nth-child(2) .stat-change { background: rgba(236,72,153,0.1); color: #EC4899; }
+    .stat-card:nth-child(3) .stat-change { background: rgba(20,184,166,0.1); color: #14B8A6; }
+    .stat-card:nth-child(4) .stat-change { background: rgba(245,158,11,0.1); color: #F59E0B; }
+
+    /* Content Grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h2 {
+      font-size: 1.1rem;
+      color: var(--text-primary);
+    }
+
+    .card-link {
+      font-size: 0.85rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .card-link:hover {
+      color: var(--accent-secondary);
+    }
+
+    .card-body {
+      padding: 20px 24px;
+    }
+
+    /* Activity List */
+    .activity-list {
+      list-style: none;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border-light);
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-item:hover {
+      padding-left: 8px;
+    }
+
+    .activity-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .activity-icon.spotify { background: linear-gradient(135deg, rgba(29,185,84,0.15), rgba(29,185,84,0.05)); }
+    .activity-icon.tidal { background: linear-gradient(135deg, rgba(0,0,0,0.1), rgba(0,0,0,0.05)); }
+    .activity-icon.lastfm { background: linear-gradient(135deg, rgba(213,16,7,0.15), rgba(213,16,7,0.05)); }
+    .activity-icon.deezer { background: linear-gradient(135deg, rgba(255,0,146,0.15), rgba(255,0,146,0.05)); }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+      font-size: 0.95rem;
+    }
+
+    .activity-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .activity-status {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .activity-status.success {
+      background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05));
+      color: #16a34a;
+    }
+
+    .activity-status.running {
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.05));
+      color: var(--accent);
+    }
+
+    /* Connections */
+    .connections-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+
+    .connection-item:hover {
+      transform: translateX(4px);
+      background: var(--bg-card);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .connection-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .connection-logo.lidarr { background: linear-gradient(135deg, #00A652, #00C853); color: white; }
+    .connection-logo.spotify { background: linear-gradient(135deg, #1DB954, #1ED760); color: white; }
+    .connection-logo.tidal { background: linear-gradient(135deg, #000, #333); color: #00FFFF; }
+    .connection-logo.lastfm { background: linear-gradient(135deg, #D51007, #E91E10); color: white; }
+
+    .connection-info {
+      flex: 1;
+    }
+
+    .connection-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .connection-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .connection-badge {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+    }
+
+    /* Color Palette Display */
+    .palette-section {
+      margin-top: 36px;
+      padding: 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .palette-section h3 {
+      margin-bottom: 24px;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .palette-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .palette-swatch {
+      flex: 1;
+      height: 70px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: flex-end;
+      padding: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .typography-sample h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .typography-sample h2 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    .typography-sample p {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>
+          <span class="logo-icon">🎵</span>
+          Lidarr Sync
+        </h1>
+      </div>
+      
+      <nav class="nav">
+        <a href="#" class="nav-item active">
+          <span class="nav-icon">🏠</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🔄</span>
+          Subscriptions
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">📋</span>
+          Queue
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🔮</span>
+          Discover
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🔍</span>
+          Search
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">System</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🔌</span>
+          Connections
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚙️</span>
+          Settings
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⏱️</span>
+          Jobs
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">📄</span>
+          Logs
+        </a>
+        
+        <div class="nav-divider"></div>
+        <div class="nav-label">Admin</div>
+        
+        <a href="#" class="nav-item">
+          <span class="nav-icon">👥</span>
+          Users
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <div>
+            <div class="user-name">Admin</div>
+            <div class="user-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h1>Dashboard</h1>
+          <p>Welcome back! Here's your music library overview.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">Sync Now</button>
+          <button class="btn btn-primary">+ New Subscription</button>
+          <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+        </div>
+      </header>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🎵</div>
+          <div class="stat-value">2,847</div>
+          <div class="stat-label">Artists in Library</div>
+          <div class="stat-change">↑ 124 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📥</div>
+          <div class="stat-value">156</div>
+          <div class="stat-label">Pending Review</div>
+          <div class="stat-change">23 new today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔄</div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">Active Subscriptions</div>
+          <div class="stat-change">All healthy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value">89</div>
+          <div class="stat-label">Jobs This Week</div>
+          <div class="stat-change">100% success</div>
+        </div>
+      </div>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Recent Activity</h2>
+            <a href="#" class="card-link">View all →</a>
+          </div>
+          <div class="card-body">
+            <ul class="activity-list">
+              <li class="activity-item">
+                <div class="activity-icon spotify">🎵</div>
+                <div class="activity-content">
+                  <div class="activity-title">Spotify Discover Weekly</div>
+                  <div class="activity-meta">Found 23 new artists • 5 minutes ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon lastfm">📊</div>
+                <div class="activity-content">
+                  <div class="activity-title">Last.fm Top Charts</div>
+                  <div class="activity-meta">Added 8 artists to queue • 2 hours ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon tidal">🌊</div>
+                <div class="activity-content">
+                  <div class="activity-title">TIDAL Discovery Mix</div>
+                  <div class="activity-meta">Processing 15 artists • Started 1 min ago</div>
+                </div>
+                <div class="activity-status running">⟳ Running</div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon deezer">💿</div>
+                <div class="activity-content">
+                  <div class="activity-title">Deezer Chart Artists</div>
+                  <div class="activity-meta">Found 50 new artists • 6 hours ago</div>
+                </div>
+                <div class="activity-status success">✓ Complete</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>Connections</h2>
+            <a href="#" class="card-link">Manage →</a>
+          </div>
+          <div class="card-body">
+            <div class="connections-grid">
+              <div class="connection-item">
+                <div class="connection-logo lidarr">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Lidarr</div>
+                  <div class="connection-status">2,847 artists synced</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo spotify">S</div>
+                <div class="connection-info">
+                  <div class="connection-name">Spotify</div>
+                  <div class="connection-status">Connected</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo tidal">T</div>
+                <div class="connection-info">
+                  <div class="connection-name">TIDAL</div>
+                  <div class="connection-status">Connected</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+              <div class="connection-item">
+                <div class="connection-logo lastfm">L</div>
+                <div class="connection-info">
+                  <div class="connection-name">Last.fm</div>
+                  <div class="connection-status">API Active</div>
+                </div>
+                <div class="connection-badge"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Style Reference -->
+      <div class="palette-section">
+        <h3>Soft Gradient — Style Reference</h3>
+        <div class="palette-row">
+          <div class="palette-swatch" style="background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white;">Indigo</div>
+          <div class="palette-swatch" style="background: linear-gradient(135deg, #EC4899, #F43F5E); color: white;">Pink</div>
+          <div class="palette-swatch" style="background: linear-gradient(135deg, #14B8A6, #06B6D4); color: white;">Teal</div>
+          <div class="palette-swatch" style="background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0;">Slate 50</div>
+          <div class="palette-swatch" style="background: #1E293B; color: white;">Slate 800</div>
+        </div>
+        <div class="typography-sample">
+          <h1>Nunito</h1>
+          <h2>Friendly Rounded Headers</h2>
+          <p>Body text uses DM Sans, a modern geometric sans-serif with excellent readability. This soft gradient aesthetic feels approachable, modern, and friendly while maintaining a professional appearance.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.querySelector('.theme-toggle');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '🌙';
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '☀️';
+      }
+    }
+  </script>
+</body>
+</html>

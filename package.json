@@ -1,0 +1,30 @@
+{
+  "name": "mixarr",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Music discovery and import tool for Lidarr",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "turbo run db:generate --filter=@mixarr/api",
+    "db:push": "turbo run db:push --filter=@mixarr/api",
+    "db:migrate": "turbo run db:migrate --filter=@mixarr/api",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "npm@10.2.4",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

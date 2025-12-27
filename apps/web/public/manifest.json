@@ -1,0 +1,41 @@
+{
+  "name": "Mixarr",
+  "short_name": "Mixarr",
+  "description": "Music discovery and import tool for Lidarr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#16a34a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["music", "utilities"],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Search Artists",
+      "short_name": "Search",
+      "description": "Search for artists",
+      "url": "/search"
+    },
+    {
+      "name": "Subscriptions",
+      "short_name": "Subs",
+      "description": "View subscriptions",
+      "url": "/subscriptions"
+    },
+    {
+      "name": "Spotify Import",
+      "short_name": "Import",
+      "description": "Import from Spotify",
+      "url": "/spotify-import"
+    }
+  ]
+}
