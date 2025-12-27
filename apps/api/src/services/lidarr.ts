@@ -216,19 +216,27 @@ export class LidarrService {
       throw new Error(`Artist not found in Lidarr for MBID: ${foreignArtistId}`);
     }
 
+    // Build request body with explicit fields only (matching upstream Python implementation)
+    // Don't spread ...artist as search results may contain conflicting/stale fields
+    const requestBody = {
+      artistName: artist.artistName,
+      foreignArtistId: artist.foreignArtistId,
+      qualityProfileId,
+      metadataProfileId,
+      rootFolderPath,
+      monitored,
+      addOptions: {
+        monitor: 'all',
+        searchForMissingAlbums: searchForMissingAlbums,
+      },
+    };
+    
+    console.log(`[Lidarr] Adding artist ${artist.artistName} (MBID: ${foreignArtistId})`);
+    console.log(`[Lidarr] addOptions: ${JSON.stringify(requestBody.addOptions)}`);
+
     return this.request<LidarrArtist>('/artist', {
       method: 'POST',
-      body: JSON.stringify({
-        ...artist,
-        qualityProfileId,
-        metadataProfileId,
-        rootFolderPath,
-        monitored,
-        addOptions: {
-          monitor: 'all',
-          searchForMissingAlbums: searchForMissingAlbums,
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
   }
 
