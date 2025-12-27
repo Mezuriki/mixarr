@@ -287,7 +287,7 @@ Background job monitoring:
 - Real-time progress via WebSocket
 - Retry failed jobs
 
-```
+
 ## PWA Installation
 
 1. Open the app in Chrome/Edge/Safari
