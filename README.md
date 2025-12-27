@@ -60,10 +60,76 @@ Open music database integration.
 - New release discovery
 - Artist metadata and matching
 
+### ListenBrainz
+Open listening history database.
+- Your top listened artists
+- Recommendations based on your listening
+- Artists loved by similar users
+
 ### AI Recommendations
 LLM-powered artist discovery using OpenAI, Anthropic, or Ollama.
 - Natural language artist recommendations
 - Based on your existing library and preferences
+
+
+## Subscription Types
+
+### Last.fm (5)
+- **Top Charts**: Global weekly chart
+- **Country Charts**: Top artists by country
+- **Genre/Tag Artists**: Artists by genre tag
+- **Geographic Artists**: Artists by location
+- **Library Top Artists**: Your top scrobbled artists
+
+### Spotify (13)
+- **Followed Artists**: Your followed artists
+- **Saved Albums Artists**: Artists from saved albums
+- **Liked Songs Artists**: Artists from liked songs
+- **Playlist**: Any playlist by URL
+- **New Releases**: Recently released music
+- **Featured Playlists**: Spotify curated playlists
+- **Category Artists**: Artists from category playlists
+- **Related Artists**: Similar to existing library
+- **Artist Radio**: Artists from artist radio
+- **Discover Weekly**: Personalized weekly recommendations
+- **Release Radar**: New releases from followed artists
+- **Daily Mix**: Daily personalized mixes
+- **On Repeat**: Your most played tracks
+
+### Deezer (8)
+- **Favorites**: ⚠️ Requires OAuth (unavailable)
+- **Listening History**: ⚠️ Requires OAuth (unavailable)
+- **Flow Recommendations**: ⚠️ Requires OAuth (unavailable)
+- **Playlist**: ⚠️ Requires OAuth (unavailable)
+- **All Playlists**: ⚠️ Requires OAuth (unavailable)
+- **Chart Artists**: Top chart artists (public API)
+- **Genre Artists**: Artists by genre (public API)
+- **Search Artists**: Artists by search query (public API)
+
+### TIDAL (7)
+- **Followed Artists**: Your followed artists
+- **Favorite Tracks Artists**: Artists from favorite tracks
+- **Playlist**: Individual playlist
+- **All Playlists**: All saved playlists
+- **Discovery Mix**: Personalized discovery
+- **My Mix**: Personal mix
+- **New Arrivals**: Personalized new releases
+
+### MusicBrainz (1)
+- **New Releases**: Recent releases from MusicBrainz database
+
+### ListenBrainz (3)
+- **Top Artists**: Your top listened artists 
+- **Recommendations**: Artists recommended based on your listening
+- **Similar Users Artists**: Artists loved by users with similar tastes
+
+### AI (1)
+- **Recommendations**: LLM-powered artist suggestions (OpenAI, Anthropic)
+
+### Plex/Tautulli (1)
+- **Listening History Similar**: Artists similar to your Plex listening
+
+
 
 ## Structure
 
@@ -318,57 +384,7 @@ Background job monitoring:
 - **Last.fm**: Charts, tags, geo data, scrobbles
 - **MusicBrainz**: Artist metadata
 
-## Subscription Types
 
-### Last.fm (5)
-- **Top Charts**: Global weekly chart
-- **Country Charts**: Top artists by country
-- **Genre/Tag Artists**: Artists by genre tag
-- **Geographic Artists**: Artists by location
-- **Library Top Artists**: Your top scrobbled artists
-
-### Spotify (13)
-- **Followed Artists**: Your followed artists
-- **Saved Albums Artists**: Artists from saved albums
-- **Liked Songs Artists**: Artists from liked songs
-- **Playlist**: Any playlist by URL
-- **New Releases**: Recently released music
-- **Featured Playlists**: Spotify curated playlists
-- **Category Artists**: Artists from category playlists
-- **Related Artists**: Similar to existing library
-- **Artist Radio**: Artists from artist radio
-- **Discover Weekly**: Personalized weekly recommendations
-- **Release Radar**: New releases from followed artists
-- **Daily Mix**: Daily personalized mixes
-- **On Repeat**: Your most played tracks
-
-### Deezer (8)
-- **Favorites**: ⚠️ Requires OAuth (unavailable)
-- **Listening History**: ⚠️ Requires OAuth (unavailable)
-- **Flow Recommendations**: ⚠️ Requires OAuth (unavailable)
-- **Playlist**: ⚠️ Requires OAuth (unavailable)
-- **All Playlists**: ⚠️ Requires OAuth (unavailable)
-- **Chart Artists**: ✓ Top chart artists (public API)
-- **Genre Artists**: ✓ Artists by genre (public API)
-- **Search Artists**: ✓ Artists by search query (public API)
-
-### TIDAL (7)
-- **Followed Artists**: Your followed artists
-- **Favorite Tracks Artists**: Artists from favorite tracks
-- **Playlist**: Individual playlist
-- **All Playlists**: All saved playlists
-- **Discovery Mix**: Personalized discovery
-- **My Mix**: Personal mix
-- **New Arrivals**: Personalized new releases
-
-### MusicBrainz (1)
-- **New Releases**: Recent releases from MusicBrainz database
-
-### AI (1)
-- **Recommendations**: LLM-powered artist suggestions
-
-### Plex/Tautulli (1)
-- **Listening History Similar**: Artists similar to your Plex listening
 
 ## API Endpoints
 

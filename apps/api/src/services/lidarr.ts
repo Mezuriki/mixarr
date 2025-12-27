@@ -312,9 +312,11 @@ export class LidarrService {
   }
 
   /**
-   * Add an artist and trigger a metadata refresh to ensure complete data.
-   * This is the preferred method for adding artists as it helps ensure
-   * MusicBrainz metadata (albums, etc.) is fully loaded.
+   * Add an artist to Lidarr.
+   * 
+   * Note: We previously triggered a metadata refresh after adding, but this
+   * caused full library scans due to Lidarr API issues. The addArtist call
+   * already fetches metadata from MusicBrainz, so extra refresh is unnecessary.
    */
   async addArtistWithRefresh(
     foreignArtistId: string,
@@ -323,9 +325,8 @@ export class LidarrService {
     rootFolderPath: string,
     monitored: boolean = true,
     searchForMissingAlbums: boolean = true,
-    waitForRefresh: boolean = false
+    _waitForRefresh: boolean = false  // Kept for API compatibility, no longer used
   ): Promise<{ artist: LidarrArtist; refreshCommand?: LidarrCommand }> {
-    // First, add the artist
     const artist = await this.addArtist(
       foreignArtistId,
       qualityProfileId,
@@ -335,22 +336,8 @@ export class LidarrService {
       searchForMissingAlbums
     );
 
-    // Trigger a metadata refresh to ensure complete data from MusicBrainz
-    try {
-      const refreshCommand = await this.refreshArtist(artist.id);
-      
-      if (waitForRefresh) {
-        // Wait for the refresh to complete (with a reasonable timeout)
-        const completedCommand = await this.waitForCommand(refreshCommand.id, 60000, 2000);
-        return { artist, refreshCommand: completedCommand };
-      }
-      
-      return { artist, refreshCommand };
-    } catch (error) {
-      // If refresh fails, still return the artist - the add was successful
-      console.warn(`Failed to refresh artist ${artist.id} metadata:`, error);
-      return { artist };
-    }
+    // No longer triggering refresh - Lidarr's addArtist already fetches metadata
+    return { artist };
   }
 
   async addAlbum(
