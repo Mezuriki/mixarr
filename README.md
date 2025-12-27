@@ -5,12 +5,8 @@ A complete toolset for discovering new and related music for your Lidarr collect
 ## Features
 
 - **Modern Stack**: Next.js 14 + Express.js + TypeScript
-- **Dark Mode**: System-aware with manual toggle
 - **PWA Support**: Installable, offline-capable, push notifications
-- **Real-time Updates**: WebSocket-based job progress
-- **Mobile-First**: Responsive design with collapsible sidebar
 - **Multi-User**: Authentication with admin/user roles
-- **Job Queue**: BullMQ-based background processing
 - **Multi-Service Integration**: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
 - **Library Maintenance**: Analyze and fix Lidarr artists with missing metadata (albums, posters, bios, genres)
 - **Automated Subscriptions**: Scheduled synchronization and discovery from connected services
@@ -291,38 +287,6 @@ Background job monitoring:
 - Real-time progress via WebSocket
 - Retry failed jobs
 
-## Available Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start all services in development mode |
-| `npm run build` | Build all packages for production |
-| `npm run lint` | Run ESLint across all packages |
-| `npm run typecheck` | Type-check all TypeScript |
-| `npm run test` | Run all tests |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:push` | Push schema to database |
-| `npm run db:migrate` | Run database migrations |
-| `npm run db:studio` | Open Prisma Studio GUI |
-
-## Configuration
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
-```env
-# Database
-DATABASE_URL="mysql://user:password@localhost:3306/lidarr_spotify"
-
-# Redis
-REDIS_URL="redis://localhost:6379"
-
-# Session
-SESSION_SECRET="your-secret-key"
-
-# Frontend
-NEXT_PUBLIC_API_URL="http://localhost:3010"
 ```
 ## PWA Installation
 
