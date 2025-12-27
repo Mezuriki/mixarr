@@ -470,8 +470,8 @@ describe('Lidarr Service', () => {
         }
         if (options?.method === 'POST') {
           const body = JSON.parse(options.body as string);
-          // Verify monitor is set to 'none'
-          expect(body.addOptions.monitor).toBe('none');
+          // Verify Monitor is set to 'none' (Pascal case for Lidarr API)
+          expect(body.addOptions.Monitor).toBe('none');
           expect(body.monitored).toBe(false);
           return Promise.resolve({
             ok: true,
@@ -495,8 +495,8 @@ describe('Lidarr Service', () => {
           rootFolderPath: '/music',
           monitored: false,
           addOptions: {
-            monitor: 'none',
-            searchForMissingAlbums: false,
+            Monitor: 'none',
+            SearchForMissingAlbums: false,
           },
         }),
       });
@@ -763,9 +763,9 @@ describe('Lidarr Service', () => {
         }
         
         if (url.includes('/artist') && options?.method === 'POST') {
-          // Verify artist is added with monitor: 'none'
+          // Verify artist is added with Monitor: 'none' (Pascal case for Lidarr API)
           const body = JSON.parse(options.body as string);
-          expect(body.addOptions.monitor).toBe('none');
+          expect(body.addOptions.Monitor).toBe('none');
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve(newArtist),
@@ -814,13 +814,13 @@ describe('Lidarr Service', () => {
       const lookupResults = await response.json();
       expect(lookupResults).toHaveLength(1);
 
-      // Step 3: Add artist with monitor: 'none'
+      // Step 3: Add artist with Monitor: 'none'
       response = await mockFetch('http://localhost:8686/api/v1/artist', {
         method: 'POST',
         body: JSON.stringify({
           ...lookupResults[0],
           monitored: false,
-          addOptions: { monitor: 'none', searchForMissingAlbums: false },
+          addOptions: { Monitor: 'none', SearchForMissingAlbums: false },
         }),
       });
       const addedArtist = await response.json();

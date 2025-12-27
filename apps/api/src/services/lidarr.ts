@@ -225,8 +225,8 @@ export class LidarrService {
         rootFolderPath,
         monitored,
         addOptions: {
-          monitor: 'all',
-          searchForMissingAlbums,
+          Monitor: 'all',
+          SearchForMissingAlbums: searchForMissingAlbums,
         },
       }),
     });
@@ -382,8 +382,8 @@ export class LidarrService {
           rootFolderPath,
           monitored: true,
           addOptions: {
-            monitor: 'none', // Don't monitor any albums by default
-            searchForMissingAlbums: false,
+            Monitor: 'none', // Don't monitor any albums by default
+            SearchForMissingAlbums: false,
           },
         }),
       });
