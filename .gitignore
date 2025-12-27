@@ -1,0 +1,92 @@
+# Miscellaneous
+logs/*
+docs/*
+.github/*
+certs/*
+*cache*
+release.sh
+.cache*
+PROJECT.md
+*__pycache__*
+Caddyfile/*
+instance/*
+release.sh
+reset.sh
+start.sh
+.git.*
+
+
+
+# Environment files
+.env
+.env.*
+*.env.local
+
+# Configuration files with secrets
+config.json
+appsettings.json
+secrets.json
+
+# IDE
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+.turbo/
+.next/
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+v2/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Turbo
+.turbo/
+
+# Prisma
+#apps/api/prisma/migrations/
+
+# Test coverage
+coverage/
+
+# Misc
+*.tsbuildinfo
+certs/
