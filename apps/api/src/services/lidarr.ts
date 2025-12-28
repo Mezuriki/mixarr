@@ -11,7 +11,7 @@ interface LidarrConfig {
   apiKey: string;
 }
 
-interface LidarrArtist {
+export interface LidarrArtist {
   id: number;
   artistName: string;
   foreignArtistId: string;
