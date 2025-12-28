@@ -6,6 +6,7 @@ import { MusicBrainzService } from '../services/musicbrainz.js';
 import { LastfmService } from '../services/lastfm.js';
 import { fetchDeezerArtistImages } from '../services/deezer.js';
 import { multiSourceSearch, resolveMbid, SearchSource } from '../services/multi-search.js';
+import { MetadataEnrichmentService } from '../services/metadata-enrichment.js';
 
 export const searchRouter = Router();
 
@@ -547,6 +548,121 @@ searchRouter.post('/lidarr/artists/refresh-by-issue', async (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to refresh artists' 
+    });
+  }
+});
+
+// Enrich a single artist's metadata from connected sources
+searchRouter.post('/lidarr/artists/:id/enrich', async (req, res) => {
+  try {
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    const artistId = parseInt(req.params.id);
+    if (isNaN(artistId)) {
+      res.status(400).json({ error: 'Invalid artist ID' });
+      return;
+    }
+
+    // Get Last.fm service for the user
+    const lastfmConn = await prisma.connection.findFirst({
+      where: { userId: req.user!.id, type: 'lastfm', isActive: true },
+    });
+
+    if (!lastfmConn) {
+      res.status(400).json({ error: 'No active Last.fm connection for metadata enrichment' });
+      return;
+    }
+
+    const lastfm = new LastfmService(lastfmConn.config as { apiKey: string });
+    const enrichService = new MetadataEnrichmentService(lidarr, lastfm);
+
+    const { updateLidarr = true, forceUpdate = false } = req.body as {
+      updateLidarr?: boolean;
+      forceUpdate?: boolean;
+    };
+
+    const result = await enrichService.enrichArtist(artistId, { updateLidarr, forceUpdate });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error enriching artist:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to enrich artist',
+    });
+  }
+});
+
+// Enrich all artists with incomplete metadata
+searchRouter.post('/lidarr/artists/enrich-incomplete', async (req, res) => {
+  try {
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    const lastfmConn = await prisma.connection.findFirst({
+      where: { userId: req.user!.id, type: 'lastfm', isActive: true },
+    });
+
+    if (!lastfmConn) {
+      res.status(400).json({ error: 'No active Last.fm connection for metadata enrichment' });
+      return;
+    }
+
+    const lastfm = new LastfmService(lastfmConn.config as { apiKey: string });
+    const enrichService = new MetadataEnrichmentService(lidarr, lastfm);
+
+    const { limit = 50, issueType = 'any' } = req.body as {
+      limit?: number;
+      issueType?: string;
+    };
+
+    // Get all artists and filter to incomplete ones
+    const artists = await lidarr.getArtists();
+    let incompleteArtists = artists.filter(artist => {
+      const issues = getMetadataIssues(artist);
+      if (issueType === 'any') {
+        return issues.length > 0;
+      }
+      return issues.includes(issueType);
+    });
+
+    incompleteArtists = incompleteArtists.slice(0, limit);
+
+    if (incompleteArtists.length === 0) {
+      res.json({
+        success: true,
+        message: `No artists found with issue: ${issueType}`,
+        enriched: 0,
+        total: 0,
+        results: [],
+      });
+      return;
+    }
+
+    const results = await enrichService.enrichArtists(
+      incompleteArtists.map(a => a.id),
+      { updateLidarr: true }
+    );
+
+    const enrichedCount = results.filter(r => r.updated).length;
+
+    res.json({
+      success: true,
+      message: `Enriched ${enrichedCount} of ${results.length} incomplete artists`,
+      enriched: enrichedCount,
+      total: results.length,
+      results,
+    });
+  } catch (error) {
+    console.error('Error enriching incomplete artists:', error);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to enrich artists',
     });
   }
 });
