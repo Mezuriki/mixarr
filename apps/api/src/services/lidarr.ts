@@ -256,6 +256,44 @@ export class LidarrService {
     });
   }
 
+  /**
+   * Update an artist's metadata in Lidarr.
+   * Used by metadata enrichment to push enriched data back to Lidarr.
+   * 
+   * @param artist - Full artist object with updated fields
+   * @returns Updated artist from Lidarr
+   */
+  async updateArtist(artist: LidarrArtist): Promise<LidarrArtist> {
+    return this.request<LidarrArtist>(`/artist/${artist.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(artist),
+    });
+  }
+
+  /**
+   * Partially update an artist's metadata (fetch current, merge, save).
+   * Safer than updateArtist when you only have partial data.
+   * 
+   * @param artistId - Lidarr artist ID
+   * @param updates - Partial metadata to merge
+   * @returns Updated artist
+   */
+  async patchArtist(
+    artistId: number,
+    updates: Partial<Pick<LidarrArtist, 'overview' | 'genres' | 'images'>>
+  ): Promise<LidarrArtist> {
+    // Fetch current artist to preserve all fields
+    const current = await this.getArtist(artistId);
+    
+    // Merge updates
+    const merged: LidarrArtist = {
+      ...current,
+      ...updates,
+    };
+
+    return this.updateArtist(merged);
+  }
+
   async searchAlbumCommand(albumIds: number[]): Promise<{ id: number }> {
     return this.request<{ id: number }>('/command', {
       method: 'POST',

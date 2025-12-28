@@ -886,4 +886,75 @@ describe('Lidarr Service', () => {
       expect(targetAlbum).toBeUndefined();
     });
   });
+
+  describe('updateArtist', () => {
+    it('should update artist with new metadata via PUT', async () => {
+      const updatedArtist = {
+        id: 123,
+        artistName: 'Test Artist',
+        foreignArtistId: 'mbid-123',
+        overview: 'New bio from enrichment',
+        genres: ['rock', 'indie'],
+        images: [
+          { coverType: 'poster', url: 'https://example.com/poster.jpg' },
+        ],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(updatedArtist),
+      });
+
+      const response = await mockFetch('http://localhost:8686/api/v1/artist/123', {
+        method: 'PUT',
+        headers: {
+          'X-Api-Key': 'test-api-key',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedArtist),
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8686/api/v1/artist/123',
+        expect.objectContaining({ method: 'PUT' })
+      );
+
+      const data = await response.json();
+      expect(data.overview).toBe('New bio from enrichment');
+      expect(data.genres).toContain('rock');
+    });
+
+    it('should preserve existing fields when updating partial metadata', async () => {
+      const existingArtist = {
+        id: 123,
+        artistName: 'Test Artist',
+        foreignArtistId: 'mbid-123',
+        path: '/music/Test Artist',
+        qualityProfileId: 1,
+        metadataProfileId: 1,
+        monitored: true,
+        overview: '',
+        genres: [],
+      };
+
+      const enrichedFields = {
+        overview: 'New bio',
+        genres: ['rock'],
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ ...existingArtist, ...enrichedFields }),
+      });
+
+      const response = await mockFetch('http://localhost:8686/api/v1/artist/123', {
+        method: 'PUT',
+        body: JSON.stringify({ ...existingArtist, ...enrichedFields }),
+      });
+
+      const data = await response.json();
+      expect(data.path).toBe('/music/Test Artist');
+      expect(data.overview).toBe('New bio');
+    });
+  });
 });
