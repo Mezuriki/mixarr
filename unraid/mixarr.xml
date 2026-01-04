@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>mixarr</Name>
+  <Repository>ghcr.io/aquantumofdonuts/mixarr:latest</Repository>
+  <Registry>https://github.com/aquantumofdonuts/mixarr/pkgs/container/mixarr</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>develop</Tag>
+    <TagDescription>Development builds (may be unstable)</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <WebUI>https://[IP]:[PORT:443]</WebUI>
+  <Icon>https://raw.githubusercontent.com/aquantumofdonuts/mixarr/main/apps/web/public/icon-512.png</Icon>
+  <Overview>
+Mixarr is a fully self-contained music discovery and library management tool that integrates with Lidarr.
+
+This is an all-in-one container that includes everything needed to run - no external database or Redis required!
+
+Features:
+- Multi-Service Integration: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
+- Automated Subscriptions: Scheduled sync from connected services
+- AI-Powered Discovery: Get recommendations based on your library
+- PWA Support: Installable app with offline capabilities
+- Built-in MariaDB and Redis - no external dependencies needed
+  </Overview>
+  <Category>MediaApp:Music Tools:</Category>
+  <Support>https://forums.unraid.net/topic/xxxxx-mixarr-support/</Support>
+  <Project>https://github.com/aquantumofdonuts/mixarr</Project>
+  <ReadMe>https://github.com/aquantumofdonuts/mixarr/blob/main/README.md</ReadMe>
+  <ExtraSearchTerms>lidarr music spotify tidal deezer lastfm plex discovery recommendation</ExtraSearchTerms>
+  
+  <!-- Ports -->
+  <Config 
+    Name="HTTPS Port" 
+    Target="443" 
+    Default="3443" 
+    Mode="tcp" 
+    Description="HTTPS web interface port" 
+    Type="Port" 
+    Display="always" 
+    Required="true" 
+    Mask="false">3443</Config>
+  
+  <Config 
+    Name="HTTP Port" 
+    Target="80" 
+    Default="3080" 
+    Mode="tcp" 
+    Description="HTTP port (redirects to HTTPS)" 
+    Type="Port" 
+    Display="advanced" 
+    Required="false" 
+    Mask="false">3080</Config>
+
+  <!-- Volumes -->
+  <Config 
+    Name="Data" 
+    Target="/data" 
+    Default="/mnt/user/appdata/mixarr" 
+    Mode="rw" 
+    Description="Persistent data storage (database, Redis data, SSL certificates). All application data is stored here." 
+    Type="Path" 
+    Display="always" 
+    Required="true" 
+    Mask="false">/mnt/user/appdata/mixarr</Config>
+
+  <!-- Required Environment Variables -->
+  <Config 
+    Name="Session Secret" 
+    Target="SESSION_SECRET" 
+    Default="" 
+    Description="Random secret string for session encryption. Generate with: openssl rand -hex 32" 
+    Type="Variable" 
+    Display="always" 
+    Required="true" 
+    Mask="true"></Config>
+
+  <Config 
+    Name="Frontend URL" 
+    Target="FRONTEND_URL" 
+    Default="https://[YOUR-UNRAID-IP]:3443" 
+    Description="Public URL where Mixarr is accessible. Used for OAuth callbacks (Spotify, etc). Example: https://192.168.1.100:3443" 
+    Type="Variable" 
+    Display="always" 
+    Required="true" 
+    Mask="false"></Config>
+
+  <Config 
+    Name="Base URL" 
+    Target="BASE_URL" 
+    Default="" 
+    Description="Same as Frontend URL. Leave empty to auto-use FRONTEND_URL value." 
+    Type="Variable" 
+    Display="advanced" 
+    Required="false" 
+    Mask="false"></Config>
+
+  <!-- Template Metadata -->
+  <TemplateURL>https://raw.githubusercontent.com/aquantumofdonuts/mixarr/main/unraid/mixarr.xml</TemplateURL>
+  <Maintainer>aquantumofdonuts</Maintainer>
+  <Changes>
+### 2026-01-04
+- Initial Unraid Community Apps release
+- Fully self-contained: includes MariaDB, Redis, API, Web UI, and Caddy
+- No external database or Redis required
+- Multi-architecture support (amd64, arm64)
+- All data persisted in single /data volume
+  </Changes>
+  <DonateText>Support Mixarr Development</DonateText>
+  <DonateLink>https://github.com/sponsors/aquantumofdonuts</DonateLink>
+</Container>
