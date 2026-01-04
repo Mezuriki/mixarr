@@ -3,8 +3,6 @@
 A complete toolset for discovering new and related music for your Lidarr collection using Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli, and AI recommendations.
 
 ## Features
-
-
 - **Multi-Service Integration**: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
 - **Automated Subscriptions**: Scheduled synchronization and discovery from connected services
 - **System Dashboard**: Overview of active subscriptions, recent artists, and system health
