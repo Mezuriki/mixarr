@@ -2,6 +2,16 @@
 
 A complete toolset for discovering new and related music for your Lidarr collection using Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli, and AI recommendations.
 
+## Features
+
+
+- **Multi-Service Integration**: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
+- **Automated Subscriptions**: Scheduled synchronization and discovery from connected services
+- **System Dashboard**: Overview of active subscriptions, recent artists, and system health
+- **Modern Stack**: Next.js 14 + Express.js + TypeScript
+- **PWA Support**: Installable, offline-capable, push notifications
+- **Multi-User**: Authentication with admin/user roles
+
 ## Quick Start (Docker)
 
 ```bash
@@ -31,15 +41,7 @@ On first login, create an admin account. Then connect your Lidarr instance and m
 
 > **Updating**: To update to a new release, run `git fetch --tags && git checkout v1.x.x` then `docker compose up -d --build`
 
-## Features
 
-- **Modern Stack**: Next.js 14 + Express.js + TypeScript
-- **PWA Support**: Installable, offline-capable, push notifications
-- **Multi-User**: Authentication with admin/user roles
-- **Multi-Service Integration**: Spotify, TIDAL, Deezer, Last.fm, MusicBrainz, Plex/Tautulli
-- **Library Maintenance**: Analyze and fix Lidarr artists with missing metadata (albums, posters, bios, genres)
-- **Automated Subscriptions**: Scheduled synchronization and discovery from connected services
-- **System Dashboard**: Overview of active subscriptions, recent artists, and system health
 
 ## Supported Music Services
 
