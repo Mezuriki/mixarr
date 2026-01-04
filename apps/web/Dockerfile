@@ -24,7 +24,11 @@ FROM development AS builder
 # Build args for API URL
 ARG API_URL=http://localhost:3010
 ENV API_URL=${API_URL}
+# CI=true disables build-time font optimization to prevent timeouts during slow ARM64 builds
+ENV CI=true
 
+# Build shared-types first (web depends on it)
+RUN npm run build --workspace=@mixarr/shared-types
 RUN npm run build --workspace=@mixarr/web
 
 # Production stage
