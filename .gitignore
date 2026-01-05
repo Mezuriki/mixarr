@@ -1,6 +1,7 @@
 # Miscellaneous
 logs/*
 docs/*
+docs/plans/*
 .github/*
 certs/*
 *cache*
