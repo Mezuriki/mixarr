@@ -15,7 +15,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build each platform on native runners for speed (avoids QEMU timeout issues)
+  # Build unified image on native runners (no QEMU - avoids timeout issues)
   build-unified:
     name: Build Unified (${{ matrix.platform }})
     runs-on: ${{ matrix.runner }}
@@ -53,7 +53,7 @@ jobs:
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile.unified
@@ -74,12 +74,12 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-unified-${{ matrix.runner }}
+          name: unified-digests-${{ matrix.runner }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  # Merge multi-platform manifests
+  # Merge multi-platform manifests for unified image
   merge-unified:
     name: Merge Unified Manifest
     runs-on: ubuntu-latest
@@ -87,15 +87,13 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write
-      attestations: write
 
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-unified-*
+          pattern: unified-digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -127,68 +125,3 @@ jobs:
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          subject-digest: ${{ steps.meta.outputs.digest }}
-          push-to-registry: true
-        continue-on-error: true
-
-  # Also build individual images for users who prefer docker-compose setup
-  build-individual-images:
-    name: Build Individual Images
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        include:
-          - name: api
-            dockerfile: apps/api/Dockerfile
-            context: .
-          - name: web
-            dockerfile: apps/web/Dockerfile
-            context: .
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.name }}
-          tags: |
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
-
-      - name: Build and push ${{ matrix.name }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          target: production
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
