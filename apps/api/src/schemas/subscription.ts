@@ -84,7 +84,14 @@ export const scheduleSchema = z.enum(['manual', 'daily', 'weekly', 'monthly']).n
 /**
  * Result handling options
  */
-export const resultHandlingSchema = z.enum(['preview', 'queue', 'auto']);
+export const resultHandlingSchema = z.enum([
+  'preview', 
+  'queue', 
+  'auto',
+  'slskd_preview',
+  'slskd_queue',
+  'slskd_auto',
+]);
 
 /**
  * Schema for creating a new subscription (POST /subscriptions)
