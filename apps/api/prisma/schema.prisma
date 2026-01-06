@@ -114,8 +114,9 @@ model Connection {
   createdAt DateTime       @default(now()) @map("created_at")
   updatedAt DateTime       @updatedAt @map("updated_at")
 
-  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscriptions Subscription[]
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions  Subscription[]
+  slskdDownloads SlskdDownload[]
 
   @@unique([userId, type, name])
   @@index([userId])
@@ -486,4 +487,55 @@ enum NotificationType {
   telegram
   pushover
   email
+}
+
+// ============================================================================
+// SLSKD DOWNLOADS
+// ============================================================================
+
+enum SlskdDownloadStatus {
+  pending
+  downloading
+  completed
+  failed
+  cancelled
+}
+
+model SlskdDownload {
+  id            Int                 @id @default(autoincrement())
+  connectionId  Int                 @map("connection_id")
+  connection    Connection          @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // Source info
+  username      String              @db.VarChar(255)  // Soulseek username
+  searchId      String?             @map("search_id") @db.VarChar(255)  // Original slskd search ID
+
+  // Artist/Album info (for organization)
+  artistName    String              @map("artist_name") @db.VarChar(255)
+  albumName     String?             @map("album_name") @db.VarChar(255)
+  albumYear     Int?                @map("album_year")
+
+  // File info
+  filename      String              @db.VarChar(500)  // Original filename from slskd
+  fileSize      Int                 @map("file_size")  // Size in bytes
+  slskdId       String?             @map("slskd_id") @db.VarChar(255)  // slskd's internal download ID
+
+  // Status tracking
+  status        SlskdDownloadStatus @default(pending)
+  progress      Int                 @default(0)  // 0-100 percentage
+  error         String?             @db.Text
+
+  // File paths
+  downloadPath  String?             @map("download_path") @db.VarChar(500)  // Where slskd saved the file
+  finalPath     String?             @map("final_path") @db.VarChar(500)  // Where we moved it in music library
+
+  // Timestamps
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  completedAt   DateTime?           @map("completed_at")
+
+  @@index([connectionId])
+  @@index([status])
+  @@index([artistName, albumName])
+  @@map("slskd_downloads")
 }
