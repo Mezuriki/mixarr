@@ -76,4 +76,64 @@ describe('SlskdService', () => {
       expect(result.error).toContain('ECONNREFUSED');
     });
   });
+
+  describe('search', () => {
+    it('should start a search and return search id', async () => {
+      const { SlskdService } = await import('../../src/services/slskd.js');
+      
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          id: 'search-123',
+          searchText: 'Pink Floyd',
+          state: 'InProgress',
+        }),
+      });
+
+      const service = new SlskdService({
+        url: 'http://localhost:5030',
+        apiKey: 'valid-key',
+      });
+      const result = await service.search('Pink Floyd');
+
+      expect(result.id).toBe('search-123');
+      expect(result.searchText).toBe('Pink Floyd');
+    });
+  });
+
+  describe('getSearchResults', () => {
+    it('should return search results when complete', async () => {
+      const { SlskdService } = await import('../../src/services/slskd.js');
+      
+      const mockResults = {
+        id: 'search-123',
+        searchText: 'Pink Floyd',
+        state: 'Completed',
+        responses: [
+          {
+            username: 'user1',
+            files: [
+              { filename: '01 - Breathe.flac', size: 45000000 },
+              { filename: '02 - On The Run.flac', size: 32000000 },
+            ],
+          },
+        ],
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResults),
+      });
+
+      const service = new SlskdService({
+        url: 'http://localhost:5030',
+        apiKey: 'valid-key',
+      });
+      const result = await service.getSearchResults('search-123');
+
+      expect(result.state).toBe('Completed');
+      expect(result.responses).toHaveLength(1);
+      expect(result.responses[0].username).toBe('user1');
+    });
+  });
 });
