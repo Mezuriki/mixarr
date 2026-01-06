@@ -38,7 +38,7 @@ Skip Lidarr connection during setup to use this mode.
 ### From Docker Image
 
 ```bash
-docker pull ghcr.io/aquantumofdonuts/mixarr:v1.1.0
+docker pull ghcr.io/aquantumofdonuts/mixarr:v1.1.1
 
 docker run -d \
   --name mixarr \
@@ -47,7 +47,7 @@ docker run -d \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e FRONTEND_URL="https://YOUR-SERVER-IP:3443" \
   -e BASE_URL="https://YOUR-SERVER-IP:3443" \
-  ghcr.io/aquantumofdonuts/mixarr:v1.1.0
+  ghcr.io/aquantumofdonuts/mixarr:v1.1.1
 ```
 
 ### Build from Source
@@ -55,7 +55,7 @@ docker run -d \
 ```bash
 git clone https://github.com/aquantumofdonuts/mixarr.git
 cd mixarr
-git checkout latest
+git checkout v1.1.1
 cp .env.example .env
 # Edit .env with your settings (SESSION_SECRET, etc.)
 
@@ -69,7 +69,7 @@ Access:
 
 Create an admin account on first login, then connect Lidarr and services.
 
-**Updating**: `git fetch --tags && git checkout latest` then `docker compose up -d --build`
+**Updating**: `git fetch --tags && git checkout v1.1.1` then `docker compose up -d --build`
 
 ## Supported Music Services
 
