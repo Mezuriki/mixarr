@@ -11,6 +11,7 @@ export const connectionTypes = [
   'listenbrainz',
   'discogs',
   'jellyfin',
+  'slskd',
 ] as const;
 
 export type ConnectionType = (typeof connectionTypes)[number];
@@ -37,6 +38,22 @@ export const jellyfinConfigSchema = z.object({
   jellyfinApiKey: z.string(),
   jellyfinUserId: z.string().optional(),
   jellyfinLibraryId: z.string().optional(),
+});
+
+export const slskdConfigSchema = z.object({
+  url: z.string().url(),
+  apiKey: z.string(),
+  downloadDir: z.string(),
+  musicLibraryDir: z.string(),
+  // Quality profile
+  minQuality: z.enum(['any', 'mp3-128', 'mp3-256', 'mp3-320', 'lossless']).default('mp3-320'),
+  preferredQuality: z.enum(['highest', 'flac', 'mp3-320', 'mp3-256']).default('highest'),
+  requireCompleteAlbums: z.boolean().default(false),
+  minTrackCount: z.number().int().min(1).default(3),
+  minSourceFiles: z.number().int().min(0).default(100),
+  // Rate limits
+  artistsPerRun: z.number().int().min(1).max(100).default(25),
+  searchDelaySeconds: z.number().int().min(5).max(120).default(30),
 });
 
 export const listenbrainzConfigSchema = z.object({

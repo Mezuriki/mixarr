@@ -18,6 +18,7 @@ import {
   isDiscogsConfig,
   getTypedConfig,
 } from '../../src/types/connections';
+import { connectionTypes } from '../../src/schemas/connection';
 
 // =============================================================================
 // isSpotifyConfig
@@ -514,5 +515,15 @@ describe('getTypedConfig', () => {
     expect(() => getTypedConfig(config, isTautulliConfig, 'Tautulli')).toThrow(
       'Invalid Tautulli connection configuration'
     );
+  });
+});
+
+// =============================================================================
+// slskd connection type
+// =============================================================================
+
+describe('slskd connection type', () => {
+  it('should be a valid connection type', () => {
+    expect(connectionTypes).toContain('slskd');
   });
 });
