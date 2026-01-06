@@ -67,6 +67,34 @@ export interface SlskdSearch {
   responses?: SlskdSearchResponse[];
 }
 
+export interface SlskdDownloadFile {
+  id?: string;
+  username?: string;
+  filename: string;
+  size: number;
+  state?: 'None' | 'Queued' | 'Initializing' | 'InProgress' | 'Completed' | 'Cancelled' | 'TimedOut' | 'Errored' | 'Rejected' | 'Aborted' | 'Retrying' | 'AbortedLocally' | 'CompletedLocally';
+  startOffset?: number;
+  endOffset?: number;
+  bytesTransferred?: number;
+  averageSpeed?: number;
+  percentComplete?: number;
+  remainingTime?: number;
+  startedAt?: string;
+  endedAt?: string;
+  exception?: string;
+}
+
+export interface SlskdDownloadDirectory {
+  directory: string;
+  fileCount?: number;
+  files: SlskdDownloadFile[];
+}
+
+export interface SlskdUserDownload {
+  username: string;
+  directories: SlskdDownloadDirectory[];
+}
+
 export class SlskdService {
   private url: string;
   private apiKey: string;
@@ -127,6 +155,31 @@ export class SlskdService {
     await this.callApi<void>(`/api/v0/searches/${searchId}`, {
       method: 'DELETE',
     });
+  }
+
+  async queueDownload(username: string, files: Pick<SlskdFile, 'filename' | 'size'>[]): Promise<void> {
+    log.info('Queueing slskd download', { username, fileCount: files.length });
+    
+    await this.callApi<void>(`/api/v0/transfers/downloads/${username}`, {
+      method: 'POST',
+      body: JSON.stringify(files),
+    });
+  }
+
+  async getDownloads(): Promise<SlskdUserDownload[]> {
+    return this.callApi<SlskdUserDownload[]>('/api/v0/transfers/downloads');
+  }
+
+  async getUserDownloads(username: string): Promise<SlskdDownloadDirectory[]> {
+    return this.callApi<SlskdDownloadDirectory[]>(`/api/v0/transfers/downloads/${username}`);
+  }
+
+  async cancelDownload(username: string, id: string, remove = false): Promise<void> {
+    const endpoint = remove
+      ? `/api/v0/transfers/downloads/${username}/${id}?remove=true`
+      : `/api/v0/transfers/downloads/${username}/${id}`;
+    
+    await this.callApi<void>(endpoint, { method: 'DELETE' });
   }
 
   private async callApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

@@ -136,4 +136,68 @@ describe('SlskdService', () => {
       expect(result.responses[0].username).toBe('user1');
     });
   });
+
+  describe('queueDownload', () => {
+    it('should queue files for download', async () => {
+      const { SlskdService } = await import('../../src/services/slskd.js');
+      
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const service = new SlskdService({
+        url: 'http://localhost:5030',
+        apiKey: 'valid-key',
+      });
+
+      await expect(
+        service.queueDownload('user1', [
+          { filename: '/path/to/file.flac', size: 45000000 },
+        ])
+      ).resolves.not.toThrow();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5030/api/v0/transfers/downloads/user1',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
+
+  describe('getDownloads', () => {
+    it('should return current downloads', async () => {
+      const { SlskdService } = await import('../../src/services/slskd.js');
+      
+      const mockDownloads = [
+        {
+          username: 'user1',
+          directories: [
+            {
+              directory: '/music/Pink Floyd',
+              fileCount: 2,
+              files: [
+                { filename: '01 - Breathe.flac', state: 'Completed', size: 45000000 },
+                { filename: '02 - On The Run.flac', state: 'InProgress', size: 32000000 },
+              ],
+            },
+          ],
+        },
+      ];
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockDownloads),
+      });
+
+      const service = new SlskdService({
+        url: 'http://localhost:5030',
+        apiKey: 'valid-key',
+      });
+      const result = await service.getDownloads();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].username).toBe('user1');
+      expect(result[0].directories[0].files).toHaveLength(2);
+    });
+  });
 });
