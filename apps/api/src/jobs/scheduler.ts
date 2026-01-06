@@ -6,6 +6,7 @@
 
 import { CronJob } from 'cron';
 import prisma from '../lib/db.js';
+import { ResultHandling } from '@prisma/client';
 import { scheduleSubscriptionJob, scheduleImportJob } from './queue.js';
 import { createLogger } from '../lib/logger.js';
 import { pollSlskdDownloads } from './slskd-poll.js';
@@ -135,7 +136,7 @@ export function addImportScheduledJob(
   importSourceId: number,
   userId: number,
   cronExpression: string,
-  resultHandling: 'preview' | 'queue' | 'auto'
+  resultHandling: ResultHandling
 ): void {
   const key = 10000 + importSourceId; // Offset to avoid collision with subscription IDs
   

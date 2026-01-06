@@ -5,6 +5,7 @@
  */
 
 import { Queue, Job, QueueEvents } from 'bullmq';
+import { ResultHandling } from '@prisma/client';
 import { createRedisConnection } from '../lib/redis.js';
 import type { Server as SocketIOServer } from 'socket.io';
 import { createLogger } from '../lib/logger.js';
@@ -26,7 +27,7 @@ export interface SubscriptionJobData {
 export interface ImportJobData {
   importSourceId: number;
   userId: number;
-  mode: 'preview' | 'queue' | 'auto';
+  mode: ResultHandling;
 }
 
 // Create queues
@@ -155,7 +156,7 @@ export async function scheduleSubscriptionJob(
 export async function scheduleImportJob(
   importSourceId: number,
   userId: number,
-  mode: 'preview' | 'queue' | 'auto'
+  mode: ResultHandling
 ): Promise<Job<ImportJobData>> {
   const jobId = `import-${importSourceId}`;
   
