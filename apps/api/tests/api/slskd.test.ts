@@ -36,6 +36,7 @@ describe('slskd API Routes', () => {
     };
     slskdDownload: {
       findMany: ReturnType<typeof vi.fn>;
+      findFirst: ReturnType<typeof vi.fn>;
       create: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
     };
@@ -396,6 +397,142 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.error).toBe('Failed to get downloads');
+    });
+  });
+
+  describe('POST /api/slskd/webhook', () => {
+    it('should accept download completion webhook', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue({
+        id: 1,
+        type: 'slskd',
+        enabled: true,
+        config: {
+          url: 'http://localhost:5030',
+          apiKey: 'test-key',
+          downloadDir: '/data/slskd/downloads',
+          musicLibraryDir: '/data/plex/music',
+        },
+      });
+
+      mockPrisma.slskdDownload.findFirst.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        status: 'pending',
+        artistName: 'Pink Floyd',
+      });
+
+      mockPrisma.slskdDownload.update.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        status: 'downloading',
+      });
+
+      // Mock the organizer service
+      vi.doMock('../../src/services/slskd-organizer.js', () => ({
+        SlskdOrganizerService: vi.fn().mockImplementation(() => ({
+          organizeFile: vi.fn().mockResolvedValue('/data/plex/music/Pink Floyd/track.flac'),
+        })),
+      }));
+
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'DownloadComplete',
+          username: 'soulseekuser',
+          filename: '/music/Pink Floyd/track.flac',
+          directory: 'Pink Floyd - DSOTM',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should ignore non-download events', async () => {
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'SearchComplete',
+          searchId: 'search-123',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.ignored).toBe(true);
+    });
+
+    it('should handle unknown downloads gracefully', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue({
+        id: 1,
+        type: 'slskd',
+        enabled: true,
+        config: { url: 'http://localhost:5030', apiKey: 'key' },
+      });
+
+      mockPrisma.slskdDownload.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'DownloadComplete',
+          username: 'unknown',
+          filename: 'unknown.flac',
+          directory: 'Album',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.matched).toBe(false);
+    });
+
+    it('should return 400 when no slskd connection exists', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'DownloadComplete',
+          username: 'soulseekuser',
+          filename: 'track.flac',
+          directory: 'Album',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('No slskd connection configured');
+    });
+
+    it('should handle organization errors gracefully', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue({
+        id: 1,
+        type: 'slskd',
+        enabled: true,
+        config: {
+          url: 'http://localhost:5030',
+          apiKey: 'test-key',
+          downloadDir: '/data/slskd/downloads',
+          musicLibraryDir: '/data/plex/music',
+        },
+      });
+
+      mockPrisma.slskdDownload.findFirst.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        status: 'pending',
+      });
+
+      // First update succeeds (status to downloading), second fails (DB error during organization)
+      mockPrisma.slskdDownload.update.mockRejectedValue(new Error('DB error'));
+
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'DownloadComplete',
+          username: 'soulseekuser',
+          filename: 'track.flac',
+          directory: 'Album',
+        });
+
+      expect(response.status).toBe(500);
     });
   });
 });
