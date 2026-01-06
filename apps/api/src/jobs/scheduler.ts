@@ -8,6 +8,7 @@ import { CronJob } from 'cron';
 import prisma from '../lib/db.js';
 import { scheduleSubscriptionJob, scheduleImportJob } from './queue.js';
 import { createLogger } from '../lib/logger.js';
+import { pollSlskdDownloads } from './slskd-poll.js';
 
 const logger = createLogger('Scheduler');
 
@@ -56,6 +57,9 @@ export async function initializeScheduler(): Promise<void> {
   
   // Start data retention cleanup job
   startDataRetentionJob();
+  
+  // Start slskd download polling job
+  startSlskdPollJob();
   
   // Load all active subscriptions with schedules
   const subscriptions = await prisma.subscription.findMany({
@@ -246,4 +250,39 @@ export function startDataRetentionJob(): void {
   );
 
   logger.info('Data retention cleanup job scheduled (daily at 3 AM UTC)');
+}
+
+/**
+ * slskd download polling job
+ * Runs every 5 minutes to check for completed downloads and trigger organization
+ */
+let slskdPollIntervalId: ReturnType<typeof setInterval> | null = null;
+const SLSKD_POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+export function startSlskdPollJob(): void {
+  if (slskdPollIntervalId) {
+    clearInterval(slskdPollIntervalId);
+  }
+
+  // Run immediately once, then every 5 minutes
+  pollSlskdDownloads().catch((err: Error) => 
+    logger.error('Initial slskd poll failed', { error: err })
+  );
+
+  slskdPollIntervalId = setInterval(async () => {
+    try {
+      await pollSlskdDownloads();
+    } catch (error) {
+      logger.error('slskd poll job failed', { error });
+    }
+  }, SLSKD_POLL_INTERVAL);
+
+  logger.info('slskd download poll job scheduled (every 5 minutes)');
+}
+
+export function stopSlskdPollJob(): void {
+  if (slskdPollIntervalId) {
+    clearInterval(slskdPollIntervalId);
+    slskdPollIntervalId = null;
+  }
 }
