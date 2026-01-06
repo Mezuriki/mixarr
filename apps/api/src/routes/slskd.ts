@@ -9,8 +9,10 @@
  */
 
 import { Router, Request, Response } from 'express';
+import path from 'path';
 import prisma from '../lib/db.js';
 import { SlskdService } from '../services/slskd.js';
+import { SlskdOrganizerService } from '../services/slskd-organizer.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createLogger } from '../lib/logger.js';
 
@@ -203,6 +205,100 @@ router.get('/downloads', async (_req: Request, res: Response) => {
   } catch (error) {
     log.error('Failed to get downloads', { error: error instanceof Error ? error.message : error });
     res.status(500).json({ error: 'Failed to get downloads' });
+  }
+});
+
+// ============================================================================
+// WEBHOOK ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/slskd/webhook - Receive slskd completion events
+ * 
+ * Body:
+ *   - event: string - Event type (DownloadComplete, etc.)
+ *   - username: string - Soulseek username
+ *   - filename: string - Downloaded file path
+ *   - directory: string - Directory name
+ * 
+ * Returns: { success: true, organized: boolean }
+ * 
+ * Note: This endpoint does NOT require authentication as it's called by slskd
+ */
+router.post('/webhook', async (req: Request, res: Response) => {
+  try {
+    const { event, username, filename, directory } = req.body;
+
+    // Only handle download completion events
+    if (event !== 'DownloadComplete') {
+      res.json({ success: true, ignored: true });
+      return;
+    }
+
+    log.info('slskd webhook received', { event, username, filename });
+
+    // Get connection config
+    const connection = await prisma.connection.findFirst({
+      where: { type: 'slskd', isActive: true },
+    });
+
+    if (!connection) {
+      res.status(400).json({ error: 'No slskd connection configured' });
+      return;
+    }
+
+    const config = connection.config as {
+      url: string;
+      apiKey: string;
+      downloadDir?: string;
+      musicLibraryDir?: string;
+    };
+
+    // Find matching download record
+    const download = await prisma.slskdDownload.findFirst({
+      where: {
+        username,
+        filename: { contains: path.basename(filename) },
+        status: { in: ['pending', 'downloading'] },
+      },
+    });
+
+    if (!download) {
+      log.warn('Webhook for unknown download', { username, filename });
+      res.json({ success: true, matched: false });
+      return;
+    }
+
+    const downloadDir = config.downloadDir || '/data/slskd/downloads';
+    const musicLibraryDir = config.musicLibraryDir || '/data/plex/music';
+
+    // Build download path
+    const downloadPath = `${downloadDir}/${username}/${directory}/${path.basename(filename)}`;
+
+    // Update download with path
+    await prisma.slskdDownload.update({
+      where: { id: download.id },
+      data: { downloadPath, status: 'downloading' },
+    });
+
+    // Trigger organization
+    const organizer = new SlskdOrganizerService({ downloadDir, musicLibraryDir });
+
+    try {
+      const finalPath = await organizer.organizeFile(download.id);
+      log.info('Webhook triggered file organization', { downloadId: download.id, finalPath });
+      res.json({ success: true, organized: true, finalPath });
+    } catch (orgError) {
+      log.error('Webhook organization failed', { downloadId: download.id, error: orgError });
+      await prisma.slskdDownload.update({
+        where: { id: download.id },
+        data: { status: 'failed', error: String(orgError) },
+      });
+      res.status(500).json({ error: 'Organization failed' });
+    }
+  } catch (error) {
+    log.error('Webhook processing failed', { error: error instanceof Error ? error.message : error });
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 

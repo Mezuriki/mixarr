@@ -16,6 +16,16 @@ vi.mock('../../src/services/rate-limiter.js', () => ({
   rateLimit: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock the organizer service
+const mockOrganizeFile = vi.fn();
+vi.mock('../../src/services/slskd-organizer.js', () => {
+  return {
+    SlskdOrganizerService: class MockSlskdOrganizerService {
+      organizeFile = mockOrganizeFile;
+    },
+  };
+});
+
 // Helper to create a mock fetch response
 function mockFetchResponse(data: unknown, ok = true, status = 200): Partial<Response> {
   return {
@@ -56,6 +66,7 @@ describe('slskd API Routes', () => {
       },
       slskdDownload: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
       },
@@ -405,7 +416,7 @@ describe('slskd API Routes', () => {
       mockPrisma.connection.findFirst.mockResolvedValue({
         id: 1,
         type: 'slskd',
-        enabled: true,
+        isActive: true,
         config: {
           url: 'http://localhost:5030',
           apiKey: 'test-key',
@@ -429,12 +440,8 @@ describe('slskd API Routes', () => {
         status: 'downloading',
       });
 
-      // Mock the organizer service
-      vi.doMock('../../src/services/slskd-organizer.js', () => ({
-        SlskdOrganizerService: vi.fn().mockImplementation(() => ({
-          organizeFile: vi.fn().mockResolvedValue('/data/plex/music/Pink Floyd/track.flac'),
-        })),
-      }));
+      // Configure the mock organizer
+      mockOrganizeFile.mockResolvedValue('/data/plex/music/Pink Floyd/track.flac');
 
       const response = await request(app)
         .post('/api/slskd/webhook')
