@@ -522,3 +522,64 @@ export function useAISettings() {
     staleTime: 60 * 1000,
   });
 }
+// slskd Download Hooks
+
+export interface SlskdDownload {
+  id: number;
+  connectionId: number;
+  username: string;
+  artistName: string;
+  albumName?: string;
+  albumYear?: number;
+  filename: string;
+  fileSize: number;
+  downloadPath?: string;
+  organizedPath?: string;
+  status: 'pending' | 'downloading' | 'completed' | 'failed' | 'cancelled';
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useSlskdDownloads(status?: string) {
+  const queryParams = status ? `?status=${status}` : '';
+  return useQuery({
+    queryKey: ['slskd', 'downloads', status],
+    queryFn: async () => {
+      const { data, error } = await api.get<SlskdDownload[]>(`/api/slskd/downloads${queryParams}`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    staleTime: 10 * 1000, // Refresh every 10s for active downloads
+    refetchInterval: status === 'downloading' || status === 'pending' ? 5000 : false,
+  });
+}
+
+export function useRetrySlskdDownload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { data, error } = await api.post<{ success: boolean }>(`/api/slskd/downloads/${id}/retry`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['slskd', 'downloads'] });
+    },
+  });
+}
+
+export function useCancelSlskdDownload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, remove = false }: { id: number; remove?: boolean }) => {
+      const queryParams = remove ? '?remove=true' : '';
+      const { data, error } = await api.delete<{ success: boolean }>(`/api/slskd/downloads/${id}${queryParams}`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['slskd', 'downloads'] });
+    },
+  });
+}
