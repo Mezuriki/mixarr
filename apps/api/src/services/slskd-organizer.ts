@@ -3,6 +3,7 @@ import path from 'path';
 import { prisma } from '../lib/db.js';
 import { createLogger } from '../lib/logger.js';
 import { parseFilename, buildTargetPath } from '../utils/slskd-parser.js';
+import { addLogEntry } from '../routes/logs.js';
 
 const logger = createLogger('SlskdOrganizer');
 
@@ -102,6 +103,17 @@ export class SlskdOrganizerService {
       artist: download.artistName,
       album: download.albumName,
       destination,
+    });
+
+    // Add activity log entry
+    await addLogEntry('info', 'slskd', `Downloaded and organized: ${download.artistName}${download.albumName ? ` - ${download.albumName}` : ''}`, {
+      downloadId,
+      artist: download.artistName,
+      album: download.albumName,
+      year: download.albumYear,
+      filename: path.basename(destination),
+      destination,
+      source: download.username,
     });
 
     // Cleanup empty source directories
