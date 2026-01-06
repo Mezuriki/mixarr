@@ -2,7 +2,9 @@ import path from 'path';
 import { prisma } from '../lib/db.js';
 import { SlskdService } from '../services/slskd.js';
 import { SlskdOrganizerService } from '../services/slskd-organizer.js';
-import { log } from '../lib/logger.js';
+import { createLogger } from '../lib/logger.js';
+
+const log = createLogger('SlskdPoll');
 
 interface SlskdConnectionConfig {
   url: string;
@@ -17,14 +19,14 @@ interface SlskdConnectionConfig {
 export async function pollSlskdDownloads(): Promise<void> {
   // Get active slskd connection
   const connection = await prisma.connection.findFirst({
-    where: { type: 'slskd', enabled: true },
+    where: { type: 'slskd', isActive: true },
   });
 
   if (!connection) {
     return; // No slskd configured
   }
 
-  const config = connection.config as SlskdConnectionConfig;
+  const config = connection.config as unknown as SlskdConnectionConfig;
   const downloadDir = config.downloadDir || '/data/slskd/downloads';
   const musicLibraryDir = config.musicLibraryDir || '/data/plex/music';
 

@@ -36,7 +36,13 @@ vi.mock('../../src/services/slskd-organizer.js', () => ({
 
 // Mock logger to avoid console noise
 vi.mock('../../src/lib/logger.js', () => ({
-  log: {
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+  logger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
