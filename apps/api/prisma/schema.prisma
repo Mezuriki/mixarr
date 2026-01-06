@@ -336,6 +336,9 @@ enum ResultHandling {
   preview
   queue
   auto
+  slskd_preview
+  slskd_queue
+  slskd_auto
 }
 
 model ReviewItem {
