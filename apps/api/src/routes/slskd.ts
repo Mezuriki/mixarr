@@ -11,6 +11,7 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import prisma from '../lib/db.js';
+import { SlskdDownloadStatus, Prisma } from '@prisma/client';
 import { SlskdService } from '../services/slskd.js';
 import { SlskdOrganizerService } from '../services/slskd-organizer.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -193,18 +194,127 @@ router.post('/download', async (req: Request, res: Response) => {
 /**
  * GET /api/slskd/downloads - Get tracked downloads
  * 
- * Returns: Array of SlskdDownload objects, most recent first (limit 100)
+ * Query params:
+ *   - status: string (optional) - Filter by status (comma-separated for multiple)
+ *   - limit: number (optional) - Max results (default 100)
+ * 
+ * Returns: Array of SlskdDownload objects, most recent first
  */
-router.get('/downloads', async (_req: Request, res: Response) => {
+router.get('/downloads', async (req: Request, res: Response) => {
   try {
+    const { status, limit = '100' } = req.query;
+    
+    // Build where clause with proper Prisma types
+    const where: Prisma.SlskdDownloadWhereInput = {};
+    
+    if (status && typeof status === 'string') {
+      const statuses = status.split(',').map(s => s.trim()) as SlskdDownloadStatus[];
+      if (statuses.length === 1) {
+        where.status = statuses[0];
+      } else {
+        where.status = { in: statuses };
+      }
+    }
+    
     const downloads = await prisma.slskdDownload.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: Math.min(parseInt(limit as string, 10) || 100, 500),
     });
     res.json(downloads);
   } catch (error) {
     log.error('Failed to get downloads', { error: error instanceof Error ? error.message : error });
     res.status(500).json({ error: 'Failed to get downloads' });
+  }
+});
+
+/**
+ * POST /api/slskd/downloads/:id/retry - Retry a failed download
+ * 
+ * Params:
+ *   - id: number - Download ID
+ * 
+ * Returns: { success: true, download: SlskdDownload }
+ */
+router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    
+    const download = await prisma.slskdDownload.findUnique({ where: { id } });
+    
+    if (!download) {
+      res.status(404).json({ error: 'Download not found' });
+      return;
+    }
+    
+    if (download.status !== 'failed') {
+      res.status(400).json({ error: 'Only failed downloads can be retried' });
+      return;
+    }
+    
+    const slskd = await getSlskdService();
+    if (!slskd) {
+      res.status(400).json({ error: 'No slskd connection configured' });
+      return;
+    }
+    
+    // Queue download again
+    await slskd.service.queueDownload(download.username, [{
+      filename: download.filename,
+      size: download.fileSize,
+    }]);
+    
+    // Update status
+    const updated = await prisma.slskdDownload.update({
+      where: { id },
+      data: { status: 'pending', error: null },
+    });
+    
+    res.json({ success: true, download: updated });
+  } catch (error) {
+    log.error('Failed to retry download', { error: error instanceof Error ? error.message : error });
+    res.status(500).json({ error: 'Failed to retry download' });
+  }
+});
+
+/**
+ * DELETE /api/slskd/downloads/:id - Cancel or remove a download
+ * 
+ * Params:
+ *   - id: number - Download ID
+ * 
+ * Query params:
+ *   - remove: boolean (optional) - If true, delete record; otherwise cancel
+ * 
+ * Returns: { success: true }
+ */
+router.delete('/downloads/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const remove = req.query.remove === 'true';
+    
+    const download = await prisma.slskdDownload.findUnique({ where: { id } });
+    
+    if (!download) {
+      res.status(404).json({ error: 'Download not found' });
+      return;
+    }
+    
+    if (remove) {
+      // Delete the record entirely
+      await prisma.slskdDownload.delete({ where: { id } });
+      res.json({ success: true, removed: true });
+    } else {
+      // Cancel the download (set status to cancelled)
+      await prisma.slskdDownload.update({
+        where: { id },
+        data: { status: 'cancelled' },
+      });
+      res.json({ success: true, cancelled: true });
+    }
+  } catch (error) {
+    log.error('Failed to cancel/remove download', { error: error instanceof Error ? error.message : error });
+    res.status(500).json({ error: 'Failed to cancel/remove download' });
   }
 });
 
