@@ -1,6 +1,6 @@
 'use client';
 
-import { Music, Plus, Check, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { Music, Plus, Check, CheckSquare, Square, Loader2, Search } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import { GenrePills } from '@/components/GenrePills';
 import { SpotifyIcon, LastfmIcon, MusicBrainzIcon } from '@/components/ExternalLinks';
@@ -22,6 +22,7 @@ export interface ArtistCardProps {
   mbid?: string; // MusicBrainz ID (same as foreignArtistId usually)
   // Actions
   onAdd?: () => void;
+  onSearchSlskd?: () => void;
   onSelect?: () => void;
   isSelected?: boolean;
   isAdding?: boolean;
@@ -42,6 +43,7 @@ export function ArtistCard({
   spotifyId,
   mbid,
   onAdd,
+  onSearchSlskd,
   onSelect,
   isSelected = false,
   isAdding = false,
@@ -131,25 +133,40 @@ export function ArtistCard({
               )}
             </div>
             
-            {/* Add button / In Library badge */}
-            {inLibrary === true ? (
-              <Badge variant="success" className="flex-shrink-0 text-xs">
-                <Check className="h-3 w-3 mr-1" /> In Lidarr
-              </Badge>
-            ) : onAdd ? (
-              <Button 
-                size="sm" 
-                onClick={onAdd} 
-                disabled={isAdding} 
-                className="flex-shrink-0 text-xs h-7"
-              >
-                {isAdding ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-              </Button>
-            ) : null}
+            {/* Add button / In Library badge / Search slskd button */}
+            <div className="flex gap-1 flex-shrink-0">
+              {inLibrary === true ? (
+                <Badge variant="success" className="text-xs">
+                  <Check className="h-3 w-3 mr-1" /> In Lidarr
+                </Badge>
+              ) : onAdd ? (
+                <Button 
+                  size="sm" 
+                  onClick={onAdd} 
+                  disabled={isAdding} 
+                  className="text-xs h-7"
+                  title="Add to Lidarr"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                </Button>
+              ) : null}
+              
+              {onSearchSlskd && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={onSearchSlskd} 
+                  className="text-xs h-7"
+                  title="Search on Soulseek"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
           
           {/* Stats row */}
