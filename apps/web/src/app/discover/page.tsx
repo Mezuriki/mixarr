@@ -5,6 +5,7 @@ import { Button, Card, CardContent, Input, Badge, useToast, Loading, Modal, Moda
 import { PageHeader } from '@/components/layout/page-header';
 import { ReleaseTypeFilter, useReleaseTypeFilter } from '@/components/ReleaseTypeFilter';
 import { GenrePills } from '@/components/GenrePills';
+import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { api } from '@/lib/api';
 import { 
   Search, Sparkles, Plus, Check, ChevronLeft, ChevronRight, 
@@ -63,6 +64,10 @@ export default function DiscoverPage() {
   
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [addingArtist, setAddingArtist] = useState<string | null>(null);
+  
+  // slskd Search state
+  const [slskdModalOpen, setSlskdModalOpen] = useState(false);
+  const [slskdSearchArtist, setSlskdSearchArtist] = useState<{ name: string; image?: string } | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -709,20 +714,34 @@ export default function DiscoverPage() {
                           Added
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => addToLidarr(rec)}
-                          disabled={addingArtist === rec.name}
-                        >
-                          {addingArtist === rec.name ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => addToLidarr(rec)}
+                            disabled={addingArtist === rec.name}
+                            title="Add to Lidarr"
+                          >
+                            {addingArtist === rec.name ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSlskdSearchArtist({ name: rec.name, image: rec.imageUrl });
+                              setSlskdModalOpen(true);
+                            }}
+                            title="Search on Soulseek"
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -835,6 +854,19 @@ export default function DiscoverPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* slskd Search Modal */}
+      {slskdSearchArtist && (
+        <SlskdSearchModal
+          isOpen={slskdModalOpen}
+          onClose={() => {
+            setSlskdModalOpen(false);
+            setSlskdSearchArtist(null);
+          }}
+          artistName={slskdSearchArtist.name}
+          artistImage={slskdSearchArtist.image}
+        />
+      )}
     </div>
   );
 }
