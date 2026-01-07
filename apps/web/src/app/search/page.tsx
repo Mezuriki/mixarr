@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { ArtistCard } from '@/components/ArtistCard';
 import { AlbumCard } from '@/components/AlbumCard';
 import { ExternalLinks } from '@/components/ExternalLinks';
+import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { api } from '@/lib/api';
 import { Search as SearchIcon, Plus, Music, ChevronLeft, ChevronRight, CheckSquare, Square, X, Loader2, Sparkles } from 'lucide-react';
 
@@ -98,6 +99,10 @@ export default function SearchPage() {
   // AI Search state
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
+  
+  // slskd Search state
+  const [slskdModalOpen, setSlskdModalOpen] = useState(false);
+  const [slskdSearchArtist, setSlskdSearchArtist] = useState<{ name: string; image?: string } | null>(null);
   const [aiProviders, setAiProviders] = useState<string[]>([]);
 
   // Check AI availability on mount
@@ -612,6 +617,10 @@ export default function SearchPage() {
                     isSelected={selectedIds.has(artist.foreignArtistId)}
                     onSelect={() => toggleSelect(artist.foreignArtistId)}
                     onAdd={() => handleAdd(artist)}
+                    onSearchSlskd={() => {
+                      setSlskdSearchArtist({ name: artist.artistName, image: artist.imageUrl });
+                      setSlskdModalOpen(true);
+                    }}
                     isAdding={addingArtist === artist.foreignArtistId || addingArtist === artist.artistName}
                   />
                 ))}
@@ -859,6 +868,19 @@ export default function SearchPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* slskd Search Modal */}
+      {slskdSearchArtist && (
+        <SlskdSearchModal
+          isOpen={slskdModalOpen}
+          onClose={() => {
+            setSlskdModalOpen(false);
+            setSlskdSearchArtist(null);
+          }}
+          artistName={slskdSearchArtist.name}
+          artistImage={slskdSearchArtist.image}
+        />
+      )}
     </>
   );
 }
