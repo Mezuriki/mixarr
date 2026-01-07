@@ -5,6 +5,7 @@ import { Button, Card, CardContent, Badge, useToast, Input } from '@/components/
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { useReviewQueue, useUpdateReviewItem, useBulkUpdateReview } from '@/lib/hooks';
+import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { Check, X, Music2, Clock, User, Search, CheckSquare, Square, Loader2, Disc, Users } from 'lucide-react';
 
 export default function QueuePage() {
@@ -15,6 +16,10 @@ export default function QueuePage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [processingId, setProcessingId] = useState<number | null>(null);
   const { addToast } = useToast();
+  
+  // slskd Search state
+  const [slskdModalOpen, setSlskdModalOpen] = useState(false);
+  const [slskdSearchArtist, setSlskdSearchArtist] = useState<{ name: string; image?: string } | null>(null);
 
   // React Query hooks with caching
   const { data: items = [], isLoading } = useReviewQueue(statusFilter, itemTypeFilter);
@@ -269,6 +274,17 @@ export default function QueuePage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => {
+                          setSlskdSearchArtist({ name: item.artistName, image: item.imageUrl || undefined });
+                          setSlskdModalOpen(true);
+                        }}
+                        title="Search on Soulseek"
+                      >
+                        <Search className="h-4 w-4 text-blue-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleUpdateStatus(item.id, 'approved')}
                         disabled={processingId === item.id}
                         title="Approve"
@@ -299,6 +315,19 @@ export default function QueuePage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* slskd Search Modal */}
+      {slskdSearchArtist && (
+        <SlskdSearchModal
+          isOpen={slskdModalOpen}
+          onClose={() => {
+            setSlskdModalOpen(false);
+            setSlskdSearchArtist(null);
+          }}
+          artistName={slskdSearchArtist.name}
+          artistImage={slskdSearchArtist.image}
+        />
       )}
     </>
   );
