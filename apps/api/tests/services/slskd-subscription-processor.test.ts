@@ -1,277 +1,182 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { SlskdSubscriptionProcessor } from '../../src/services/slskd-subscription-processor';
+import { SlskdService } from '../../src/services/slskd-service';
 
-// Mock functions at module level
-const mockSearch = vi.fn();
-const mockGetSearchResults = vi.fn();
-const mockQueueDownload = vi.fn();
-const mockConnectionFindFirst = vi.fn();
-const mockSlskdDownloadCreate = vi.fn();
+const prisma = new PrismaClient();
 
-// Mock the database
-vi.mock('../../src/lib/db.js', () => ({
-  prisma: {
-    connection: {
-      findFirst: mockConnectionFindFirst,
-    },
-    slskdDownload: {
-      create: mockSlskdDownloadCreate,
-    },
-  },
-}));
+describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
+  let processor: SlskdSubscriptionProcessor;
+  let mockSlskdService: any;
 
-// Mock SlskdService
-vi.mock('../../src/services/slskd.js', () => ({
-  SlskdService: class MockSlskdService {
-    search = mockSearch;
-    getSearchResults = mockGetSearchResults;
-    queueDownload = mockQueueDownload;
-  },
-}));
+  beforeEach(async () => {
+    // Clean up test data
+    await prisma.slskdDownload.deleteMany({});
 
-// Mock logger
-vi.mock('../../src/lib/logger.js', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
-}));
+    // Mock slskd service
+    mockSlskdService = {
+      createSearch: vi.fn(),
+      getSearch: vi.fn(),
+      queueDownload: vi.fn(),
+    };
 
-// Mock sleep for testing
-vi.mock('../../src/services/slskd-subscription-processor.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../src/services/slskd-subscription-processor.js')>();
-  return {
-    ...mod,
-    // Speed up tests by reducing delay
-    SEARCH_DELAY_MS: 10,
-  };
-});
-
-describe('SlskdSubscriptionProcessor', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+    processor = new SlskdSubscriptionProcessor(
+      prisma,
+      mockSlskdService as unknown as SlskdService
+    );
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  it('should create one SlskdDownload record per file', async () => {
+    const mockFiles = [
+      {
+        filename: '01 - Test Song 1.flac',
+        size: 30000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+      {
+        filename: '02 - Test Song 2.flac',
+        size: 28000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+      {
+        filename: '03 - Test Song 3.flac',
+        size: 32000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+    ];
 
-  describe('constructor', () => {
-    it('should create processor with slskd service', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      expect(processor).toBeDefined();
-    });
-  });
+    // Mock search creation
+    mockSlskdService.createSearch.mockResolvedValue({ id: 1 });
 
-  describe('scoreResult', () => {
-    it('should prefer FLAC over MP3', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      const flacResult = {
-        username: 'user1',
-        files: [
-          { filename: 'track1.flac', size: 50000000 },
-          { filename: 'track2.flac', size: 50000000 },
-        ],
-        uploadSpeed: 100000,
-        hasFreeUploadSlot: true,
-      };
-      
-      const mp3Result = {
-        username: 'user2',
-        files: [
-          { filename: 'track1.mp3', size: 10000000 },
-          { filename: 'track2.mp3', size: 10000000 },
-        ],
-        uploadSpeed: 100000,
-        hasFreeUploadSlot: true,
-      };
-      
-      const flacScore = processor.scoreResult(flacResult, { preferLossless: true });
-      const mp3Score = processor.scoreResult(mp3Result, { preferLossless: true });
-      
-      expect(flacScore).toBeGreaterThan(mp3Score);
-    });
-
-    it('should factor in upload speed', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      const fastResult = {
-        username: 'user1',
-        files: [{ filename: 'track.flac', size: 50000000 }],
-        uploadSpeed: 1000000,
-        hasFreeUploadSlot: true,
-      };
-      
-      const slowResult = {
-        username: 'user2',
-        files: [{ filename: 'track.flac', size: 50000000 }],
-        uploadSpeed: 10000,
-        hasFreeUploadSlot: true,
-      };
-      
-      const fastScore = processor.scoreResult(fastResult, { preferLossless: true });
-      const slowScore = processor.scoreResult(slowResult, { preferLossless: true });
-      
-      expect(fastScore).toBeGreaterThan(slowScore);
-    });
-  });
-
-  describe('selectBestResult', () => {
-    it('should pick highest scored result', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      const results = [
+    // Mock search results with 3 files
+    mockSlskdService.getSearch.mockResolvedValue({
+      id: 1,
+      state: 'Completed',
+      responses: [
         {
-          username: 'user1',
-          files: [{ filename: 'track.mp3', size: 10000000 }],
-          uploadSpeed: 10000,
-          hasFreeUploadSlot: false,
-        },
-        {
-          username: 'user2',
-          files: [{ filename: 'track.flac', size: 50000000 }],
+          username: 'testuser',
+          files: mockFiles,
           uploadSpeed: 1000000,
+          queueLength: 5,
           hasFreeUploadSlot: true,
         },
-        {
-          username: 'user3',
-          files: [{ filename: 'track.mp3', size: 10000000 }],
-          uploadSpeed: 50000,
-          hasFreeUploadSlot: true,
-        },
-      ];
-      
-      const best = processor.selectBestResult(results, { preferLossless: true });
-      
-      expect(best?.username).toBe('user2');
+      ],
     });
 
-    it('should return null for empty results', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      const best = processor.selectBestResult([], { preferLossless: true });
-      
-      expect(best).toBeNull();
+    mockSlskdService.queueDownload.mockResolvedValue(undefined);
+
+    const result = await processor.processArtist(
+      { name: 'Test Artist', album: 'Test Album' },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+    );
+
+    expect(result.status).toBe('queued');
+
+    // Should create 3 download records (one per file)
+    const downloads = await prisma.slskdDownload.findMany({
+      where: { artistName: 'Test Artist', albumName: 'Test Album' },
     });
+
+    expect(downloads).toHaveLength(3);
+    expect(downloads[0].filename).toBe('01 - Test Song 1.flac');
+    expect(downloads[0].fileSize).toBe(BigInt(30000000));
+    expect(downloads[1].filename).toBe('02 - Test Song 2.flac');
+    expect(downloads[1].fileSize).toBe(BigInt(28000000));
+    expect(downloads[2].filename).toBe('03 - Test Song 3.flac');
+    expect(downloads[2].fileSize).toBe(BigInt(32000000));
   });
 
-  describe('processArtist', () => {
-    it('should search and queue download for good result', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      // Mock search flow
-      mockSearch.mockResolvedValue({ id: 'search-1', state: 'Requested' });
-      mockGetSearchResults.mockResolvedValue({
-        id: 'search-1',
-        state: 'Completed',
-        responses: [
-          {
-            username: 'user1',
-            files: [
-              { filename: 'Pink Floyd - DSOTM/01 - Breathe.flac', size: 50000000 },
-              { filename: 'Pink Floyd - DSOTM/02 - On the Run.flac', size: 40000000 },
-            ],
-            uploadSpeed: 1000000,
-            hasFreeUploadSlot: true,
-          },
-        ],
-      });
-      mockQueueDownload.mockResolvedValue(undefined);
-      mockSlskdDownloadCreate.mockResolvedValue({ id: 1 });
-      
-      const result = await processor.processArtist(
-        { name: 'Pink Floyd' },
-        { 
-          connectionId: 1, 
-          userId: 1,
-          preferences: { preferLossless: true },
-        }
-      );
-      
-      expect(result.status).toBe('queued');
-      expect(mockSearch).toHaveBeenCalledWith('Pink Floyd', expect.anything());
-      expect(mockQueueDownload).toHaveBeenCalled();
+  it('should handle empty file array without creating records', async () => {
+    // Mock search with no files
+    mockSlskdService.createSearch.mockResolvedValue({ id: 2 });
+    mockSlskdService.getSearch.mockResolvedValue({
+      id: 2,
+      state: 'Completed',
+      responses: [
+        {
+          username: 'testuser',
+          files: [], // Empty files array
+          uploadSpeed: 1000000,
+          queueLength: 5,
+          hasFreeUploadSlot: true,
+        },
+      ],
     });
 
-    it('should return not_found when no results', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      mockSearch.mockResolvedValue({ id: 'search-1', state: 'Requested' });
-      mockGetSearchResults.mockResolvedValue({
-        id: 'search-1',
-        state: 'Completed',
-        responses: [],
-      });
-      
-      const result = await processor.processArtist(
-        { name: 'Unknown Artist' },
-        { 
-          connectionId: 1, 
-          userId: 1,
-          preferences: { preferLossless: true },
-        }
-      );
-      
-      expect(result.status).toBe('not_found');
-      expect(mockQueueDownload).not.toHaveBeenCalled();
+    const result = await processor.processArtist(
+      { name: 'Empty Artist', album: 'Empty Album' },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+    );
+
+    expect(result.status).toBe('no_results');
+
+    // Should create zero records
+    const downloads = await prisma.slskdDownload.findMany({
+      where: { artistName: 'Empty Artist', albumName: 'Empty Album' },
     });
 
-    it('should handle search timeout gracefully', async () => {
-      const { SlskdSubscriptionProcessor } = await import('../../src/services/slskd-subscription-processor.js');
-      const { SlskdService } = await import('../../src/services/slskd.js');
-      
-      const slskdService = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test' });
-      const processor = new SlskdSubscriptionProcessor(slskdService);
-      
-      mockSearch.mockResolvedValue({ id: 'search-1', state: 'Requested' });
-      mockGetSearchResults.mockResolvedValue({
-        id: 'search-1',
-        state: 'TimedOut',
-        responses: [],
-      });
-      
-      const result = await processor.processArtist(
-        { name: 'Pink Floyd' },
-        { 
-          connectionId: 1, 
-          userId: 1,
-          preferences: { preferLossless: true },
-        }
-      );
-      
-      expect(result.status).toBe('failed');
-      expect(result.error).toContain('timeout');
+    expect(downloads).toHaveLength(0);
+  });
+
+  it('should wrap per-file creation in transaction for atomicity', async () => {
+    const mockFiles = [
+      {
+        filename: 'track1.flac',
+        size: 30000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+      {
+        filename: 'track2.flac',
+        size: 28000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+    ];
+
+    mockSlskdService.createSearch.mockResolvedValue({ id: 3 });
+    mockSlskdService.getSearch.mockResolvedValue({
+      id: 3,
+      state: 'Completed',
+      responses: [
+        {
+          username: 'testuser',
+          files: mockFiles,
+          uploadSpeed: 1000000,
+          queueLength: 5,
+          hasFreeUploadSlot: true,
+        },
+      ],
     });
+
+    // Mock a failure on queue to test transaction rollback
+    mockSlskdService.queueDownload.mockRejectedValueOnce(new Error('Queue failed'));
+
+    await expect(
+      processor.processArtist(
+        { name: 'Transaction Test', album: 'Test Album' },
+        { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+      )
+    ).rejects.toThrow('Queue failed');
+
+    // Transaction rollback means no records should exist
+    const downloads = await prisma.slskdDownload.findMany({
+      where: { artistName: 'Transaction Test', albumName: 'Test Album' },
+    });
+
+    expect(downloads).toHaveLength(0);
   });
 });
