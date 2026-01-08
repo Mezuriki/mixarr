@@ -19,6 +19,28 @@ import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('SlskdRoutes');
 
+/**
+ * Validate path component to prevent directory traversal attacks
+ * Rejects: .., /, \, null bytes, absolute paths
+ */
+function isPathComponentSafe(component: string): boolean {
+  if (!component || typeof component !== 'string') return false;
+  
+  // Reject path traversal patterns
+  if (component.includes('..')) return false;
+  
+  // Reject path separators (absolute or relative paths)
+  if (component.includes('/') || component.includes('\\')) return false;
+  
+  // Reject null bytes
+  if (component.includes('\0')) return false;
+  
+  // Reject if it starts with path separator (absolute path)
+  if (component.startsWith('/') || component.startsWith('\\')) return false;
+  
+  return true;
+}
+
 const router = Router();
 
 // All routes require authentication
@@ -347,6 +369,27 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
     log.info('slskd webhook received', { event, username, filename });
 
+    // Validate path components to prevent traversal attacks
+    if (!isPathComponentSafe(username)) {
+      log.warn('Path traversal attempt in username', { username });
+      res.status(400).json({ error: 'Invalid path in username' });
+      return;
+    }
+    
+    if (!isPathComponentSafe(directory)) {
+      log.warn('Path traversal attempt in directory', { directory });
+      res.status(400).json({ error: 'Invalid path in directory' });
+      return;
+    }
+    
+    // Extract basename from filename to prevent traversal
+    const safeFilename = path.basename(filename);
+    if (!isPathComponentSafe(safeFilename)) {
+      log.warn('Path traversal attempt in filename', { filename });
+      res.status(400).json({ error: 'Invalid path in filename' });
+      return;
+    }
+
     // Get connection config
     const connection = await prisma.connection.findFirst({
       where: { type: 'slskd', isActive: true },
@@ -368,7 +411,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     const download = await prisma.slskdDownload.findFirst({
       where: {
         username,
-        filename: { contains: path.basename(filename) },
+        filename: { contains: safeFilename },
         status: { in: ['pending', 'downloading'] },
       },
     });
@@ -382,8 +425,8 @@ router.post('/webhook', async (req: Request, res: Response) => {
     const downloadDir = config.downloadDir || '/data/slskd/downloads';
     const musicLibraryDir = config.musicLibraryDir || '/data/plex/music';
 
-    // Build download path
-    const downloadPath = `${downloadDir}/${username}/${directory}/${path.basename(filename)}`;
+    // Build download path with validated components
+    const downloadPath = `${downloadDir}/${username}/${directory}/${safeFilename}`;
 
     // Update download with path
     await prisma.slskdDownload.update({
