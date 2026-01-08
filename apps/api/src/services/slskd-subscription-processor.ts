@@ -70,7 +70,7 @@ export class SlskdSubscriptionProcessor {
         return { status: 'no_results', searchResultCount: searchResult.responses.length };
       }
 
-      // Create download records and queue files - wrapped in transaction
+      // Phase 1: Create download records with queued_locally status
       const downloads = await this.prisma.$transaction(
         filesToDownload.map(file =>
           this.prisma.slskdDownload.create({
@@ -82,14 +82,13 @@ export class SlskdSubscriptionProcessor {
               filename: file.filename,
               fileSize: BigInt(file.size),
               searchId: search.id,
-              status: 'pending',
+              status: 'queued_locally',
             },
           })
         )
       );
 
-      // Queue each file for download (after successful DB transaction)
-      // If queueing fails, records exist but in 'pending' state for retry
+      // Phase 2: Queue files to slskd
       try {
         for (const file of filesToDownload) {
           await this.slskdService.queueDownload({
@@ -97,27 +96,48 @@ export class SlskdSubscriptionProcessor {
             filename: file.filename,
           });
         }
+
+        // Phase 3: Update status to pending on success
+        await this.prisma.slskdDownload.updateMany({
+          where: { id: { in: downloads.map(d => d.id) } },
+          data: { status: 'pending' },
+        });
+
+        log.info('Queued slskd downloads', {
+          artist: artist.name,
+          album: artist.album,
+          username: bestResult.username,
+          fileCount: filesToDownload.length,
+          downloadIds: downloads.map(d => d.id),
+        });
+
+        return {
+          status: 'queued',
+          downloadId: downloads[0]?.id,
+          searchResultCount: searchResult.responses.length,
+        };
       } catch (error) {
+        // Queue failed - mark downloads as failed
+        await this.prisma.slskdDownload.updateMany({
+          where: { id: { in: downloads.map(d => d.id) } },
+          data: {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Queue failed',
+          },
+        });
+
         log.error('Failed to queue downloads', {
           artist: artist.name,
           downloadIds: downloads.map(d => d.id),
           error,
         });
-        throw error;
+
+        return {
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Queue failed',
+          searchResultCount: searchResult.responses.length,
+        };
       }
-
-      log.info('Queued slskd downloads', {
-        artist: artist.name,
-        album: artist.album,
-        username: bestResult.username,
-        fileCount: filesToDownload.length,
-        downloadIds: downloads.map(d => d.id),
-      });
-
-      return {
-        status: 'queued',
-        downloadId: downloads[0]?.id,
-        searchResultCount: searchResult.responses.length,
       };
     } catch (error) {
       log.error('Failed to process artist', { artist, error });

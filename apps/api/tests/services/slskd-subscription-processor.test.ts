@@ -179,4 +179,58 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
 
     expect(downloads).toHaveLength(0);
   });
+
+  it('should mark downloads as failed if queue operation fails', async () => {
+    const mockFiles = [
+      {
+        filename: 'track1.flac',
+        size: 30000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+      {
+        filename: 'track2.flac',
+        size: 28000000,
+        extension: '.flac',
+        bitRate: 1411,
+        sampleRate: 44100,
+        bitDepth: 16,
+      },
+    ];
+
+    mockSlskdService.createSearch.mockResolvedValue({ id: 4 });
+    mockSlskdService.getSearch.mockResolvedValue({
+      id: 4,
+      state: 'Completed',
+      responses: [
+        {
+          username: 'testuser',
+          files: mockFiles,
+          uploadSpeed: 1000000,
+          queueLength: 5,
+          hasFreeUploadSlot: true,
+        },
+      ],
+    });
+
+    // Mock queue failure
+    mockSlskdService.queueDownload.mockRejectedValue(new Error('Network timeout'));
+
+    const result = await processor.processArtist(
+      { name: 'Failed Queue Test', album: 'Test Album' },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+    );
+
+    expect(result.status).toBe('error');
+
+    // Downloads should exist but marked as failed
+    const downloads = await prisma.slskdDownload.findMany({
+      where: { artistName: 'Failed Queue Test', albumName: 'Test Album' },
+    });
+
+    expect(downloads).toHaveLength(2);
+    expect(downloads.every(d => d.status === 'failed')).toBe(true);
+  });
 });

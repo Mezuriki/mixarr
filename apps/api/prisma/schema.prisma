@@ -472,7 +472,8 @@ model SlskdDownload {
   username     String   @db.VarChar(100)
   filename     String   @db.VarChar(500)
   fileSize     BigInt   @map("file_size")
-  status       String   @db.VarChar(50) // 'pending', 'downloading', 'complete', 'failed'
+  status       String   @db.VarChar(50) // 'queued_locally', 'pending', 'downloading', 'organizing', 'completed', 'failed'
+  error        String?  @db.Text
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
