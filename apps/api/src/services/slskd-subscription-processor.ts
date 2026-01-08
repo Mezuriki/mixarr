@@ -138,7 +138,6 @@ export class SlskdSubscriptionProcessor {
           searchResultCount: searchResult.responses.length,
         };
       }
-      };
     } catch (error) {
       log.error('Failed to process artist', { artist, error });
       throw error;

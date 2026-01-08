@@ -65,6 +65,10 @@ export async function pollSlskdDownloads(): Promise<void> {
 
     // Update each pending download
     for (const download of pendingDownloads) {
+      if (!download.filename) {
+        log.warn('Download has no filename', { downloadId: download.id });
+        continue;
+      }
       const basename = path.basename(download.filename);
       const key = `${download.username}:${basename}`;
       const slskdStatus = slskdLookup.get(key);
@@ -78,19 +82,38 @@ export async function pollSlskdDownloads(): Promise<void> {
         // Download finished - update path and trigger organization
         const downloadPath = `${downloadDir}/${download.username}/${slskdStatus.directory}/${basename}`;
 
-        await prisma.slskdDownload.update({
-          where: { id: download.id },
+        // Atomic status update - only update if still in expected state
+        // This prevents race conditions where both webhook and poll job try to organize
+        // Concurrency model: Both webhook and poll job can detect completion, but only one
+        // succeeds in transitioning to 'organizing'. Include 'organizing' to retry stuck downloads.
+        const updated = await prisma.slskdDownload.updateMany({
+          where: {
+            id: download.id,
+            status: { in: ['pending', 'downloading', 'organizing'] },
+          },
           data: {
-            status: 'downloading',
+            status: 'organizing',
             downloadPath,
           },
         });
 
+        // Check if we won the race
+        if (updated.count === 0) {
+          // Another process already started organizing this download
+          log.debug('Download already being organized by another process', { downloadId: download.id });
+          continue;
+        }
+
+        // We won the race - proceed with organization
         try {
           await organizer.organizeFile(download.id);
           log.info('Organized completed slskd download', { downloadId: download.id });
         } catch (error) {
-          log.error('Failed to organize download', { downloadId: download.id, error });
+          log.error('Failed to organize download', { 
+            downloadId: download.id, 
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
           await prisma.slskdDownload.update({
             where: { id: download.id },
             data: { status: 'failed', error: String(error) },

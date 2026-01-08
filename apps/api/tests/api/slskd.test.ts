@@ -49,6 +49,7 @@ describe('slskd API Routes', () => {
       findFirst: ReturnType<typeof vi.fn>;
       create: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
+      updateMany: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -69,6 +70,7 @@ describe('slskd API Routes', () => {
         findFirst: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
+        updateMany: vi.fn(),
       },
     };
     
@@ -433,12 +435,8 @@ describe('slskd API Routes', () => {
         artistName: 'Pink Floyd',
       });
 
-      mockPrisma.slskdDownload.update.mockResolvedValue({
-        id: 1,
-        username: 'soulseekuser',
-        filename: 'track.flac',
-        status: 'downloading',
-      });
+      // Mock atomic updateMany - simulate successful race win
+      mockPrisma.slskdDownload.updateMany.mockResolvedValue({ count: 1 });
 
       // Configure the mock organizer
       mockOrganizeFile.mockResolvedValue('/data/plex/music/Pink Floyd/track.flac');
@@ -454,6 +452,52 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
+    });
+
+    it('should prevent race condition with atomic status updates', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue({
+        id: 1,
+        type: 'slskd',
+        isActive: true,
+        config: {
+          url: 'http://localhost:5030',
+          apiKey: 'test-key',
+          downloadDir: '/data/slskd/downloads',
+          musicLibraryDir: '/data/plex/music',
+        },
+      });
+
+      // Simulate finding a download that's being processed
+      mockPrisma.slskdDownload.findFirst.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        status: 'downloading', // Already in downloading state
+        artistName: 'Pink Floyd',
+      });
+
+      // Simulate atomic update returning 0 (another process already updated)
+      mockPrisma.slskdDownload.updateMany.mockResolvedValue({ count: 0 });
+
+      // Mock organizer should NOT be called
+      mockOrganizeFile.mockClear();
+
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({
+          event: 'DownloadComplete',
+          username: 'soulseekuser',
+          filename: '/music/Pink Floyd/track.flac',
+          directory: 'Pink Floyd - DSOTM',
+        });
+
+      // Should still return success but skip organization
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.organized).toBe(false);
+      
+      // Most importantly: organizeFile should NOT have been called
+      expect(mockOrganizeFile).not.toHaveBeenCalled();
     });
 
     it('should ignore non-download events', async () => {
@@ -527,8 +571,17 @@ describe('slskd API Routes', () => {
         status: 'pending',
       });
 
-      // First update succeeds (status to downloading), second fails (DB error during organization)
-      mockPrisma.slskdDownload.update.mockRejectedValue(new Error('DB error'));
+      // Atomic update succeeds (we win the race)
+      mockPrisma.slskdDownload.updateMany.mockResolvedValue({ count: 1 });
+
+      // But then organization fails
+      mockOrganizeFile.mockRejectedValue(new Error('Organization failed'));
+
+      // Update for error handling should succeed
+      mockPrisma.slskdDownload.update.mockResolvedValue({
+        id: 1,
+        status: 'failed',
+      });
 
       const response = await request(app)
         .post('/api/slskd/webhook')

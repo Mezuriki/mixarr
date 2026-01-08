@@ -6,6 +6,7 @@ const mockOrganizeFile = vi.fn();
 const mockConnectionFindFirst = vi.fn();
 const mockDownloadFindMany = vi.fn();
 const mockDownloadUpdate = vi.fn();
+const mockDownloadUpdateMany = vi.fn();
 
 // Mock the database
 vi.mock('../../src/lib/db.js', () => ({
@@ -16,6 +17,7 @@ vi.mock('../../src/lib/db.js', () => ({
     slskdDownload: {
       findMany: mockDownloadFindMany,
       update: mockDownloadUpdate,
+      updateMany: mockDownloadUpdateMany,
     },
   },
 }));
@@ -167,12 +169,53 @@ describe('SlskdPollJob', () => {
         },
       ]);
 
+      // Mock atomic updateMany to succeed (we win the race)
+      mockDownloadUpdateMany.mockResolvedValue({ count: 1 });
+
       mockOrganizeFile.mockResolvedValue('/data/plex/music/Artist/Album/track.flac');
       mockDownloadUpdate.mockResolvedValue({});
 
       await pollSlskdDownloads();
 
       expect(mockOrganizeFile).toHaveBeenCalledWith(1);
+    });
+
+    it('should skip organization if race condition lost', async () => {
+      const { pollSlskdDownloads } = await import('../../src/jobs/slskd-poll.js');
+
+      mockConnectionFindFirst.mockResolvedValue({
+        id: 'conn-1',
+        type: 'slskd',
+        enabled: true,
+        config: {
+          url: 'http://localhost:5030',
+          apiKey: 'test-key',
+          downloadDir: '/data/slskd/downloads',
+          musicLibraryDir: '/data/plex/music',
+        },
+      });
+
+      mockDownloadFindMany.mockResolvedValue([
+        { id: 1, username: 'user1', filename: '/music/track.flac', status: 'pending' },
+      ]);
+
+      mockGetDownloads.mockResolvedValue([
+        {
+          username: 'user1',
+          directories: [{
+            directory: 'Album',
+            files: [{ filename: '/music/track.flac', state: 'Completed' }],
+          }],
+        },
+      ]);
+
+      // Mock atomic updateMany to return 0 (lost the race)
+      mockDownloadUpdateMany.mockResolvedValue({ count: 0 });
+
+      await pollSlskdDownloads();
+
+      // Should not call organizeFile if we lost the race
+      expect(mockOrganizeFile).not.toHaveBeenCalled();
     });
 
     it('should mark download as failed on error', async () => {

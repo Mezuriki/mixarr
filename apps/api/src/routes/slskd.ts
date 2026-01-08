@@ -238,10 +238,11 @@ router.get('/downloads', async (req: Request, res: Response) => {
       }
     }
     
+    const MAX_DOWNLOADS_QUERY = 500; // Prevent excessive DB load
     const downloads = await prisma.slskdDownload.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(parseInt(limit as string, 10) || 100, 500),
+      take: Math.min(parseInt(limit as string, 10) || 100, MAX_DOWNLOADS_QUERY),
     });
     res.json(downloads);
   } catch (error) {
@@ -428,13 +429,30 @@ router.post('/webhook', async (req: Request, res: Response) => {
     // Build download path with validated components
     const downloadPath = `${downloadDir}/${username}/${directory}/${safeFilename}`;
 
-    // Update download with path
-    await prisma.slskdDownload.update({
-      where: { id: download.id },
-      data: { downloadPath, status: 'downloading' },
+    // Atomic status update - only update if still in expected state
+    // This prevents race conditions where both webhook and poll job try to organize
+    // Concurrency model: Both webhook and poll job can detect completion, but only one
+    // succeeds in transitioning to 'organizing'. Include 'organizing' to retry stuck downloads.
+    const updated = await prisma.slskdDownload.updateMany({
+      where: {
+        id: download.id,
+        status: { in: ['pending', 'downloading', 'organizing'] },
+      },
+      data: {
+        downloadPath,
+        status: 'organizing',
+      },
     });
 
-    // Trigger organization
+    // Check if we won the race
+    if (updated.count === 0) {
+      // Another process already started organizing this download
+      log.debug('Download already being organized by another process', { downloadId: download.id });
+      res.json({ success: true, organized: false });
+      return;
+    }
+
+    // We won the race - proceed with organization
     const organizer = new SlskdOrganizerService({ downloadDir, musicLibraryDir });
 
     try {
