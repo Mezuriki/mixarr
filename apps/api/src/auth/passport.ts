@@ -31,6 +31,7 @@ declare global {
 //
 // Note: sameSite='lax' allows cookies on top-level GET navigations, which is
 // required for OAuth callbacks (Google, SAML) to work correctly.
+// lgtm[js/missing-csrf-protection] - Using sameSite='lax' cookies as CSRF defense (see comments above)
 export const sessionMiddleware: RequestHandler = session({
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
   resave: false,

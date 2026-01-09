@@ -58,3 +58,27 @@ export const createUserLimiter = rateLimit({
     });
   },
 });
+
+/**
+ * General API rate limiter for authenticated routes
+ * 100 requests per minute per IP - balanced for normal usage
+ */
+export const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    return req.ip || req.socket.remoteAddress || 'unknown';
+  },
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({ 
+      error: 'Too many requests, please slow down' 
+    });
+  },
+  skip: (req: Request) => {
+    // Skip rate limiting for health checks
+    return req.path === '/api/health' || req.path === '/api/health/ready';
+  },
+});
