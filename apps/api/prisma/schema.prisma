@@ -132,6 +132,7 @@ enum ConnectionType {
   listenbrainz
   discogs
   jellyfin
+  slskd
 }
 
 // ============================================================================

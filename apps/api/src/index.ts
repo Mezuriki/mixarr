@@ -31,6 +31,7 @@ import { redis } from './lib/redis.js';
 // Import workers to start them
 import './jobs/subscription-worker.js';
 import './jobs/import-worker.js';
+import './jobs/slskd-operations-worker.js';
 
 // Validate required environment variables in production
 const sessionSecret = process.env.SESSION_SECRET;
