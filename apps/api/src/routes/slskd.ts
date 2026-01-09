@@ -9,6 +9,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import prisma from '../lib/db.js';
 import { SlskdDownloadStatus, Prisma } from '@prisma/client';
@@ -346,6 +347,18 @@ router.delete('/downloads/:id', async (req: Request, res: Response) => {
 // ============================================================================
 
 /**
+ * Rate limiter for webhook endpoint
+ * Prevents abuse by limiting to 100 requests per minute per IP
+ */
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many webhook requests, please try again later' },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+});
+
+/**
  * POST /api/slskd/webhook - Receive slskd completion events
  * 
  * Body:
@@ -358,7 +371,7 @@ router.delete('/downloads/:id', async (req: Request, res: Response) => {
  * 
  * Note: This endpoint does NOT require authentication as it's called by slskd
  */
-router.post('/webhook', async (req: Request, res: Response) => {
+router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
   try {
     const { event, username, filename, directory } = req.body;
 

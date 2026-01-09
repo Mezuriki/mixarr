@@ -199,3 +199,31 @@ describe('slskd security - path traversal', () => {
     expect(res.status).not.toBe(400);
   });
 });
+describe('slskd security - rate limiting', () => {
+  it('should rate limit webhook requests (100 per minute)', async () => {
+    // Make 101 requests rapidly
+    const requests = [];
+    for (let i = 0; i < 101; i++) {
+      requests.push(
+        request(app)
+          .post('/api/slskd/webhook')
+          .send({
+            event: 'DownloadComplete',
+            username: 'testuser',
+            directory: 'test',
+            filename: 'test.mp3',
+          })
+      );
+    }
+
+    const responses = await Promise.all(requests);
+    
+    // At least one should be rate limited (429)
+    const rateLimited = responses.filter(res => res.status === 429);
+    expect(rateLimited.length).toBeGreaterThan(0);
+    
+    // Check rate limit response format
+    const limitedResponse = rateLimited[0];
+    expect(limitedResponse.body.error).toMatch(/too many.*requests/i);
+  }, 10000); // Increase timeout for this test
+});
