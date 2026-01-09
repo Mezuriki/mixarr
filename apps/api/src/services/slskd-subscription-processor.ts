@@ -4,8 +4,12 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { SlskdService, SlskdFile } from "./slskd-service";
-import { logger as log } from "../lib/logger";
+import { SlskdService, SlskdFile } from "./slskd-service.js";
+import { logger as log } from "../lib/logger.js";
+import { enqueueSlskdSearch, SLSKD_QUEUE_NAME } from "../jobs/slskd-operations-queue.js";
+import { isSlskdRateLimitingEnabled } from "../lib/settings.js";
+import { QueueEvents } from "bullmq";
+import { createRedisConnection } from "../lib/redis.js";
 
 export interface ProcessArtistRequest {
   name: string;
@@ -31,6 +35,7 @@ export interface ProcessResult {
 export class SlskdSubscriptionProcessor {
   private readonly maxRetries = 3;
   private readonly retryDelay = 30000; // 30 seconds
+  private queueEvents: QueueEvents;
 
   constructor(
     private prisma: PrismaClient,
@@ -43,6 +48,13 @@ export class SlskdSubscriptionProcessor {
     if (options?.retryDelay !== undefined) {
       this.retryDelay = options.retryDelay;
     }
+    this.queueEvents = new QueueEvents(SLSKD_QUEUE_NAME, {
+      connection: createRedisConnection(),
+    });
+  }
+
+  async close() {
+    await this.queueEvents.close();
   }
 
   async processArtist(
@@ -50,19 +62,59 @@ export class SlskdSubscriptionProcessor {
     context: ProcessContext,
   ): Promise<ProcessResult> {
     const { connectionId, preferences } = context;
+    const searchText = `${artist.name} ${artist.album}`;
 
     try {
       // Retry loop for transient errors
       for (let attempt = 0; attempt < this.maxRetries; attempt++) {
         try {
-          // Create search
-          const search = await this.slskdService.createSearch({
-            searchText: `${artist.name} ${artist.album}`,
-            searchTimeout: 30000,
-          });
+          // Check feature flag - fall back to direct call on error
+          let useQueue = false;
+          try {
+            useQueue = await isSlskdRateLimitingEnabled();
+          } catch (error) {
+            log.warn("Failed to read rate limiting flag, falling back to direct call", { error });
+          }
+
+          let searchId: number;
+
+          if (useQueue) {
+            // Enqueue search and wait for completion
+            log.info("Using rate-limited queue for search", {
+              artist: artist.name,
+              album: artist.album,
+            });
+
+            const searchJob = await enqueueSlskdSearch({
+              searchText,
+              searchTimeout: 30000,
+              connectionId,
+            });
+
+            // Wait for job to complete (60s timeout includes queue wait + execution)
+            const searchResult = await searchJob.waitUntilFinished(
+              this.queueEvents,
+              60000,
+            );
+
+            searchId = searchResult.searchId;
+          } else {
+            // Direct call (legacy path)
+            log.info("Using direct slskd call (rate limiting disabled)", {
+              artist: artist.name,
+              album: artist.album,
+            });
+
+            const search = await this.slskdService.createSearch({
+              searchText,
+              searchTimeout: 30000,
+            });
+
+            searchId = search.id;
+          }
 
           // Poll for results (simplified for testing)
-          const searchResult = await this.slskdService.getSearch(search.id);
+          const searchResult = await this.slskdService.getSearch(searchId);
 
           if (searchResult.state === "Errored") {
             throw new Error("Search failed");
@@ -108,7 +160,7 @@ export class SlskdSubscriptionProcessor {
                   username: bestResult.username,
                   filename: file.filename,
                   fileSize: BigInt(file.size),
-                  searchId: search.id,
+                  searchId: searchId,
                   status: "queued_locally",
                 },
               }),

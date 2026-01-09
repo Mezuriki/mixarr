@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PrismaClient } from "@prisma/client";
 import { SlskdSubscriptionProcessor } from "../../src/services/slskd-subscription-processor";
 import { SlskdService } from "../../src/services/slskd-service";
+import * as queueModule from "../../src/jobs/slskd-operations-queue";
 
 const prisma = new PrismaClient();
 
@@ -350,6 +351,146 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
       });
 
       expect(downloads).toHaveLength(0);
+    });
+  });
+
+  describe("Rate-Limited Queue Integration", () => {
+    it("should use queue when rate limiting enabled", async () => {
+      // Enable rate limiting
+      await prisma.$executeRaw`
+        INSERT INTO global_settings (\`key\`, \`value\`, \`created_at\`, \`updated_at\`) 
+        VALUES ('slskd_rate_limiting_enabled', 'true', NOW(), NOW())
+        ON DUPLICATE KEY UPDATE \`value\` = 'true', \`updated_at\` = NOW()
+      `;
+
+      const mockFiles = [
+        {
+          filename: "01 - Test Song.flac",
+          size: 30000000,
+          extension: ".flac",
+          bitRate: 1411,
+          sampleRate: 44100,
+          bitDepth: 16,
+        },
+      ];
+
+      // Mock the enqueueSlskdSearch function
+      const mockWaitUntilFinished = vi.fn().mockResolvedValue({ searchId: 999 });
+      const mockJob = {
+        waitUntilFinished: mockWaitUntilFinished,
+      };
+      const enqueueSlskdSearchSpy = vi
+        .spyOn(queueModule, "enqueueSlskdSearch")
+        .mockResolvedValue(mockJob as any);
+
+      // Mock queue behavior (search will be enqueued)
+      mockSlskdService.getSearch.mockResolvedValue({
+        id: 999,
+        state: "Completed",
+        responses: [
+          {
+            username: "testuser",
+            files: mockFiles,
+            uploadSpeed: 1000000,
+            queueLength: 5,
+            hasFreeUploadSlot: true,
+          },
+        ],
+      });
+
+      mockSlskdService.queueDownload.mockResolvedValue(undefined);
+
+      const result = await processor.processArtist(
+        { name: "Queue Test Artist", album: "Queue Test Album" },
+        { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+      );
+
+      expect(result.status).toBe("queued");
+
+      // Verify enqueueSlskdSearch was called with correct parameters
+      expect(enqueueSlskdSearchSpy).toHaveBeenCalledWith({
+        searchText: "Queue Test Artist Queue Test Album",
+        searchTimeout: 30000,
+        connectionId: 1,
+      });
+
+      // Verify createSearch was NOT called directly
+      expect(mockSlskdService.createSearch).not.toHaveBeenCalled();
+
+      // Verify waitUntilFinished was called
+      expect(mockWaitUntilFinished).toHaveBeenCalled();
+
+      const downloads = await prisma.slskdDownload.findMany({
+        where: {
+          artistName: "Queue Test Artist",
+          albumName: "Queue Test Album",
+        },
+      });
+
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].status).toBe("pending");
+
+      enqueueSlskdSearchSpy.mockRestore();
+    });
+
+    it("should use direct call when rate limiting disabled", async () => {
+      // Disable rate limiting
+      await prisma.$executeRaw`
+        INSERT INTO global_settings (\`key\`, \`value\`, \`created_at\`, \`updated_at\`) 
+        VALUES ('slskd_rate_limiting_enabled', 'false', NOW(), NOW())
+        ON DUPLICATE KEY UPDATE \`value\` = 'false', \`updated_at\` = NOW()
+      `;
+
+      const mockFiles = [
+        {
+          filename: "01 - Test Song.flac",
+          size: 30000000,
+          extension: ".flac",
+          bitRate: 1411,
+          sampleRate: 44100,
+          bitDepth: 16,
+        },
+      ];
+
+      mockSlskdService.createSearch.mockResolvedValue({ id: 888 });
+      mockSlskdService.getSearch.mockResolvedValue({
+        id: 888,
+        state: "Completed",
+        responses: [
+          {
+            username: "testuser",
+            files: mockFiles,
+            uploadSpeed: 1000000,
+            queueLength: 5,
+            hasFreeUploadSlot: true,
+          },
+        ],
+      });
+
+      mockSlskdService.queueDownload.mockResolvedValue(undefined);
+
+      const result = await processor.processArtist(
+        { name: "Direct Test Artist", album: "Direct Test Album" },
+        { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+      );
+
+      expect(result.status).toBe("queued");
+
+      // Verify createSearch WAS called directly
+      expect(mockSlskdService.createSearch).toHaveBeenCalledWith({
+        searchText: "Direct Test Artist Direct Test Album",
+        searchTimeout: 30000,
+      });
+
+      const downloads = await prisma.slskdDownload.findMany({
+        where: {
+          artistName: "Direct Test Artist",
+          albumName: "Direct Test Album",
+        },
+      });
+
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].status).toBe("pending");
     });
   });
 });
