@@ -19,6 +19,7 @@ const TEST_PASSWORD = process.env.TEST_PASSWORD || 'admin';
 const shouldRun = !!process.env.TEST_API_URL;
 
 // Create HTTPS agent that allows self-signed certs
+// lgtm[js/disabling-certificate-validation] - Test environment uses self-signed certs
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });

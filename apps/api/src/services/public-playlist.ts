@@ -74,6 +74,13 @@ export function extractArtistsFromPlaylist(
  * Fetch public playlist data from Spotify's embed endpoint
  */
 export async function fetchPublicPlaylist(playlistId: string): Promise<PublicPlaylistData> {
+  // Validate playlist ID format to prevent SSRF
+  // Spotify playlist IDs are exactly 22 alphanumeric characters
+  const SPOTIFY_PLAYLIST_ID_PATTERN = /^[a-zA-Z0-9]{22}$/;
+  if (!SPOTIFY_PLAYLIST_ID_PATTERN.test(playlistId)) {
+    throw new Error('Invalid playlist ID format');
+  }
+
   const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
   
   const response = await fetch(embedUrl, {

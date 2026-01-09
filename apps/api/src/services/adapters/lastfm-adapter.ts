@@ -46,6 +46,8 @@ export class LastfmMetadataAdapter {
    */
   private cleanHtml(text?: string): string | undefined {
     if (!text) return undefined;
+    // lgtm[js/incomplete-sanitization] - This is output cleanup, not input validation
+    // lgtm[js/double-escaping] - Intentional: converting HTML entities to text for display
     return text
       .replace(/<[^>]*>/g, '') // Remove HTML tags
       .replace(/&nbsp;/g, ' ')

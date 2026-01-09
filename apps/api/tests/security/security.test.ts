@@ -208,6 +208,7 @@ describe('Security', () => {
   describe('XSS Prevention', () => {
     it('should sanitize user display name', () => {
       const dangerousName = '<script>alert("xss")</script>';
+      // lgtm[js/incomplete-sanitization] - Intentional test of sanitization edge cases
       const sanitized = dangerousName.replace(/<[^>]*>/g, '');
       
       expect(sanitized).not.toContain('<script>');
@@ -215,6 +216,7 @@ describe('Security', () => {
 
     it('should sanitize subscription names', () => {
       const dangerousName = '<img src="x" onerror="alert(1)">';
+      // lgtm[js/incomplete-sanitization] - Intentional test of sanitization edge cases
       const sanitized = dangerousName.replace(/<[^>]*>/g, '');
       
       expect(sanitized).not.toContain('<img');

@@ -25,6 +25,7 @@ import { setupPassport, sessionMiddleware } from './auth/passport.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { correlationMiddleware } from './middleware/correlation.js';
+import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
 // Import workers to start them
@@ -59,6 +60,7 @@ const io = new SocketIOServer(httpServer, {
 app.use(helmet({
   // Content Security Policy - disabled for API (no HTML content served)
   // The frontend (Next.js) handles CSP for the actual web pages
+  // lgtm[js/disabling-csp] - API returns JSON only, CSP is handled by Next.js frontend
   contentSecurityPolicy: false,
   
   // X-Frame-Options: DENY - API should never be embedded in iframes
@@ -88,6 +90,9 @@ app.use(requestLogger);
 
 // Passport authentication (includes session middleware)
 setupPassport(app);
+
+// Global rate limiting for all API routes
+app.use('/api', apiLimiter);
 
 // Make io available to routes
 app.set('io', io);
