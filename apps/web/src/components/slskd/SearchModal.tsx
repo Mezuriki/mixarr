@@ -129,11 +129,14 @@ export function SlskdSearchModal({ isOpen, onClose, artistName, artistImage }: S
     return () => clearInterval(interval);
   }, [isSearching]);
 
-  // Poll for results
+  // Poll for results with exponential backoff
   useEffect(() => {
     if (!searchId) return;
     
-    const pollInterval = setInterval(async () => {
+    let pollDelay = 2000; // Start at 2 seconds
+    let timeoutId: NodeJS.Timeout;
+    
+    const poll = async () => {
       try {
         const { data, error } = await api.get<SlskdSearchResult>(`/api/slskd/search/${searchId}`);
         if (error) throw new Error(error);
@@ -145,14 +148,24 @@ export function SlskdSearchModal({ isOpen, onClose, artistName, artistImage }: S
           if (data.state === 'Completed' || data.state === 'Errored') {
             setIsSearching(false);
             setSearchId(null);
+            return; // Stop polling
           }
+          
+          // Continue polling with exponential backoff (2s → 3s → 4.5s → 10s max)
+          pollDelay = Math.min(pollDelay * 1.5, 10000);
+          timeoutId = setTimeout(poll, pollDelay);
         }
       } catch (err) {
         console.error('Failed to poll search results:', err);
       }
-    }, 2000);
+    };
     
-    return () => clearInterval(pollInterval);
+    // Start polling
+    poll();
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [searchId]);
 
   const startSearch = async () => {
