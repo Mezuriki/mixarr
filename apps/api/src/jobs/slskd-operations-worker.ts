@@ -4,6 +4,7 @@ import prisma from '../lib/db.js';
 import { SlskdService } from '../services/slskd-service.js';
 import { isSlskdConfig } from '../types/connections.js';
 import { 
+  slskdQueue,
   SLSKD_QUEUE_NAME, 
   SlskdJobData, 
   SlskdSearchJobData, 
@@ -44,8 +45,7 @@ export async function processSlskdJob(job: Job<SlskdJobData>): Promise<any> {
   } else if (job.data.type === 'queue-download') {
     return await handleQueueDownload(slskdService, job.data);
   } else {
-    const jobType = 'type' in job.data ? job.data.type : 'unknown';
-    throw new Error(`Unknown job type: ${jobType}`);
+    throw new Error(`Unknown job type: ${String(job.data)}`);
   }
 }
 
@@ -98,7 +98,25 @@ const worker = new Worker<SlskdJobData>(
 );
 
 worker.on('completed', (job) => {
-  logger.info('Job completed', { jobId: job.id });
+  if (!job) return;
+  
+  const duration = job.finishedOn ? job.finishedOn - job.timestamp : 0;
+  const jobType = job.data && 'type' in job.data ? job.data.type : 'unknown';
+  
+  logger.info('Job completed', { 
+    jobId: job.id,
+    type: jobType,
+    duration,
+  });
+  
+  // Alert on slow jobs (>30s)
+  if (duration > 30000) {
+    logger.warn('Slow job detected', {
+      jobId: job.id,
+      type: jobType,
+      duration,
+    });
+  }
 });
 
 worker.on('failed', (job, err) => {
@@ -113,6 +131,34 @@ logger.info('SlskdOperationsWorker started', {
   concurrency: 1,
   rateLimitDuration: '5000ms',
 });
+
+// Log queue metrics every 60 seconds
+setInterval(async () => {
+  try {
+    const waiting = await slskdQueue.getWaitingCount();
+    const active = await slskdQueue.getActiveCount();
+    const failed = await slskdQueue.getFailedCount();
+    
+    logger.info('Queue metrics', {
+      queue: SLSKD_QUEUE_NAME,
+      waiting,
+      active,
+      failed,
+      total: waiting + active,
+    });
+    
+    // Alert if queue is backing up
+    if (waiting + active > 100) {
+      logger.warn('Queue length exceeds threshold', {
+        queue: SLSKD_QUEUE_NAME,
+        count: waiting + active,
+        threshold: 100,
+      });
+    }
+  } catch (error) {
+    logger.error('Failed to get queue metrics', { error: error instanceof Error ? error.message : error });
+  }
+}, 60000);
 
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
