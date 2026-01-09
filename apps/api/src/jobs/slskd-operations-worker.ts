@@ -125,4 +125,7 @@ async function gracefulShutdown(signal: string) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+// Named export for testing
+export const slskdWorker = worker;
+
 export default worker;
