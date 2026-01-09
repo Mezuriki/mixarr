@@ -6,7 +6,11 @@
 import { PrismaClient } from "@prisma/client";
 import { SlskdService, SlskdFile } from "./slskd-service.js";
 import { logger as log } from "../lib/logger.js";
-import { enqueueSlskdSearch, SLSKD_QUEUE_NAME } from "../jobs/slskd-operations-queue.js";
+import { 
+  enqueueSlskdSearch, 
+  enqueueSlskdDownload,
+  SLSKD_QUEUE_NAME 
+} from "../jobs/slskd-operations-queue.js";
 import { isSlskdRateLimitingEnabled } from "../lib/settings.js";
 import { QueueEvents } from "bullmq";
 import { createRedisConnection } from "../lib/redis.js";
@@ -183,10 +187,23 @@ export class SlskdSubscriptionProcessor {
           // Phase 2: Queue files to slskd
           try {
             for (const file of filesToDownload) {
-              await this.slskdService.queueDownload({
-                username: bestResult.username,
-                filename: file.filename,
-              });
+              if (useQueue) {
+                // Use rate-limited queue
+                const downloadJob = await enqueueSlskdDownload({
+                  username: bestResult.username,
+                  filename: file.filename,
+                  connectionId,
+                });
+
+                // Wait for download to be queued (10s timeout - downloads are quick)
+                await downloadJob.waitUntilFinished(this.queueEvents, 10000);
+              } else {
+                // Direct call (legacy path)
+                await this.slskdService.queueDownload({
+                  username: bestResult.username,
+                  filename: file.filename,
+                });
+              }
             }
 
             // Phase 3: Update status to pending on success

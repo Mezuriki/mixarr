@@ -18,6 +18,13 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
     // Clean up test data
     await prisma.slskdDownload.deleteMany({});
 
+    // Disable rate limiting by default for tests (can be overridden in specific tests)
+    await prisma.$executeRaw`
+      INSERT INTO global_settings (\`key\`, \`value\`, \`created_at\`, \`updated_at\`) 
+      VALUES ('slskd_rate_limiting_enabled', 'false', NOW(), NOW())
+      ON DUPLICATE KEY UPDATE \`value\` = 'false', \`updated_at\` = NOW()
+    `;
+
     // Mock slskd service
     mockSlskdService = {
       createSearch: vi.fn(),
@@ -397,6 +404,15 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
         .spyOn(queueModule, "enqueueSlskdSearch")
         .mockResolvedValue(mockJob as any);
 
+      // Mock the enqueueSlskdDownload function
+      const mockDownloadWaitUntilFinished = vi.fn().mockResolvedValue({ success: true });
+      const mockDownloadJob = {
+        waitUntilFinished: mockDownloadWaitUntilFinished,
+      };
+      const enqueueSlskdDownloadSpy = vi
+        .spyOn(queueModule, "enqueueSlskdDownload")
+        .mockResolvedValue(mockDownloadJob as any);
+
       // Mock queue behavior (search will be enqueued)
       mockSlskdService.getSearch.mockResolvedValue({
         id: 999,
@@ -445,6 +461,7 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
       expect(downloads[0].status).toBe("pending");
 
       enqueueSlskdSearchSpy.mockRestore();
+      enqueueSlskdDownloadSpy.mockRestore();
       await queueProcessor.close();
     });
 
