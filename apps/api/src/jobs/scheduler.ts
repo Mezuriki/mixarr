@@ -258,14 +258,14 @@ export function startDataRetentionJob(): void {
  * Runs every 5 minutes to check for completed downloads and trigger organization
  */
 let slskdPollIntervalId: ReturnType<typeof setInterval> | null = null;
-const SLSKD_POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const SLSKD_POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 export function startSlskdPollJob(): void {
   if (slskdPollIntervalId) {
     clearInterval(slskdPollIntervalId);
   }
 
-  // Run immediately once, then every 5 minutes
+  // Run immediately once, then every 2 minutes
   pollSlskdDownloads().catch((err: Error) => 
     logger.error('Initial slskd poll failed', { error: err })
   );
@@ -278,7 +278,7 @@ export function startSlskdPollJob(): void {
     }
   }, SLSKD_POLL_INTERVAL);
 
-  logger.info('slskd download poll job scheduled (every 5 minutes)');
+  logger.info('slskd download poll job scheduled (every 2 minutes)');
 }
 
 export function stopSlskdPollJob(): void {
