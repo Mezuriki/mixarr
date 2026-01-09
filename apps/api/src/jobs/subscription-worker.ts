@@ -141,7 +141,7 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
         url: slskdConn.config.url,
         apiKey: slskdConn.config.apiKey,
       });
-      slskdProcessor = new SlskdSubscriptionProcessor(slskdService);
+      slskdProcessor = new SlskdSubscriptionProcessor(prisma, slskdService);
       slskdConnectionId = slskdConn.id;
     }
 
@@ -2258,6 +2258,11 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     });
 
     throw error;
+  } finally {
+    // CRITICAL FIX #1: Clean up slskdProcessor resources
+    if (slskdProcessor) {
+      await slskdProcessor.close();
+    }
   }
 }
 

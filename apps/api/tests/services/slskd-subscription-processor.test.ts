@@ -32,6 +32,13 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
     );
   });
 
+  // IMPORTANT FIX #6: Add cleanup
+  afterEach(async () => {
+    if (processor) {
+      await processor.close();
+    }
+  });
+
   it("should create one SlskdDownload record per file", async () => {
     const mockFiles = [
       {
@@ -363,6 +370,13 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
         ON DUPLICATE KEY UPDATE \`value\` = 'true', \`updated_at\` = NOW()
       `;
 
+      // Create a NEW processor after setting the flag (flag is cached at construction)
+      const queueProcessor = new SlskdSubscriptionProcessor(
+        prisma,
+        mockSlskdService as unknown as SlskdService,
+        { retryDelay: 100 },
+      );
+
       const mockFiles = [
         {
           filename: "01 - Test Song.flac",
@@ -400,7 +414,7 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
 
       mockSlskdService.queueDownload.mockResolvedValue(undefined);
 
-      const result = await processor.processArtist(
+      const result = await queueProcessor.processArtist(
         { name: "Queue Test Artist", album: "Queue Test Album" },
         { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
       );
@@ -431,6 +445,7 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
       expect(downloads[0].status).toBe("pending");
 
       enqueueSlskdSearchSpy.mockRestore();
+      await queueProcessor.close();
     });
 
     it("should use direct call when rate limiting disabled", async () => {
@@ -440,6 +455,13 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
         VALUES ('slskd_rate_limiting_enabled', 'false', NOW(), NOW())
         ON DUPLICATE KEY UPDATE \`value\` = 'false', \`updated_at\` = NOW()
       `;
+
+      // Create a NEW processor after setting the flag (flag is cached at construction)
+      const directProcessor = new SlskdSubscriptionProcessor(
+        prisma,
+        mockSlskdService as unknown as SlskdService,
+        { retryDelay: 100 },
+      );
 
       const mockFiles = [
         {
@@ -469,7 +491,7 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
 
       mockSlskdService.queueDownload.mockResolvedValue(undefined);
 
-      const result = await processor.processArtist(
+      const result = await directProcessor.processArtist(
         { name: "Direct Test Artist", album: "Direct Test Album" },
         { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
       );
@@ -491,6 +513,8 @@ describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
 
       expect(downloads).toHaveLength(1);
       expect(downloads[0].status).toBe("pending");
+
+      await directProcessor.close();
     });
   });
 });

@@ -36,6 +36,7 @@ export class SlskdSubscriptionProcessor {
   private readonly maxRetries = 3;
   private readonly retryDelay = 30000; // 30 seconds
   private queueEvents: QueueEvents;
+  private readonly useRateLimitedQueue: Promise<boolean>;
 
   constructor(
     private prisma: PrismaClient,
@@ -51,6 +52,8 @@ export class SlskdSubscriptionProcessor {
     this.queueEvents = new QueueEvents(SLSKD_QUEUE_NAME, {
       connection: createRedisConnection(),
     });
+    // CRITICAL FIX #3: Cache flag value to avoid race condition
+    this.useRateLimitedQueue = isSlskdRateLimitingEnabled();
   }
 
   async close() {
@@ -64,17 +67,17 @@ export class SlskdSubscriptionProcessor {
     const { connectionId, preferences } = context;
     const searchText = `${artist.name} ${artist.album}`;
 
+    // IMPORTANT FIX #4: Validate connectionId
+    if (!connectionId || connectionId <= 0) {
+      throw new Error(`Invalid connectionId: ${connectionId}`);
+    }
+
     try {
       // Retry loop for transient errors
       for (let attempt = 0; attempt < this.maxRetries; attempt++) {
         try {
-          // Check feature flag - fall back to direct call on error
-          let useQueue = false;
-          try {
-            useQueue = await isSlskdRateLimitingEnabled();
-          } catch (error) {
-            log.warn("Failed to read rate limiting flag, falling back to direct call", { error });
-          }
+          // CRITICAL FIX #3 & IMPORTANT FIX #5: Use cached flag value, let DB errors propagate
+          const useQueue = await this.useRateLimitedQueue;
 
           let searchId: number;
 
@@ -91,11 +94,21 @@ export class SlskdSubscriptionProcessor {
               connectionId,
             });
 
-            // Wait for job to complete (60s timeout includes queue wait + execution)
-            const searchResult = await searchJob.waitUntilFinished(
-              this.queueEvents,
-              60000,
-            );
+            // CRITICAL FIX #2: Catch timeout errors from waitUntilFinished
+            let searchResult: { searchId: number };
+            try {
+              // Wait for job to complete (60s timeout includes queue wait + execution)
+              searchResult = await searchJob.waitUntilFinished(
+                this.queueEvents,
+                60000,
+              );
+            } catch (error) {
+              // Handle WaitingChildrenError (timeout) specifically
+              if (error && typeof error === 'object' && 'name' in error && error.name === 'WaitingChildrenError') {
+                throw new Error(`Search job timed out after 60s: ${searchText}`);
+              }
+              throw error;
+            }
 
             searchId = searchResult.searchId;
           } else {
@@ -218,6 +231,19 @@ export class SlskdSubscriptionProcessor {
             };
           }
         } catch (error) {
+          // IMPORTANT FIX #7: Don't retry on queue full errors
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const isQueueFull = errorMessage.includes("queue is full") || errorMessage.includes("too many jobs");
+
+          if (isQueueFull) {
+            log.error("Queue is full, not retrying", {
+              artist: artist.name,
+              album: artist.album,
+              error: errorMessage,
+            });
+            throw error;
+          }
+
           // Retry on transient errors (timeout, network, slskd errors)
           if (attempt < this.maxRetries - 1) {
             log.warn("Search failed, retrying", {
@@ -225,7 +251,7 @@ export class SlskdSubscriptionProcessor {
               maxRetries: this.maxRetries,
               artist: artist.name,
               album: artist.album,
-              error: error instanceof Error ? error.message : "Unknown error",
+              error: errorMessage,
             });
 
             // Wait before retrying
