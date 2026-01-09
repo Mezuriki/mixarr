@@ -6,6 +6,8 @@
 
 import prisma from './db.js';
 
+const SLSKD_RATE_LIMITING_KEY = 'slskd_rate_limiting_enabled';
+
 /**
  * Get a global setting value
  */
@@ -41,4 +43,25 @@ export async function getBaseUrl(): Promise<string> {
   if (dbValue) return dbValue;
   
   return process.env.BASE_URL || `http://localhost:${process.env.PORT || 3010}`;
+}
+
+/**
+ * Check if slskd rate limiting is enabled
+ * @returns true if rate limiting is enabled, false otherwise
+ */
+export async function isSlskdRateLimitingEnabled(): Promise<boolean> {
+  try {
+    const setting = await prisma.globalSetting.findUnique({
+      where: { key: SLSKD_RATE_LIMITING_KEY },
+    });
+    
+    if (!setting) {
+      return false;
+    }
+    
+    return setting.value === true;
+  } catch (error) {
+    console.error('Failed to check rate limiting flag:', error);
+    return false; // Fail-safe default
+  }
 }
