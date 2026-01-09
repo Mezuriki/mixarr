@@ -1,13 +1,17 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PrismaClient } from '@prisma/client';
-import { SlskdSubscriptionProcessor } from '../../src/services/slskd-subscription-processor';
-import { SlskdService } from '../../src/services/slskd-service';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { PrismaClient } from "@prisma/client";
+import { SlskdSubscriptionProcessor } from "../../src/services/slskd-subscription-processor";
+import { SlskdService } from "../../src/services/slskd-service";
 
 const prisma = new PrismaClient();
 
-describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
+describe("SlskdSubscriptionProcessor - Per-File Download Model", () => {
   let processor: SlskdSubscriptionProcessor;
-  let mockSlskdService: any;
+  let mockSlskdService: {
+    createSearch: ReturnType<typeof vi.fn>;
+    getSearch: ReturnType<typeof vi.fn>;
+    queueDownload: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     // Clean up test data
@@ -22,32 +26,33 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
 
     processor = new SlskdSubscriptionProcessor(
       prisma,
-      mockSlskdService as unknown as SlskdService
+      mockSlskdService as unknown as SlskdService,
+      { retryDelay: 100 }, // Use short delay for tests
     );
   });
 
-  it('should create one SlskdDownload record per file', async () => {
+  it("should create one SlskdDownload record per file", async () => {
     const mockFiles = [
       {
-        filename: '01 - Test Song 1.flac',
+        filename: "01 - Test Song 1.flac",
         size: 30000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
       },
       {
-        filename: '02 - Test Song 2.flac',
+        filename: "02 - Test Song 2.flac",
         size: 28000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
       },
       {
-        filename: '03 - Test Song 3.flac',
+        filename: "03 - Test Song 3.flac",
         size: 32000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
@@ -60,10 +65,10 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     // Mock search results with 3 files
     mockSlskdService.getSearch.mockResolvedValue({
       id: 1,
-      state: 'Completed',
+      state: "Completed",
       responses: [
         {
-          username: 'testuser',
+          username: "testuser",
           files: mockFiles,
           uploadSpeed: 1000000,
           queueLength: 5,
@@ -75,35 +80,35 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     mockSlskdService.queueDownload.mockResolvedValue(undefined);
 
     const result = await processor.processArtist(
-      { name: 'Test Artist', album: 'Test Album' },
-      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+      { name: "Test Artist", album: "Test Album" },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
     );
 
-    expect(result.status).toBe('queued');
+    expect(result.status).toBe("queued");
 
     // Should create 3 download records (one per file)
     const downloads = await prisma.slskdDownload.findMany({
-      where: { artistName: 'Test Artist', albumName: 'Test Album' },
+      where: { artistName: "Test Artist", albumName: "Test Album" },
     });
 
     expect(downloads).toHaveLength(3);
-    expect(downloads[0].filename).toBe('01 - Test Song 1.flac');
+    expect(downloads[0].filename).toBe("01 - Test Song 1.flac");
     expect(downloads[0].fileSize).toBe(BigInt(30000000));
-    expect(downloads[1].filename).toBe('02 - Test Song 2.flac');
+    expect(downloads[1].filename).toBe("02 - Test Song 2.flac");
     expect(downloads[1].fileSize).toBe(BigInt(28000000));
-    expect(downloads[2].filename).toBe('03 - Test Song 3.flac');
+    expect(downloads[2].filename).toBe("03 - Test Song 3.flac");
     expect(downloads[2].fileSize).toBe(BigInt(32000000));
   });
 
-  it('should handle empty file array without creating records', async () => {
+  it("should handle empty file array without creating records", async () => {
     // Mock search with no files
     mockSlskdService.createSearch.mockResolvedValue({ id: 2 });
     mockSlskdService.getSearch.mockResolvedValue({
       id: 2,
-      state: 'Completed',
+      state: "Completed",
       responses: [
         {
-          username: 'testuser',
+          username: "testuser",
           files: [], // Empty files array
           uploadSpeed: 1000000,
           queueLength: 5,
@@ -113,34 +118,34 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     });
 
     const result = await processor.processArtist(
-      { name: 'Empty Artist', album: 'Empty Album' },
-      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+      { name: "Empty Artist", album: "Empty Album" },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
     );
 
-    expect(result.status).toBe('no_results');
+    expect(result.status).toBe("no_results");
 
     // Should create zero records
     const downloads = await prisma.slskdDownload.findMany({
-      where: { artistName: 'Empty Artist', albumName: 'Empty Album' },
+      where: { artistName: "Empty Artist", albumName: "Empty Album" },
     });
 
     expect(downloads).toHaveLength(0);
   });
 
-  it('should wrap per-file creation in transaction for atomicity', async () => {
+  it("should wrap per-file creation in transaction for atomicity", async () => {
     const mockFiles = [
       {
-        filename: 'track1.flac',
+        filename: "track1.flac",
         size: 30000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
       },
       {
-        filename: 'track2.flac',
+        filename: "track2.flac",
         size: 28000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
@@ -150,10 +155,10 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     mockSlskdService.createSearch.mockResolvedValue({ id: 3 });
     mockSlskdService.getSearch.mockResolvedValue({
       id: 3,
-      state: 'Completed',
+      state: "Completed",
       responses: [
         {
-          username: 'testuser',
+          username: "testuser",
           files: mockFiles,
           uploadSpeed: 1000000,
           queueLength: 5,
@@ -162,38 +167,43 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
       ],
     });
 
-    // Mock a failure on queue to test transaction rollback
-    mockSlskdService.queueDownload.mockRejectedValueOnce(new Error('Queue failed'));
+    // Mock a failure on queue to test error handling
+    mockSlskdService.queueDownload.mockRejectedValueOnce(
+      new Error("Queue failed"),
+    );
 
-    await expect(
-      processor.processArtist(
-        { name: 'Transaction Test', album: 'Test Album' },
-        { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
-      )
-    ).rejects.toThrow('Queue failed');
+    const result = await processor.processArtist(
+      { name: "Transaction Test", album: "Test Album" },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+    );
 
-    // Transaction rollback means no records should exist
+    // Should return error status instead of throwing
+    expect(result.status).toBe("error");
+    expect(result.error).toBe("Queue failed");
+
+    // Downloads should be created but marked as failed
     const downloads = await prisma.slskdDownload.findMany({
-      where: { artistName: 'Transaction Test', albumName: 'Test Album' },
+      where: { artistName: "Transaction Test", albumName: "Test Album" },
     });
 
-    expect(downloads).toHaveLength(0);
+    expect(downloads).toHaveLength(2);
+    expect(downloads.every((d) => d.status === "failed")).toBe(true);
   });
 
-  it('should mark downloads as failed if queue operation fails', async () => {
+  it("should mark downloads as failed if queue operation fails", async () => {
     const mockFiles = [
       {
-        filename: 'track1.flac',
+        filename: "track1.flac",
         size: 30000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
       },
       {
-        filename: 'track2.flac',
+        filename: "track2.flac",
         size: 28000000,
-        extension: '.flac',
+        extension: ".flac",
         bitRate: 1411,
         sampleRate: 44100,
         bitDepth: 16,
@@ -203,10 +213,10 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     mockSlskdService.createSearch.mockResolvedValue({ id: 4 });
     mockSlskdService.getSearch.mockResolvedValue({
       id: 4,
-      state: 'Completed',
+      state: "Completed",
       responses: [
         {
-          username: 'testuser',
+          username: "testuser",
           files: mockFiles,
           uploadSpeed: 1000000,
           queueLength: 5,
@@ -216,21 +226,130 @@ describe('SlskdSubscriptionProcessor - Per-File Download Model', () => {
     });
 
     // Mock queue failure
-    mockSlskdService.queueDownload.mockRejectedValue(new Error('Network timeout'));
-
-    const result = await processor.processArtist(
-      { name: 'Failed Queue Test', album: 'Test Album' },
-      { connectionId: 1, userId: 1, preferences: { preferLossless: true } }
+    mockSlskdService.queueDownload.mockRejectedValue(
+      new Error("Network timeout"),
     );
 
-    expect(result.status).toBe('error');
+    const result = await processor.processArtist(
+      { name: "Failed Queue Test", album: "Test Album" },
+      { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+    );
+
+    expect(result.status).toBe("error");
 
     // Downloads should exist but marked as failed
     const downloads = await prisma.slskdDownload.findMany({
-      where: { artistName: 'Failed Queue Test', albumName: 'Test Album' },
+      where: { artistName: "Failed Queue Test", albumName: "Test Album" },
     });
 
     expect(downloads).toHaveLength(2);
-    expect(downloads.every(d => d.status === 'failed')).toBe(true);
+    expect(downloads.every((d) => d.status === "failed")).toBe(true);
+  });
+
+  describe("Search Retry Logic", () => {
+    it("should retry on timeout error and succeed on 2nd attempt", async () => {
+      const mockFiles = [
+        {
+          filename: "01 - Test Song.flac",
+          size: 30000000,
+          extension: ".flac",
+          bitRate: 1411,
+          sampleRate: 44100,
+          bitDepth: 16,
+        },
+      ];
+
+      // Mock search creation
+      mockSlskdService.createSearch.mockResolvedValue({ id: 10 });
+
+      // First attempt: timeout error
+      // Second attempt: success
+      mockSlskdService.getSearch
+        .mockRejectedValueOnce(new Error("Timeout waiting for search results"))
+        .mockResolvedValueOnce({
+          id: 10,
+          state: "Completed",
+          responses: [
+            {
+              username: "testuser",
+              files: mockFiles,
+              uploadSpeed: 1000000,
+              queueLength: 5,
+              hasFreeUploadSlot: true,
+            },
+          ],
+        });
+
+      mockSlskdService.queueDownload.mockResolvedValue(undefined);
+
+      const result = await processor.processArtist(
+        { name: "Retry Artist", album: "Retry Album" },
+        { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+      );
+
+      expect(result.status).toBe("queued");
+      expect(mockSlskdService.getSearch).toHaveBeenCalledTimes(2); // Retry happened
+
+      const downloads = await prisma.slskdDownload.findMany({
+        where: { artistName: "Retry Artist", albumName: "Retry Album" },
+      });
+
+      expect(downloads).toHaveLength(1);
+      expect(downloads[0].status).toBe("pending");
+    });
+
+    it("should fail after max retries (3) exceeded", async () => {
+      // Mock search creation
+      mockSlskdService.createSearch.mockResolvedValue({ id: 11 });
+
+      // All 3 attempts fail
+      mockSlskdService.getSearch
+        .mockRejectedValueOnce(new Error("Network timeout"))
+        .mockRejectedValueOnce(new Error("Network timeout"))
+        .mockRejectedValueOnce(new Error("Network timeout"));
+
+      await expect(
+        processor.processArtist(
+          { name: "Max Retry Artist", album: "Max Retry Album" },
+          { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+        ),
+      ).rejects.toThrow("Network timeout");
+
+      expect(mockSlskdService.getSearch).toHaveBeenCalledTimes(3); // Max retries
+
+      // No downloads should be created
+      const downloads = await prisma.slskdDownload.findMany({
+        where: { artistName: "Max Retry Artist", albumName: "Max Retry Album" },
+      });
+
+      expect(downloads).toHaveLength(0);
+    });
+
+    it('should NOT retry on "not found" (0 results) - valid result', async () => {
+      // Mock search creation
+      mockSlskdService.createSearch.mockResolvedValue({ id: 12 });
+
+      // Search completes successfully but returns no results
+      mockSlskdService.getSearch.mockResolvedValue({
+        id: 12,
+        state: "Completed",
+        responses: [], // No results found
+      });
+
+      const result = await processor.processArtist(
+        { name: "Not Found Artist", album: "Not Found Album" },
+        { connectionId: 1, userId: 1, preferences: { preferLossless: true } },
+      );
+
+      expect(result.status).toBe("no_results");
+      expect(mockSlskdService.getSearch).toHaveBeenCalledTimes(1); // NO retry - valid result
+
+      // No downloads should be created
+      const downloads = await prisma.slskdDownload.findMany({
+        where: { artistName: "Not Found Artist", albumName: "Not Found Album" },
+      });
+
+      expect(downloads).toHaveLength(0);
+    });
   });
 });
