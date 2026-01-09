@@ -17,6 +17,10 @@ import { SlskdService } from '../services/slskd.js';
 import { SlskdOrganizerService } from '../services/slskd-organizer.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createLogger } from '../lib/logger.js';
+import { enqueueSlskdDownload, SLSKD_QUEUE_NAME } from '../jobs/slskd-operations-queue.js';
+import { isSlskdRateLimitingEnabled } from '../lib/settings.js';
+import { QueueEvents } from 'bullmq';
+import { createRedisConnection } from '../lib/redis.js';
 
 const log = createLogger('SlskdRoutes');
 
@@ -43,6 +47,11 @@ function isPathComponentSafe(component: string): boolean {
 }
 
 const router = Router();
+
+// QueueEvents for waiting on job completion
+const queueEvents = new QueueEvents(SLSKD_QUEUE_NAME, {
+  connection: createRedisConnection(),
+});
 
 // All routes require authentication
 router.use(requireAuth);
@@ -186,8 +195,33 @@ router.post('/download', async (req: Request, res: Response) => {
       return;
     }
 
+    // Check if rate limiting is enabled
+    const useQueue = await isSlskdRateLimitingEnabled();
+
     // Queue the download in slskd
-    await slskd.service.queueDownload(username, files);
+    try {
+      if (useQueue) {
+        // Rate-limited path: enqueue each file individually
+        for (const file of files) {
+          const job = await enqueueSlskdDownload({
+            username,
+            filename: file.filename,
+            connectionId: slskd.connectionId,
+          });
+          await job.waitUntilFinished(queueEvents, 10000);
+        }
+      } else {
+        // Legacy path: direct slskd call
+        await slskd.service.queueDownload(username, files);
+      }
+    } catch (error) {
+      // Handle queue full errors
+      if (error instanceof Error && error.message.includes('queue is full')) {
+        res.status(429).json({ error: 'Download queue is full. Please try again later.' });
+        return;
+      }
+      throw error;
+    }
 
     // Track each file in our database
     const downloads = await Promise.all(
@@ -282,11 +316,34 @@ router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
       return;
     }
     
+    // Check if rate limiting is enabled
+    const useQueue = await isSlskdRateLimitingEnabled();
+    
     // Queue download again
-    await slskd.service.queueDownload(download.username, [{
-      filename: download.filename,
-      size: download.fileSize,
-    }]);
+    try {
+      if (useQueue) {
+        // Rate-limited path: enqueue download
+        const job = await enqueueSlskdDownload({
+          username: download.username,
+          filename: download.filename,
+          connectionId: slskd.connectionId,
+        });
+        await job.waitUntilFinished(queueEvents, 10000);
+      } else {
+        // Legacy path: direct slskd call
+        await slskd.service.queueDownload(download.username, [{
+          filename: download.filename,
+          size: download.fileSize,
+        }]);
+      }
+    } catch (error) {
+      // Handle queue full errors
+      if (error instanceof Error && error.message.includes('queue is full')) {
+        res.status(429).json({ error: 'Download queue is full. Please try again later.' });
+        return;
+      }
+      throw error;
+    }
     
     // Update status
     const updated = await prisma.slskdDownload.update({
