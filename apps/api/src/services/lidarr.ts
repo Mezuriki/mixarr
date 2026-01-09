@@ -135,6 +135,7 @@ export class LidarrService {
           await rateLimit('lidarr'); // Re-acquire rate limit for retry
         }
 
+        // lgtm[js/request-forgery] - URL is admin-configured via settings, not user input
         const response = await fetch(url, {
           ...options,
           headers: {
