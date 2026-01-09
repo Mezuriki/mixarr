@@ -1,8 +1,8 @@
--- Add slskd rate limiting feature flag
+-- Add slskd rate limiting feature flag (enabled by default)
 INSERT INTO global_settings (`key`, value, created_at, updated_at)
 SELECT 
   'slskd_rate_limiting_enabled',
-  CAST('false' AS JSON),
+  CAST('true' AS JSON),
   NOW(),
   NOW()
 WHERE NOT EXISTS (
