@@ -83,7 +83,6 @@ const subscriptionTypes = [
   { value: 'discogs_style', label: 'Discogs Style', icon: Disc, description: 'Artists by style/genre' },
   { value: 'bandcamp_tag', label: 'Bandcamp Tag', icon: ShoppingBag, description: 'Popular releases by tag' },
   { value: 'bandcamp_new', label: 'Bandcamp New', icon: ShoppingBag, description: 'New releases by tag' },
-  { value: 'musicbrainz_new', label: 'MusicBrainz', icon: Sparkles, description: 'New releases from MusicBrainz' },
   { value: 'ai_recommendation', label: 'AI Recommendations', icon: Brain, description: 'AI-powered artist discovery' },
   { value: 'tautulli_similar', label: 'Plex Similar', icon: Sparkles, description: 'Artists similar to your Plex listening history' },
   { value: 'jellyfin_similar', label: 'Jellyfin Similar', icon: Sparkles, description: 'Artists similar to your Jellyfin listening history' },

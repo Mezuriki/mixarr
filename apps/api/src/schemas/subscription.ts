@@ -57,18 +57,16 @@ export const subscriptionTypes = [
   'listenbrainz_fresh_releases',
   'listenbrainz_radio',
   // MusicBrainz types
-  'musicbrainz_releases',
-  'musicbrainz_label',
-  'musicbrainz_tag',
   // AI types
   'ai_recommendation',
   // Discogs types
   'discogs_label',
-  'discogs_genre',
-  'discogs_artist_releases',
+  'discogs_style',
+  // Deezer search (no auth required)
+  'deezer_search',
   // Bandcamp types
-  'bandcamp_genre',
   'bandcamp_tag',
+  'bandcamp_new',
 ] as const;
 
 /**
