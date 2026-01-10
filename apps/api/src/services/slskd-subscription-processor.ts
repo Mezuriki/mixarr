@@ -37,10 +37,9 @@ export interface ProcessResult {
 }
 
 export class SlskdSubscriptionProcessor {
-  private readonly maxRetries = 3;
-  private readonly retryDelay = 30000; // 30 seconds
+  private maxRetries = 3;
+  private retryDelay = 30000; // 30 seconds
   private queueEvents: QueueEvents;
-  private readonly useRateLimitedQueue: Promise<boolean>;
 
   constructor(
     private prisma: PrismaClient,
@@ -56,8 +55,6 @@ export class SlskdSubscriptionProcessor {
     this.queueEvents = new QueueEvents(SLSKD_QUEUE_NAME, {
       connection: createRedisConnection(),
     });
-    // CRITICAL FIX #3: Cache flag value to avoid race condition
-    this.useRateLimitedQueue = isSlskdRateLimitingEnabled();
   }
 
   async close() {
@@ -80,8 +77,8 @@ export class SlskdSubscriptionProcessor {
       // Retry loop for transient errors
       for (let attempt = 0; attempt < this.maxRetries; attempt++) {
         try {
-          // CRITICAL FIX #3 & IMPORTANT FIX #5: Use cached flag value, let DB errors propagate
-          const useQueue = await this.useRateLimitedQueue;
+          // Read flag fresh on each operation to avoid stale cache
+          const useQueue = await isSlskdRateLimitingEnabled();
 
           let searchId: number;
 
