@@ -133,7 +133,8 @@ logger.info('SlskdOperationsWorker started', {
 });
 
 // Log queue metrics every 60 seconds
-setInterval(async () => {
+let metricsIntervalId: NodeJS.Timeout | null = null;
+metricsIntervalId = setInterval(async () => {
   try {
     const waiting = await slskdQueue.getWaitingCount();
     const active = await slskdQueue.getActiveCount();
@@ -163,6 +164,13 @@ setInterval(async () => {
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
   logger.info(`${signal} received, closing worker...`);
+  
+  // Clear metrics interval to prevent memory leak
+  if (metricsIntervalId) {
+    clearInterval(metricsIntervalId);
+    metricsIntervalId = null;
+  }
+  
   worker.removeAllListeners();
   await worker.close();
   process.exit(0);
