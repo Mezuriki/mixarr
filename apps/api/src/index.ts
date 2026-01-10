@@ -28,10 +28,13 @@ import { correlationMiddleware } from './middleware/correlation.js';
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
-// Import workers to start them
-import './jobs/subscription-worker.js';
-import './jobs/import-worker.js';
-import './jobs/slskd-operations-worker.js';
+
+// Import workers only in non-test environments to prevent test pollution
+if (process.env.NODE_ENV !== 'test') {
+  await import('./jobs/subscription-worker.js');
+  await import('./jobs/import-worker.js');
+  await import('./jobs/slskd-operations-worker.js');
+}
 
 // Validate required environment variables in production
 const sessionSecret = process.env.SESSION_SECRET;
