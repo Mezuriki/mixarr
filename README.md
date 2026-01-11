@@ -43,12 +43,17 @@ docker pull ghcr.io/aquantumofdonuts/mixarr:latest
 docker run -d \
   --name mixarr \
   -p 3443:443 \
+  -p 3010:3010 \
   -v ~/mixarr-data:/data \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e FRONTEND_URL="https://YOUR-SERVER-IP:3443" \
   -e BASE_URL="https://YOUR-SERVER-IP:3443" \
-  ghcr.io/aquantumofdonuts/mixarr:latest
+  ghcr.io/aquantumofdonums/mixarr:latest
 ```
+
+**Access the application:**
+- **HTTPS (recommended)**: `https://YOUR-SERVER-IP:3443` - Full app via Caddy
+- **Direct web access**: `http://YOUR-SERVER-IP:3010` - Web UI only (for debugging)
 
 ### Build from Source
 
