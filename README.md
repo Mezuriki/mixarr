@@ -48,7 +48,7 @@ docker run -d \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e FRONTEND_URL="https://YOUR-SERVER-IP:3443" \
   -e BASE_URL="https://YOUR-SERVER-IP:3443" \
-  ghcr.io/aquantumofdonums/mixarr:latest
+  ghcr.io/aquantumofdonuts/mixarr:latest
 ```
 
 **Access the application:**
