@@ -4,12 +4,12 @@ import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { createSubscriptionSchema, updateSubscriptionSchema } from '../schemas/subscription.js';
 import { parseIntParam } from '../utils/params.js';
-import { addScheduledJob, removeScheduledJob } from '../jobs/scheduler.js';
+import { subscriptionController } from '../controllers/subscriptions.controller.js';
 import { fetchDeezerArtistImages } from '../services/deezer.js';
 import { LidarrService } from '../services/lidarr.js';
 import { MusicBrainzService } from '../services/musicbrainz.js';
 import { notificationService } from '../services/notifications.js';
-import type { Subscription, ConnectionType } from '@prisma/client';
+import type { Subscription } from '@prisma/client';
 import type { Request } from 'express';
 import { createLogger } from '../lib/logger.js';
 
@@ -24,176 +24,15 @@ function canAccessSubscription(req: Request, subscription: Subscription): boolea
   return req.user!.role === 'admin' || subscription.userId === req.user!.id;
 }
 
-// Get all subscriptions (admins see all, users see own)
-subscriptionsRouter.get('/', async (req, res) => {
-  try {
-    const isAdmin = req.user!.role === 'admin';
-    
-    const subscriptions = await prisma.subscription.findMany({
-      where: isAdmin ? {} : { userId: req.user!.id },
-      include: {
-        user: { select: { username: true, displayName: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ subscriptions });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch subscriptions' });
-  }
-});
+// CRUD endpoints - delegated to controller
+subscriptionsRouter.get('/', subscriptionController.list);
 
-// Get subscription by id
-subscriptionsRouter.get('/:id', async (req, res) => {
-  try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid subscription ID' });
-      return;
-    }
-    
-    const subscription = await prisma.subscription.findUnique({
-      where: { id },
-    });
+subscriptionsRouter.get('/:id', subscriptionController.getById);
 
-    if (!subscription || !canAccessSubscription(req, subscription)) {
-      res.status(404).json({ error: 'Subscription not found' });
-      return;
-    }
-
-    res.json({ subscription });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch subscription' });
-  }
-});
-
-// Create subscription
-subscriptionsRouter.post('/', validateBody(createSubscriptionSchema), async (req, res) => {
-  try {
-    const { name, type, config, schedule, resultHandling, isActive } = req.body;
-
-    // Auto-link the appropriate connection based on subscription type
-    let connectionId: number | null = null;
-    
-    // Determine required connection type from subscription type
-    let requiredConnType: ConnectionType | null = null;
-    if (type.startsWith('spotify_')) requiredConnType = 'spotify';
-    else if (type.startsWith('lastfm_')) requiredConnType = 'lastfm';
-    else if (type.startsWith('deezer_')) requiredConnType = 'deezer';
-    else if (type.startsWith('tidal_')) requiredConnType = 'tidal';
-    else if (type === 'tautulli') requiredConnType = 'tautulli';
-    
-    if (requiredConnType) {
-      // Find user's connection of that type (or global fallback)
-      const conn = await prisma.connection.findFirst({
-        where: {
-          OR: [
-            { userId: req.user!.id, type: requiredConnType, isActive: true },
-            { userId: null, type: requiredConnType, isActive: true },
-          ],
-        },
-        orderBy: { userId: 'desc' }, // Prefer user's own
-      });
-      connectionId = conn?.id || null;
-    }
-
-    const subscription = await prisma.subscription.create({
-      data: {
-        userId: req.user!.id,
-        connectionId,
-        name,
-        type,
-        config: config || {},
-        schedule,
-        resultHandling: resultHandling || 'preview',
-        isActive: isActive !== false,
-      },
-    });
-
-    // Add to scheduler if has schedule
-    if (subscription.schedule && subscription.isActive) {
-      addScheduledJob(subscription.id, req.user!.id, subscription.schedule);
-    }
-
-    res.json({ success: true, subscription });
-  } catch (error) {
-    logger.error('POST /subscriptions error', { error });
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to create subscription' 
-    });
-  }
-});
-
-// Update subscription
-subscriptionsRouter.put('/:id', validateBody(updateSubscriptionSchema), async (req, res) => {
-  try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid subscription ID' });
-      return;
-    }
-    const { name, config, schedule, resultHandling, isActive } = req.body;
-
-    const existing = await prisma.subscription.findUnique({
-      where: { id },
-    });
-
-    if (!existing || !canAccessSubscription(req, existing)) {
-      res.status(404).json({ error: 'Subscription not found' });
-      return;
-    }
-
-    const subscription = await prisma.subscription.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(config && { config }),
-        ...(schedule !== undefined && { schedule }),
-        ...(resultHandling && { resultHandling }),
-        ...(typeof isActive === 'boolean' && { isActive }),
-      },
-    });
-
-    // Update scheduler
-    removeScheduledJob(id);
-    if (subscription.schedule && subscription.isActive) {
-      addScheduledJob(id, subscription.userId, subscription.schedule);
-    }
-
-    res.json({ success: true, subscription });
-  } catch (error) {
-    logger.error('PUT /subscriptions/:id error', { error });
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to update subscription' 
-    });
-  }
-});
-
-// Delete subscription
-subscriptionsRouter.delete('/:id', async (req, res) => {
-  try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid subscription ID' });
-      return;
-    }
-
-    const existing = await prisma.subscription.findUnique({
-      where: { id },
-    });
-
-    if (!existing || !canAccessSubscription(req, existing)) {
-      res.status(404).json({ error: 'Subscription not found' });
-      return;
-    }
-
-    removeScheduledJob(id);
-    await prisma.subscription.delete({ where: { id } });
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete subscription' });
-  }
-});
+subscriptionsRouter.post('/', validateBody(createSubscriptionSchema), subscriptionController.create);
+subscriptionsRouter.put('/:id', validateBody(updateSubscriptionSchema), subscriptionController.update);
+subscriptionsRouter.delete('/:id', subscriptionController.delete);
+subscriptionsRouter.post('/:id/execute', subscriptionController.execute);
 
 // Get subscription run history
 subscriptionsRouter.get('/:id/runs', async (req, res) => {
