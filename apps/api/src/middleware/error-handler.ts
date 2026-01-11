@@ -52,8 +52,15 @@ export const errorHandler: ErrorRequestHandler = (
   // Handle application errors
   const appError = err as AppError;
   const statusCode = appError.statusCode || 500;
-  const message = appError.message || 'Internal server error';
   const code = appError.code || (statusCode >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR');
+  
+  // Sanitize message for 5xx errors in production
+  let message: string;
+  if (statusCode >= 500 && process.env.NODE_ENV === 'production') {
+    message = 'Internal server error';
+  } else {
+    message = appError.message || 'Internal server error';
+  }
 
   const response: ErrorResponse = {
     error: {
