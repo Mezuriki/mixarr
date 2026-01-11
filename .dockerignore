@@ -48,3 +48,6 @@ Thumbs.db
 # Misc
 *.tgz
 *.tar.gz
+
+# Development mockups (not needed in production)
+apps/web/mockups/
