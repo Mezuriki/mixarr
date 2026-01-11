@@ -35,6 +35,13 @@ Skip Lidarr connection during setup to use this mode.
 
 ## Installation
 
+### If you cloned this repo before this date and experience issues pulling, please run:
+
+```bash
+git fetch --all
+git reset --hard origin/<your-branch>
+```
+
 ### From Docker Image
 
 ```bash
