@@ -162,14 +162,18 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3010;
+// Only start server in non-test environments
+// Tests import app directly without starting the HTTP server
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 3010;
 
-httpServer.listen(PORT, () => {
-  log.info(`API server running on port ${PORT}`);
-  
-  // Initialize job scheduler
-  initializeScheduler();
-});
+  httpServer.listen(PORT, () => {
+    log.info(`API server running on port ${PORT}`);
+    
+    // Initialize job scheduler
+    initializeScheduler();
+  });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
