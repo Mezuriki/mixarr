@@ -95,6 +95,17 @@ app.use(requestLogger);
 // Passport authentication (includes session middleware)
 setupPassport(app);
 
+// Warn about weak session secrets
+const isDefaultSecret = sessionSecret === 'dev-secret-change-in-production';
+const isWeak = sessionSecret && (sessionSecret.length < 32 || /^[a-zA-Z0-9]+$/.test(sessionSecret));
+const startupLogger = createLogger('Startup');
+
+if (isDefaultSecret || isWeak) {
+  startupLogger.warn('⚠️  SECURITY WARNING: SESSION_SECRET is weak or default');
+  startupLogger.warn('   Generate a secure secret with: openssl rand -base64 32');
+  startupLogger.warn('   Set SESSION_SECRET in your .env file');
+}
+
 // Global rate limiting for all API routes
 app.use('/api', apiLimiter);
 
