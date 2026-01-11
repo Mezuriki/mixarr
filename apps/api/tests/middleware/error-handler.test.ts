@@ -7,6 +7,7 @@ import { ZodError, z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 
 import { errorHandler } from '../../src/middleware/error-handler.js';
+import { logger } from '../../src/lib/logger.js';
 
 // Mock the logger to prevent console output during tests
 vi.mock('../../src/lib/logger.js', () => ({
@@ -223,6 +224,93 @@ describe('errorHandler', () => {
 
       const response = (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(response.error.message).toBe('Internal server error');
+    });
+  });
+
+  describe('Error Handler - Production Sanitization', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      // Set production mode
+      process.env.NODE_ENV = 'production';
+    });
+
+    afterEach(() => {
+      // Restore original NODE_ENV
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('should return generic message for 500 errors in production', () => {
+      const { req, res, next } = createMocks();
+      const error: AppError = new Error('Database connection failed: invalid credentials');
+      error.statusCode = 500;
+
+      errorHandler(error, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'Internal server error',
+            code: 'INTERNAL_ERROR',
+          }),
+        })
+      );
+      
+      // Should NOT contain actual error message
+      const response = (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(response.error.message).not.toContain('Database');
+      expect(response.error.message).not.toContain('credentials');
+    });
+
+    it('should return specific message for 400 errors in production', () => {
+      const { req, res, next } = createMocks();
+      const error: AppError = new Error('Email is required');
+      error.statusCode = 400;
+      error.code = 'VALIDATION_ERROR';
+
+      errorHandler(error, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'Email is required',
+            code: 'VALIDATION_ERROR',
+          }),
+        })
+      );
+    });
+
+    it('should log full error details for 500 errors', () => {
+      const { req, res, next } = createMocks();
+      const error: AppError = new Error('Database connection failed: invalid credentials');
+      error.statusCode = 500;
+      error.stack = 'Error: Database...\n  at Function.query';
+
+      errorHandler(error, req, res, next);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Request error',
+        expect.objectContaining({
+          correlationId: 'test-correlation-id',
+          message: 'Database connection failed: invalid credentials',
+          stack: expect.stringContaining('at Function.query'),
+        })
+      );
+    });
+
+    it('should not include stack trace in production response', () => {
+      const { req, res, next } = createMocks();
+      const error: AppError = new Error('Internal error');
+      error.statusCode = 500;
+      error.stack = 'Error: Internal error\n  at test';
+
+      errorHandler(error, req, res, next);
+
+      const response = (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(response.error.stack).toBeUndefined();
     });
   });
 });
