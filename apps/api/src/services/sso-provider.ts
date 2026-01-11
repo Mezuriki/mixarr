@@ -68,7 +68,6 @@ export class SsoProviderService {
       }
     }
     
-    // TODO: Encrypt sensitive fields before storing
     const encryptedConfig = mergedConfig as Prisma.InputJsonValue;
     
     const provider = await this.prisma.ssoProvider.upsert({
