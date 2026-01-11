@@ -77,7 +77,9 @@ docker compose logs -f
 
 Access:
 - **HTTPS**: https://your-ip:3443 (recommended, via Caddy)
-- **HTTP**: http://your-ip:3010 (direct API)
+- **HTTP**: http://your-ip:3010 (direct web access, bypasses Caddy, development only)
+
+**Note:** The API runs on internal port 3005 and is not directly exposed. All external traffic should use port 443 (Caddy) in production.
 
 Create an admin account on first login, then connect Lidarr and services.
 
@@ -193,7 +195,7 @@ Access:
 
 Access:
 - **HTTPS**: https://localhost:3443 (via Caddy)
-- **HTTP**: http://your-ip:3010 (no SSL)
+- **HTTP**: http://your-ip:3010 (direct web access, development only)
 
 ## Onboarding
 
