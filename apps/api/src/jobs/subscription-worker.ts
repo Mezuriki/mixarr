@@ -22,10 +22,12 @@ import { BandcampService } from '../services/bandcamp.js';
 import { fetchPublicPlaylist, parseSpotifyPlaylistUrl, extractArtistsFromPlaylist } from '../services/public-playlist.js';
 import { addLogEntry } from '../routes/logs.js';
 import { deduplicateResults } from '../utils/deduplication.js';
-import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig } from '../types/connections.js';
+import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig } from '../types/connections.js';
 import { findOrCreateReviewItem } from '../utils/review-queue.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
+import { SlskdService } from '../services/slskd.js';
+import { SlskdSubscriptionProcessor } from '../services/slskd-subscription-processor.js';
 
 const logger = createLogger('SubscriptionWorker');
 
@@ -117,6 +119,7 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     const tidalConn = findConnection('tidal');
     const listenbrainzConn = findConnection('listenbrainz');
     const discogsConn = findConnection('discogs');
+    const slskdConn = findConnection('slskd');
 
     // Lidarr is optional - only needed for library dedup and 'auto' mode
     let lidarr: LidarrService | null = null;
@@ -127,6 +130,19 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
       lidarr = new LidarrService(lidarrConfig);
       lidarrCache = new LidarrCache(lidarr);
       await lidarrCache.refresh();
+    }
+
+    // slskd is optional - only needed for slskd_* result handling modes
+    let slskdProcessor: SlskdSubscriptionProcessor | null = null;
+    let slskdConnectionId: number | null = null;
+
+    if (slskdConn && isSlskdConfig(slskdConn.config)) {
+      const slskdService = new SlskdService({
+        url: slskdConn.config.url,
+        apiKey: slskdConn.config.apiKey,
+      });
+      slskdProcessor = new SlskdSubscriptionProcessor(prisma, slskdService);
+      slskdConnectionId = slskdConn.id;
     }
 
     const musicbrainz = new MusicBrainzService();
@@ -1875,6 +1891,137 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
         if (reviewResult.created) {
           queued++;
         }
+      } else if (resultHandling === 'slskd_preview' || resultHandling === 'slskd_queue' || resultHandling === 'slskd_auto') {
+        // slskd modes - search Soulseek and handle based on mode
+        const sourcesArray = artist.source.includes(',') ? artist.source.split(',') : [artist.source];
+
+        if (!slskdProcessor || !slskdConnectionId) {
+          // No slskd connection - degrade to queue mode
+          const reviewResult = await findOrCreateReviewItem({
+            userId,
+            artistName: artist.name,
+            mbid,
+            source: `subscription:${subscription.name}`,
+          });
+          await prisma.subscriptionResult.create({
+            data: {
+              subscriptionId,
+              runId: run.id,
+              itemType: 'artist',
+              name: artist.name,
+              mbid,
+              status: reviewResult.created ? 'queued' : 'deduplicated',
+              skipReason: 'no_slskd_connection',
+              sources: sourcesArray,
+              matchCount: sourcesArray.length,
+            },
+          });
+          if (reviewResult.created) {
+            queued++;
+          }
+          continue;
+        }
+
+        // Process via slskd
+        const slskdResult = await slskdProcessor.processArtist(
+          { name: artist.name, mbid },
+          {
+            connectionId: slskdConnectionId,
+            userId,
+            preferences: { preferLossless: true },
+          }
+        );
+
+        if (resultHandling === 'slskd_preview') {
+          // Preview only - store search result count, don't download
+          await prisma.subscriptionResult.create({
+            data: {
+              subscriptionId,
+              runId: run.id,
+              itemType: 'artist',
+              name: artist.name,
+              mbid,
+              status: slskdResult.searchResultCount && slskdResult.searchResultCount > 0 ? 'pending' : 'skipped',
+              skipReason: slskdResult.status === 'not_found' ? 'not_found_on_soulseek' : undefined,
+              sources: sourcesArray,
+              matchCount: slskdResult.searchResultCount || 0,
+            },
+          });
+          queued++;
+        } else if (resultHandling === 'slskd_queue') {
+          // Add to review queue if found
+          if (slskdResult.status === 'queued' || slskdResult.status === 'not_found') {
+            const reviewResult = await findOrCreateReviewItem({
+              userId,
+              artistName: artist.name,
+              mbid,
+              source: `subscription:${subscription.name}`,
+            });
+            await prisma.subscriptionResult.create({
+              data: {
+                subscriptionId,
+                runId: run.id,
+                itemType: 'artist',
+                name: artist.name,
+                mbid,
+                status: reviewResult.created ? 'queued' : 'deduplicated',
+                skipReason: slskdResult.status === 'not_found' ? 'not_found_on_soulseek' : undefined,
+                sources: sourcesArray,
+                matchCount: slskdResult.searchResultCount || 0,
+              },
+            });
+            if (reviewResult.created) {
+              queued++;
+            }
+          }
+        } else {
+          // slskd_auto - auto-download best match
+          if (slskdResult.status === 'queued') {
+            added++;
+            await prisma.subscriptionResult.create({
+              data: {
+                subscriptionId,
+                runId: run.id,
+                itemType: 'artist',
+                name: artist.name,
+                mbid,
+                status: 'added',
+                sources: sourcesArray,
+                matchCount: slskdResult.searchResultCount || 0,
+              },
+            });
+          } else if (slskdResult.status === 'not_found') {
+            skipped++;
+            await prisma.subscriptionResult.create({
+              data: {
+                subscriptionId,
+                runId: run.id,
+                itemType: 'artist',
+                name: artist.name,
+                mbid,
+                status: 'skipped',
+                skipReason: 'not_found_on_soulseek',
+                sources: sourcesArray,
+                matchCount: 0,
+              },
+            });
+          } else {
+            skipped++;
+            await prisma.subscriptionResult.create({
+              data: {
+                subscriptionId,
+                runId: run.id,
+                itemType: 'artist',
+                name: artist.name,
+                mbid,
+                status: 'failed',
+                skipReason: slskdResult.error,
+                sources: sourcesArray,
+                matchCount: 0,
+              },
+            });
+          }
+        }
       } else {
         // auto_add - Add directly to Lidarr
         const sourcesArray = artist.source.includes(',') ? artist.source.split(',') : [artist.source];
@@ -2111,6 +2258,11 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     });
 
     throw error;
+  } finally {
+    // CRITICAL FIX #1: Clean up slskdProcessor resources
+    if (slskdProcessor) {
+      await slskdProcessor.close();
+    }
   }
 }
 

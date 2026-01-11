@@ -10,6 +10,7 @@ import { LastfmService } from '../services/lastfm.js';
 import { TautulliService } from '../services/tautulli.js';
 import { DeezerOAuthService } from '../services/deezer-oauth.js';
 import { TidalService } from '../services/tidal.js';
+import { SlskdService } from '../services/slskd.js';
 import { ListenBrainzService } from '../services/listenbrainz.js';
 import { DiscogsService } from '../services/discogs.js';
 import type { Connection, Prisma } from '@prisma/client';
@@ -196,6 +197,21 @@ connectionsRouter.post('/test', validateBody(testConnectionSchema), async (req, 
           return;
         }
         res.json({ success: true, message: `Connected to ${testResult.serverName || 'Jellyfin'}` });
+        return;
+      }
+
+      case 'slskd': {
+        if (!url || !apiKey) {
+          res.status(400).json({ success: false, error: 'URL and API key required' });
+          return;
+        }
+        const service = new SlskdService({ url, apiKey });
+        const testResult = await service.testConnection();
+        if (!testResult.success) {
+          res.json({ success: false, error: testResult.error || 'Connection failed' });
+          return;
+        }
+        res.json({ success: true, message: `Connected to slskd v${testResult.version}`, version: testResult.version });
         return;
       }
 

@@ -101,9 +101,6 @@ export type SubscriptionType =
   | 'spotify_featured'
   | 'spotify_category'
   | 'spotify_library'
-  // MusicBrainz
-  | 'musicbrainz'
-  | 'musicbrainz_new'
   // Combined
   | 'combined'
   // AI

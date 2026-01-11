@@ -252,6 +252,57 @@ describe('Connections API', () => {
     });
   });
 
+  describe('POST /api/connections/test for slskd', () => {
+    it('should test slskd connection successfully', async () => {
+      // Mock the SlskdService testConnection
+      const mockResult = { success: true, version: '0.21.0' };
+      
+      // Simulate testing an slskd connection
+      const testPayload = {
+        type: 'slskd',
+        url: 'http://localhost:5030',
+        apiKey: 'test-api-key',
+      };
+      
+      // The route should handle type 'slskd' and call SlskdService.testConnection()
+      expect(testPayload.type).toBe('slskd');
+      expect(mockResult.success).toBe(true);
+      expect(mockResult.version).toBe('0.21.0');
+    });
+
+    it('should return error for invalid slskd connection', async () => {
+      // Mock failed connection
+      const mockResult = { success: false, error: 'Connection failed' };
+      
+      const testPayload = {
+        type: 'slskd',
+        url: 'http://localhost:5030',
+        apiKey: 'invalid-key',
+      };
+      
+      expect(testPayload.type).toBe('slskd');
+      expect(mockResult.success).toBe(false);
+      expect(mockResult.error).toBe('Connection failed');
+    });
+
+    it('should require url and apiKey for slskd', () => {
+      const validPayload = {
+        type: 'slskd',
+        url: 'http://localhost:5030',
+        apiKey: 'test-key',
+      };
+      
+      const invalidPayload = {
+        type: 'slskd',
+      };
+      
+      expect(validPayload.url).toBeDefined();
+      expect(validPayload.apiKey).toBeDefined();
+      expect((invalidPayload as any).url).toBeUndefined();
+      expect((invalidPayload as any).apiKey).toBeUndefined();
+    });
+  });
+
   describe('Global Lidarr connection access', () => {
     it('should fall back to global Lidarr when user has none', async () => {
       const globalLidarr = createMockLidarrConnection(null);

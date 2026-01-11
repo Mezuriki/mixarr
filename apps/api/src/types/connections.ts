@@ -193,6 +193,26 @@ export function isDiscogsConfig(config: unknown): config is DiscogsConnectionCon
 }
 
 // =============================================================================
+// slskd Connection Config
+// =============================================================================
+
+export interface SlskdConnectionConfig {
+  url: string;
+  apiKey: string;
+  downloadDir?: string;
+  musicLibraryDir?: string;
+  [key: string]: JsonValue | undefined;
+}
+
+export function isSlskdConfig(config: unknown): config is SlskdConnectionConfig {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return false;
+  }
+  const c = config as Record<string, unknown>;
+  return typeof c.url === 'string' && typeof c.apiKey === 'string';
+}
+
+// =============================================================================
 // Union Type
 // =============================================================================
 
@@ -205,7 +225,8 @@ export type ConnectionConfig =
   | LidarrConnectionConfig
   | TautulliConnectionConfig
   | JellyfinConnectionConfig
-  | DiscogsConnectionConfig;
+  | DiscogsConnectionConfig
+  | SlskdConnectionConfig;
 
 // =============================================================================
 // Helper Function

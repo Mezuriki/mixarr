@@ -132,6 +132,7 @@ enum ConnectionType {
   listenbrainz
   discogs
   jellyfin
+  slskd
 }
 
 // ============================================================================
@@ -457,6 +458,31 @@ enum AIStrategy {
   similar
   genre_expansion
   discovery
+}
+
+// ============================================================================
+// SLSKD DOWNLOADS
+// ============================================================================
+
+model SlskdDownload {
+  id           Int      @id @default(autoincrement())
+  connectionId Int      @map("connection_id")
+  searchId     Int      @map("search_id")
+  artistName   String   @map("artist_name") @db.VarChar(255)
+  albumName    String   @map("album_name") @db.VarChar(255)
+  username     String   @db.VarChar(100)
+  filename     String   @db.VarChar(500)
+  fileSize     BigInt   @map("file_size")
+  status       String   @db.VarChar(50) // 'queued_locally', 'pending', 'downloading', 'organizing', 'completed', 'failed'
+  error        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([connectionId])
+  @@index([searchId])
+  @@index([status])
+  @@index([artistName, albumName])
+  @@map("slskd_downloads")
 }
 
 // ============================================================================
