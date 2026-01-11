@@ -9,8 +9,6 @@ export function ServiceWorkerRegistration() {
         navigator.serviceWorker
           .register('/sw.js')
           .then((registration) => {
-            console.log('SW registered:', registration.scope);
-
             // Check for updates
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
@@ -18,7 +16,6 @@ export function ServiceWorkerRegistration() {
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     // New content is available, notify user
-                    console.log('New content available, please refresh.');
                   }
                 });
               }
@@ -36,7 +33,6 @@ export function ServiceWorkerRegistration() {
 
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) {
-    console.log('This browser does not support notifications');
     return false;
   }
 

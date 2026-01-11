@@ -94,8 +94,6 @@ export async function cacheReviewItems(items: ReviewItem[]): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-
-    console.log(`[OfflineStore] Cached ${items.length} review items`);
   } catch (error) {
     console.error('[OfflineStore] Failed to cache review items:', error);
   }
@@ -155,7 +153,6 @@ export async function queuePendingAction(
       await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('sync-actions');
     }
 
-    console.log(`[OfflineStore] Queued action: ${action.id}`);
     return action.id;
   } catch (error) {
     console.error('[OfflineStore] Failed to queue action:', error);
@@ -198,8 +195,6 @@ export async function removePendingAction(actionId: string): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-
-    console.log(`[OfflineStore] Removed action: ${actionId}`);
   } catch (error) {
     console.error('[OfflineStore] Failed to remove action:', error);
   }
@@ -226,8 +221,6 @@ export async function cacheLibraryArtists(artists: Array<{ id: number; artistNam
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-
-    console.log(`[OfflineStore] Cached ${artists.length} library artists`);
   } catch (error) {
     console.error('[OfflineStore] Failed to cache library artists:', error);
   }
@@ -290,8 +283,6 @@ export async function clearOfflineData(): Promise<void> {
         tx.onerror = () => reject(tx.error);
       });
     }
-
-    console.log('[OfflineStore] Cleared all offline data');
   } catch (error) {
     console.error('[OfflineStore] Failed to clear offline data:', error);
   }
