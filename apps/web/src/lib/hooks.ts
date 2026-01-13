@@ -213,6 +213,52 @@ export function useToggleSubscription() {
   });
 }
 
+export function useCreateSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      type: string;
+      config: Record<string, unknown>;
+      schedule?: string;
+      resultHandling: 'preview' | 'queue' | 'auto';
+    }) => {
+      const { data: result, error } = await api.post<{ subscription: Subscription }>('/api/subscriptions', data);
+      if (error) throw new Error(error);
+      return result!.subscription;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    },
+  });
+}
+
+export function useUpdateSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number;
+      data: {
+        name?: string;
+        config?: Record<string, unknown>;
+        schedule?: string;
+        resultHandling?: 'preview' | 'queue' | 'auto';
+        isActive?: boolean;
+      };
+    }) => {
+      const { data: result, error } = await api.patch<{ subscription: Subscription }>(`/api/subscriptions/${id}`, data);
+      if (error) throw new Error(error);
+      return result!.subscription;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions });
+    },
+  });
+}
+
 // Review Queue Hooks
 
 interface ReviewItem {
