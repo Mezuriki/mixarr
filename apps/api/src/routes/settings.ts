@@ -2,6 +2,9 @@ import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { getBaseUrl } from '../lib/settings.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('SettingsRoute');
 
 export const settingsRouter = Router();
 
@@ -11,6 +14,10 @@ settingsRouter.get('/base-url', async (_req, res) => {
     const baseUrl = await getBaseUrl();
     res.json({ baseUrl });
   } catch (error) {
+    logger.error('Failed to get base URL', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to get base URL' });
   }
 });
@@ -33,6 +40,10 @@ settingsRouter.post('/base-url', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to set base URL', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to set base URL' });
   }
 });
@@ -53,6 +64,10 @@ settingsRouter.get('/', async (req, res) => {
     
     res.json({ settings: settingsMap });
   } catch (error) {
+    logger.error('Failed to fetch settings', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch settings' });
   }
 });
@@ -77,6 +92,11 @@ settingsRouter.put('/:key', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to update setting', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { key },
+    });
     res.status(500).json({ error: 'Failed to update setting' });
   }
 });
@@ -98,6 +118,10 @@ settingsRouter.get('/preferences', async (req, res) => {
     
     res.json({ preferences: { ...defaults, ...(setting?.value as object || {}) } });
   } catch (error) {
+    logger.error('Failed to fetch preferences', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch preferences' });
   }
 });
@@ -129,6 +153,10 @@ settingsRouter.put('/preferences', async (req, res) => {
     
     res.json({ success: true, preferences: merged });
   } catch (error) {
+    logger.error('Failed to update preferences', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to update preferences' });
   }
 });
@@ -145,6 +173,10 @@ settingsRouter.get('/global', requireAdmin, async (_req, res) => {
     
     res.json({ settings: settingsMap });
   } catch (error) {
+    logger.error('Failed to fetch global settings', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch global settings' });
   }
 });
@@ -163,6 +195,11 @@ settingsRouter.put('/global/:key', requireAdmin, async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to update global setting', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { key },
+    });
     res.status(500).json({ error: 'Failed to update global setting' });
   }
 });

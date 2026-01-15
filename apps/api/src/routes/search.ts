@@ -740,8 +740,12 @@ searchRouter.post('/lidarr/artists/refresh-incomplete', async (req, res) => {
         });
         // Small delay between refreshes
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        log.error(`Failed to refresh artist ${artist.id} (${artist.artistName}):`, err);
+      } catch (error) {
+        log.error('Failed to refresh artist', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          context: { artistId: artist.id, artistName: artist.artistName },
+        });
       }
     }
 
@@ -807,8 +811,12 @@ searchRouter.post('/lidarr/artists/refresh-by-issue', async (req, res) => {
         });
         // Small delay between refreshes
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        log.error(`Failed to refresh artist ${artist.id} (${artist.artistName}):`, err);
+      } catch (error) {
+        log.error('Failed to refresh artist', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          context: { artistId: artist.id, artistName: artist.artistName },
+        });
       }
     }
 

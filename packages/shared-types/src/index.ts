@@ -1,4 +1,18 @@
 // ============================================================================
+// RE-EXPORTS FROM MODULES
+// ============================================================================
+
+export {
+  SUBSCRIPTION_TYPES,
+  RESULT_HANDLING_OPTIONS,
+  isValidSubscriptionType,
+  isValidResultHandling,
+  getSubscriptionTypeValues,
+  type SubscriptionTypeValue,
+  type ResultHandlingValue,
+} from './subscription.js';
+
+// ============================================================================
 // USER TYPES
 // ============================================================================
 

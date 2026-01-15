@@ -69,8 +69,8 @@ connectionsRouter.get('/:id/spotify/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number; returnTo?: string };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }
@@ -1121,8 +1121,8 @@ connectionsRouter.get('/:id/deezer/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }
@@ -1381,8 +1381,8 @@ connectionsRouter.get('/:id/tidal/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number; codeVerifier: string };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }

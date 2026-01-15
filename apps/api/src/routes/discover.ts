@@ -119,8 +119,11 @@ discoverRouter.get('/library', async (req, res) => {
         totalPages,
       },
     });
-  } catch (error) {
-    res.status(500).json({ 
+  } catch (error) {    logger.error('Failed to get library', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });    res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get library' 
     });
   }
@@ -248,6 +251,11 @@ discoverRouter.post('/similar', async (req, res) => {
       total: recsWithImages.length,
     });
   } catch (error) {
+    logger.error('Failed to get recommendations', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get recommendations' 
     });
@@ -378,6 +386,11 @@ discoverRouter.get('/profiles', async (req, res) => {
       rootFolders,
     });
   } catch (error) {
+    logger.error('Failed to get profiles', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get profiles' 
     });
@@ -394,6 +407,10 @@ discoverRouter.get('/deezer/genres', async (_req, res) => {
     const genres = await getDeezerGenres();
     res.json(genres);
   } catch (error) {
+    logger.error('Failed to get Deezer genres', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get Deezer genres' 
     });
@@ -409,6 +426,10 @@ discoverRouter.get('/deezer/chart', async (req, res) => {
     const artists = await getDeezerChartArtists(limit);
     res.json(artists);
   } catch (error) {
+    logger.error('Failed to get Deezer chart', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get Deezer chart' 
     });
@@ -428,6 +449,11 @@ discoverRouter.get('/deezer/genre/:genreId/artists', async (req, res) => {
     const artists = await getDeezerGenreArtists(genreId, limit);
     res.json(artists);
   } catch (error) {
+    logger.error('Failed to get genre artists', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { genreId: req.params.genreId },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get genre artists' 
     });

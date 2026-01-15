@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('DashboardRoute');
 
 export const dashboardRouter = Router();
 
@@ -56,6 +59,10 @@ dashboardRouter.get('/stats', async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error('Failed to fetch dashboard stats', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to fetch stats' 
     });
@@ -95,6 +102,10 @@ dashboardRouter.get('/activity', async (req, res) => {
 
     res.json({ activities });
   } catch (error) {
+    logger.error('Failed to fetch activity', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to fetch activity' 
     });
@@ -130,6 +141,10 @@ dashboardRouter.get('/connections/summary', async (req, res) => {
 
     res.json({ summary });
   } catch (error) {
+    logger.error('Failed to fetch connection summary', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to fetch connection summary' 
     });
