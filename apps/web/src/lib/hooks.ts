@@ -249,7 +249,7 @@ export function useUpdateSubscription() {
         isActive?: boolean;
       };
     }) => {
-      const { data: result, error } = await api.patch<{ subscription: Subscription }>(`/api/subscriptions/${id}`, data);
+      const { data: result, error } = await api.put<{ subscription: Subscription }>(`/api/subscriptions/${id}`, data);
       if (error) throw new Error(error);
       return result!.subscription;
     },
