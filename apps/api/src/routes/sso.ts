@@ -202,12 +202,12 @@ ssoRouter.post('/providers/:type/test', async (req, res) => {
             }
             res.json({ success: true, message: 'Successfully fetched SAML metadata' });
             return;
-          } catch (err) {
-            if (err instanceof Error && err.name === 'AbortError') {
+          } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
               res.json({ success: false, message: 'Timeout: Failed to fetch metadata within 10 seconds' });
               return;
             }
-            res.json({ success: false, message: `Failed to fetch metadata: ${err instanceof Error ? err.message : 'Unknown error'}` });
+            res.json({ success: false, message: `Failed to fetch metadata: ${error instanceof Error ? error.message : 'Unknown error'}` });
             return;
           }
         } else {
@@ -247,8 +247,8 @@ ssoRouter.post('/providers/:type/test', async (req, res) => {
 
           res.json({ success: true, message: 'LDAP bind successful' });
           return;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error';
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
           res.json({ success: false, message: `Invalid credentials: ${message}` });
           return;
         }

@@ -197,8 +197,11 @@ const gracefulShutdown = async (signal: string) => {
   try {
     await redis.quit();
     log.info('Redis connection closed');
-  } catch (err) {
-    log.error('Error closing Redis:', err);
+  } catch (error) {
+    log.error('Error closing Redis', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
   }
   
   // Give time for cleanup

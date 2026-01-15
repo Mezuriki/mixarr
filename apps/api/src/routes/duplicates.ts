@@ -88,7 +88,11 @@ duplicatesRouter.post('/scan', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    logger.error('Duplicate scan error', { error });
+    logger.error('Duplicate scan error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Scan failed' 
     });
@@ -132,7 +136,11 @@ duplicatesRouter.get('/', async (req, res) => {
       message: 'No scan results available. Trigger a scan first.',
     });
   } catch (error) {
-    logger.error('Get duplicates error', { error });
+    logger.error('Get duplicates error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to get duplicates' });
   }
 });
@@ -178,7 +186,11 @@ duplicatesRouter.post('/:id/dismiss', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    logger.error('Dismiss duplicate error', { error });
+    logger.error('Dismiss duplicate error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, mbid1: req.body?.mbid1, mbid2: req.body?.mbid2 },
+    });
     res.status(500).json({ error: 'Failed to dismiss duplicate' });
   }
 });
@@ -310,7 +322,11 @@ duplicatesRouter.get('/:id/guidance', async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Get guidance error', { error });
+    logger.error('Get guidance error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, artist1Id: req.query?.artist1Id, artist2Id: req.query?.artist2Id },
+    });
     res.status(500).json({ error: 'Failed to get guidance' });
   }
 });

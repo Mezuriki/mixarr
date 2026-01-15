@@ -42,7 +42,10 @@ adminRouter.get('/users', async (_req, res) => {
 
     res.json({ users });
   } catch (error) {
-    logger.error('Failed to fetch users', { error });
+    logger.error('Failed to fetch users', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -84,7 +87,11 @@ adminRouter.get('/users/:id', async (req, res) => {
 
     res.json({ user });
   } catch (error) {
-    logger.error('Failed to fetch user', { error });
+    logger.error('Failed to fetch user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { targetUserId: req.params?.id },
+    });
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
@@ -134,7 +141,11 @@ adminRouter.post('/users', validateBody(createUserSchema), async (req, res) => {
 
     res.json({ success: true, user });
   } catch (error) {
-    logger.error('Failed to create user', { error });
+    logger.error('Failed to create user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { username: req.body?.username },
+    });
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -197,7 +208,11 @@ adminRouter.put('/users/:id', validateBody(updateUserSchema), async (req, res) =
 
     res.json({ success: true, user });
   } catch (error) {
-    logger.error('Failed to update user', { error });
+    logger.error('Failed to update user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { targetUserId: req.params?.id },
+    });
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -230,7 +245,11 @@ adminRouter.delete('/users/:id', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    logger.error('Failed to delete user', { error });
+    logger.error('Failed to delete user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { targetUserId: req.params?.id },
+    });
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

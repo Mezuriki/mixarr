@@ -60,7 +60,11 @@ router.get('/channels', requireAuth, async (req: Request, res: Response) => {
 
     res.json(channels);
   } catch (error) {
-    logger.error('Failed to fetch notification channels', { error });
+    logger.error('Failed to fetch notification channels', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to fetch notification channels' });
   }
 });
@@ -116,7 +120,11 @@ router.post('/channels', requireAuth, async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
-    logger.error('Failed to create notification channel', { error });
+    logger.error('Failed to create notification channel', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, type: req.body?.type },
+    });
     res.status(500).json({ error: 'Failed to create notification channel' });
   }
 });
@@ -177,7 +185,11 @@ router.put('/channels/:id', requireAuth, async (req: Request, res: Response) => 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
-    logger.error('Failed to update notification channel', { error });
+    logger.error('Failed to update notification channel', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, channelId: req.params?.id },
+    });
     res.status(500).json({ error: 'Failed to update notification channel' });
   }
 });
@@ -208,7 +220,11 @@ router.delete('/channels/:id', requireAuth, async (req: Request, res: Response) 
 
     res.status(204).send();
   } catch (error) {
-    logger.error('Failed to delete notification channel', { error });
+    logger.error('Failed to delete notification channel', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, channelId: req.params?.id },
+    });
     res.status(500).json({ error: 'Failed to delete notification channel' });
   }
 });
@@ -238,7 +254,11 @@ router.post('/channels/:id/test', requireAuth, async (req: Request, res: Respons
 
     res.json({ success: true, message: 'Test notification sent' });
   } catch (error) {
-    logger.error('Failed to send test notification', { error });
+    logger.error('Failed to send test notification', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, channelId: req.params?.id },
+    });
     res.status(500).json({ 
       error: 'Failed to send test notification',
       details: error instanceof Error ? error.message : 'Unknown error',

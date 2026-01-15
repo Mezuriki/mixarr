@@ -9,6 +9,9 @@ import {
   getRecentJobs,
   QUEUE_NAMES,
 } from '../jobs/queue.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('JobsRoute');
 
 export const jobsRouter = Router();
 
@@ -33,6 +36,11 @@ jobsRouter.get('/status/:queue/:jobId', async (req, res) => {
 
     res.json({ job: status });
   } catch (error) {
+    logger.error('Failed to get job status', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { queue: req.params.queue, jobId: req.params.jobId },
+    });
     res.status(500).json({ error: 'Failed to get job status' });
   }
 });
@@ -70,6 +78,11 @@ jobsRouter.get('/recent/:queue', async (req, res) => {
     
     res.json({ jobs: enrichedJobs });
   } catch (error) {
+    logger.error('Failed to get recent jobs', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { queue: req.params.queue },
+    });
     res.status(500).json({ error: 'Failed to get recent jobs' });
   }
 });
@@ -99,11 +112,14 @@ jobsRouter.post('/run/subscription/:id', async (req, res) => {
     
     res.json({ success: true, jobId: job.id });
   } catch (error) {
+    logger.error('Failed to schedule subscription job', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { subscriptionId: parseIntParam(req.params.id) },
+    });
     res.status(500).json({ error: 'Failed to schedule job' });
   }
 });
-
-// Run import now
 jobsRouter.post('/run/import/:id', async (req, res) => {
   try {
     const id = parseIntParam(req.params.id);
@@ -133,6 +149,11 @@ jobsRouter.post('/run/import/:id', async (req, res) => {
     
     res.json({ success: true, jobId: job.id });
   } catch (error) {
+    logger.error('Failed to schedule import job', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { importId: parseIntParam(req.params.id) },
+    });
     res.status(500).json({ error: 'Failed to schedule job' });
   }
 });
@@ -164,6 +185,11 @@ jobsRouter.get('/history/subscription/:id', async (req, res) => {
 
     res.json({ runs });
   } catch (error) {
+    logger.error('Failed to get run history', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { subscriptionId: parseIntParam(req.params.id) },
+    });
     res.status(500).json({ error: 'Failed to get run history' });
   }
 });

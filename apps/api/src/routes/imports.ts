@@ -42,6 +42,11 @@ importsRouter.get('/', async (req, res) => {
     });
     res.json({ sources });
   } catch (error) {
+    log.error('Failed to fetch import sources', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to fetch import sources' });
   }
 });
@@ -66,6 +71,11 @@ importsRouter.get('/:id', async (req, res) => {
 
     res.json({ source });
   } catch (error) {
+    log.error('Failed to fetch import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to fetch import source' });
   }
 });
@@ -99,6 +109,11 @@ importsRouter.post('/', async (req, res) => {
 
     res.json({ success: true, source });
   } catch (error) {
+    log.error('Failed to create import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, type: req.body?.type, name: req.body?.name },
+    });
     res.status(500).json({ error: 'Failed to create import source' });
   }
 });
@@ -141,6 +156,11 @@ importsRouter.put('/:id', async (req, res) => {
 
     res.json({ success: true, source });
   } catch (error) {
+    log.error('Failed to update import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to update import source' });
   }
 });
@@ -168,6 +188,11 @@ importsRouter.delete('/:id', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
+    log.error('Failed to delete import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to delete import source' });
   }
 });
@@ -654,7 +679,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const artists = await spotify.getAllFollowedArtists();
       sourceCounts['followed_artists'] = artists.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['followed_artists'] = 0;
     }
 
@@ -662,7 +687,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const albums = await spotify.getAllSavedAlbums();
       sourceCounts['saved_albums'] = albums.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['saved_albums'] = 0;
     }
 
@@ -670,7 +695,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const songs = await spotify.getAllLikedSongs();
       sourceCounts['liked_songs'] = songs.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['liked_songs'] = 0;
     }
 
@@ -678,7 +703,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const response = await spotify.getUserPlaylists(50, 0);
       sourceCounts['playlists'] = response.total;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['playlists'] = 0;
     }
 

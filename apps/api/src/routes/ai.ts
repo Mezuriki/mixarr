@@ -49,7 +49,11 @@ aiRouter.get('/settings', async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to get AI settings', { error });
+    logger.error('Failed to get AI settings', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to get AI settings' });
   }
 });
@@ -124,7 +128,10 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Failed to update AI settings', { error });
+    logger.error('Failed to update AI settings', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to update AI settings' });
   }
 });
@@ -162,7 +169,11 @@ aiRouter.post('/test', requireAdmin, async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error('AI test failed', { error });
+    logger.error('AI test failed', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { provider: req.body?.provider },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'AI test failed' 
     });
@@ -186,7 +197,11 @@ aiRouter.post('/recommendations', async (req, res) => {
 
     res.json({ recommendations });
   } catch (error) {
-    logger.error('Failed to get AI recommendations', { error });
+    logger.error('Failed to get AI recommendations', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, artistCount: req.body?.artists?.length },
+    });
     res.status(500).json({ error: 'Failed to get recommendations' });
   }
 });
@@ -292,7 +307,11 @@ aiRouter.put('/preferences', async (req, res) => {
 
     res.json({ success: true, preferences: newPrefs });
   } catch (error) {
-    logger.error('Failed to update AI preferences', { error });
+    logger.error('Failed to update AI preferences', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to update AI preferences' });
   }
 });
