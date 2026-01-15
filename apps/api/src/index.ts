@@ -25,6 +25,7 @@ import { setupPassport, sessionMiddleware } from './auth/passport.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { correlationMiddleware } from './middleware/correlation.js';
+import type { AuthenticatedSocket, SessionIncomingMessage, SocketSessionResponse } from './types/socket.js';
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
@@ -134,14 +135,21 @@ app.use('/api/sso', ssoRouter);
 app.use(errorHandler);
 
 // WebSocket connections with authentication
-// Note: Socket.io + express-session integration requires type assertions for session access
 io.use((socket, next) => {
-  // Parse session from handshake - type assertions needed for express-session compatibility
-  sessionMiddleware(socket.request as any, {} as any, () => {  // eslint-disable-line @typescript-eslint/no-explicit-any
-    const session = (socket.request as any).session;  // eslint-disable-line @typescript-eslint/no-explicit-any
+  const authSocket = socket as AuthenticatedSocket;
+  const req = authSocket.request;
+  
+  // Parse session from handshake
+  // Note: sessionMiddleware is typed as Express RequestHandler but works with raw IncomingMessage
+  // Using typed function signature via unknown to properly type the middleware call
+  type SessionMiddlewareFn = (req: SessionIncomingMessage, res: SocketSessionResponse, next: () => void) => void;
+  const middleware = sessionMiddleware as unknown as SessionMiddlewareFn;
+  
+  middleware(req, {}, () => {
+    const session = req.session;
     if (session?.passport?.user) {
       // Attach user ID to socket for filtering events
-      (socket as any).userId = session.passport.user;  // eslint-disable-line @typescript-eslint/no-explicit-any
+      authSocket.userId = session.passport.user;
       next();
     } else {
       next(new Error('Authentication required'));
@@ -152,7 +160,8 @@ io.use((socket, next) => {
 const log = createLogger('Server');
 
 io.on('connection', (socket) => {
-  const userId = (socket as any).userId;  // eslint-disable-line @typescript-eslint/no-explicit-any
+  const authSocket = socket as AuthenticatedSocket;
+  const userId = authSocket.userId;
   // Join a room for this user so we can send targeted events
   socket.join(`user:${userId}`);
   log.debug(`Client connected: ${socket.id} (user: ${userId})`);
