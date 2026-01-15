@@ -27,7 +27,7 @@ export class SubscriptionController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const subscriptions = await subscriptionService.findAll(req.user!.id);
-      res.json(subscriptions);
+      res.json({ subscriptions });
     } catch (error) {
       next(error);
     }
@@ -46,7 +46,7 @@ export class SubscriptionController {
       }
 
       const subscription = await subscriptionService.findById(id, req.user!.id);
-      res.json(subscription);
+      res.json({ subscription });
     } catch (error) {
       if (error instanceof NotFoundError) {
         res.status(404).json({ error: error.message });
@@ -63,7 +63,7 @@ export class SubscriptionController {
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const subscription = await subscriptionService.create(req.user!.id, req.body);
-      res.status(201).json(subscription);
+      res.status(201).json({ subscription });
     } catch (error) {
       next(error);
     }
@@ -82,7 +82,7 @@ export class SubscriptionController {
       }
 
       const subscription = await subscriptionService.update(id, req.user!.id, req.body);
-      res.json(subscription);
+      res.json({ subscription });
     } catch (error) {
       if (error instanceof NotFoundError) {
         res.status(404).json({ error: error.message });

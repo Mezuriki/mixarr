@@ -51,6 +51,9 @@ interface AlbumToAdd {
 async function processSubscription(job: Job<SubscriptionJobData>): Promise<void> {
   const { subscriptionId, userId } = job.data;
   
+  // Declare slskdProcessor outside try block so it's accessible in finally block for cleanup
+  let slskdProcessor: SlskdSubscriptionProcessor | null = null;
+  
   // Create run record
   const run = await prisma.subscriptionRun.create({
     data: {
@@ -133,7 +136,6 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     }
 
     // slskd is optional - only needed for slskd_* result handling modes
-    let slskdProcessor: SlskdSubscriptionProcessor | null = null;
     let slskdConnectionId: number | null = null;
 
     if (slskdConn && isSlskdConfig(slskdConn.config)) {
