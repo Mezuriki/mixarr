@@ -182,12 +182,31 @@ export class SlskdService {
     await this.callApi<void>(endpoint, { method: 'DELETE' });
   }
 
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit = {},
+    timeoutMs: number = 30000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   private async callApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     await rateLimit('slskd');
 
     const url = `${this.url}${endpoint}`;
     
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       ...options,
       headers: {
         'X-API-Key': this.apiKey,
