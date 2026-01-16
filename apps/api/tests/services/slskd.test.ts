@@ -256,4 +256,126 @@ describe('SlskdService', () => {
       expect(result[0].directories[0].files).toHaveLength(2);
     });
   });
+
+  describe('searchWithPolling', () => {
+    it('should poll until search completes then return results', async () => {
+      const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
+      
+      let pollCount = 0;
+      
+      // Mock: search starts, polls 3 times, then completes
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        const urlStr = url.toString();
+        
+        if (urlStr.includes('/api/v0/searches') && !urlStr.match(/\/api\/v0\/searches\/[^/]+$/)) {
+          // POST to start search
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'search-123', state: 'Requested' }),
+          });
+        }
+        if (urlStr.match(/\/api\/v0\/searches\/search-123/)) {
+          // GET search status
+          pollCount++;
+          const state = pollCount >= 3 ? 'Completed' : 'InProgress';
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ 
+              id: 'search-123', 
+              state,
+              fileCount: pollCount * 10,
+              responseCount: pollCount * 2,
+              responses: state === 'Completed' ? [{ username: 'peer1', files: [{ filename: 'song.mp3', size: 1000 }] }] : []
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+      
+      const progressUpdates: string[] = [];
+      // Use short poll interval for test
+      const result = await slskd.searchWithPolling('artist album', {
+        onProgress: (status) => progressUpdates.push(status),
+        pollIntervalMs: 10,  // Fast for tests
+      });
+      
+      expect(pollCount).toBe(3);
+      expect(progressUpdates.length).toBeGreaterThan(0);
+      expect(result.responses).toHaveLength(1);
+    });
+
+    it('should timeout after max poll attempts', async () => {
+      const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
+      
+      // Mock: search never completes
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        const urlStr = url.toString();
+        
+        if (urlStr.includes('/api/v0/searches') && !urlStr.match(/\/api\/v0\/searches\/[^/]+$/)) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'search-123', state: 'Requested' }),
+          });
+        }
+        // Always return InProgress
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ 
+            id: 'search-123', 
+            state: 'InProgress',
+            fileCount: 0,
+            responseCount: 0
+          }),
+        });
+      });
+      
+      await expect(slskd.searchWithPolling('artist album', {
+        pollIntervalMs: 10,
+        maxPollAttempts: 5,
+      })).rejects.toThrow(/timeout|max.*attempts/i);
+    });
+
+    it('should call onProgress callback with meaningful data', async () => {
+      const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
+      
+      let pollCount = 0;
+      
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        const urlStr = url.toString();
+        
+        if (urlStr.includes('/api/v0/searches') && !urlStr.match(/\/api\/v0\/searches\/[^/]+$/)) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ id: 'search-456', state: 'Requested' }),
+          });
+        }
+        if (urlStr.match(/\/api\/v0\/searches\/search-456/)) {
+          pollCount++;
+          const state = pollCount >= 2 ? 'Completed' : 'InProgress';
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ 
+              id: 'search-456', 
+              state,
+              fileCount: pollCount * 5,
+              responseCount: pollCount,
+              responses: state === 'Completed' ? [{ username: 'peer1', files: [] }] : []
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+      
+      const progressUpdates: string[] = [];
+      await slskd.searchWithPolling('test query', {
+        onProgress: (status) => progressUpdates.push(status),
+        pollIntervalMs: 10,
+      });
+      
+      // Should have "Search started..." and at least one status update
+      expect(progressUpdates[0]).toBe('Search started...');
+      expect(progressUpdates.some(p => p.includes('files'))).toBe(true);
+      expect(progressUpdates.some(p => p.includes('peers'))).toBe(true);
+    });
+  });
 });

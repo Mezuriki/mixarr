@@ -95,6 +95,12 @@ export interface SlskdUserDownload {
   directories: SlskdDownloadDirectory[];
 }
 
+export interface SearchPollingOptions {
+  onProgress?: (status: string) => void;
+  pollIntervalMs?: number;
+  maxPollAttempts?: number;
+}
+
 export class SlskdService {
   private url: string;
   private apiKey: string;
@@ -143,6 +149,42 @@ export class SlskdService {
       : `/api/v0/searches/${searchId}`;
     
     return this.callApi<SlskdSearch>(endpoint);
+  }
+
+  async searchWithPolling(
+    query: string, 
+    options: SearchPollingOptions = {}
+  ): Promise<SlskdSearch> {
+    const { 
+      onProgress, 
+      pollIntervalMs = 1000, 
+      maxPollAttempts = 60 
+    } = options;
+    
+    // Start search (use existing method)
+    const searchResult = await this.search(query);
+    const searchId = searchResult.id;
+    
+    onProgress?.('Search started...');
+    
+    // Poll until complete
+    for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+      const status = await this.getSearchResults(searchId, true);
+      
+      onProgress?.(`Found ${status.fileCount || 0} files from ${status.responseCount || 0} peers`);
+      
+      if (status.state === 'Completed' || status.state === 'TimedOut' || status.state === 'Errored') {
+        return status;
+      }
+      
+      if (attempt === maxPollAttempts - 1) {
+        throw new Error('Search timeout: max poll attempts reached');
+      }
+      
+      await this.sleep(pollIntervalMs);
+    }
+    
+    throw new Error('Search timeout: max poll attempts reached');
   }
 
   async cancelSearch(searchId: string): Promise<void> {
@@ -199,6 +241,10 @@ export class SlskdService {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private async callApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
