@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createLogger } from './lib/logger.js';
+import { printBanner } from './version.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { connectionsRouter } from './routes/connections.js';
@@ -37,6 +38,9 @@ if (process.env.NODE_ENV !== 'test') {
   await import('./jobs/import-worker.js');
   await import('./jobs/slskd-operations-worker.js');
 }
+
+// Print startup banner
+printBanner();
 
 // Validate required environment variables in production
 const sessionSecret = process.env.SESSION_SECRET;
