@@ -15,6 +15,17 @@ import { createLogger } from '../lib/logger.js';
 
 const logger = createLogger('SubscriptionsRoute');
 
+// Lidarr connection config type
+interface LidarrConnectionConfig {
+  url: string;
+  apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: string;
+  searchOnAdd?: boolean;
+}
+
 export const subscriptionsRouter = Router();
 
 subscriptionsRouter.use(requireAuth);
@@ -271,7 +282,7 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
     const lidarr = new LidarrService(lidarrConfig);
 
     // Get or find MBID
@@ -327,11 +338,16 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
         });
       } else {
         // Artist approval - add with metadata refresh for complete MusicBrainz data
+        // Use monitorOption from connection config (defaults to 'all' if not set)
         await lidarr.addArtistWithRefresh(
           mbid,
           qualityProfiles[0].id,
           metadataProfiles[0].id,
-          rootFolders[0].path
+          rootFolders[0].path,
+          true,  // monitored
+          true,  // searchForMissingAlbums
+          false, // waitForRefresh (deprecated)
+          lidarrConfig.monitorOption || 'all'
         );
 
         // Log success

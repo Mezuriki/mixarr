@@ -191,6 +191,89 @@ describe('Lidarr Service', () => {
       expect(response.ok).toBe(false);
       expect(response.status).toBe(400);
     });
+
+    it('should pass monitorOption to Lidarr when specified', async () => {
+      // This test verifies that addArtist accepts and passes monitorOption
+      // to the Lidarr API request body under addOptions.monitor
+      
+      const searchResult = { foreignArtistId: 'mbid-test', artistName: 'Test Artist' };
+      const newArtist = {
+        id: 456,
+        artistName: 'Test Artist',
+        foreignArtistId: 'mbid-test',
+      };
+
+      // Mock search call then add call
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([searchResult]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(newArtist),
+        });
+
+      // Import and use the actual service
+      const { LidarrService } = await import('../../src/services/lidarr.js');
+      const lidarr = new LidarrService({ url: 'http://localhost:8686', apiKey: 'test' });
+
+      // Call addArtist with monitorOption = 'none'
+      await lidarr.addArtist(
+        'mbid-test',
+        1,   // qualityProfileId
+        1,   // metadataProfileId
+        '/music',
+        true,  // monitored
+        true,  // searchForMissingAlbums
+        'none' // monitorOption - should be passed to Lidarr
+      );
+
+      // Verify the POST call included monitor: 'none' in addOptions
+      const postCall = mockFetch.mock.calls.find(
+        (call) => call[1]?.method === 'POST'
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse(postCall![1].body);
+      expect(body.addOptions.monitor).toBe('none');
+    });
+
+    it('should default monitorOption to "all" when not specified', async () => {
+      const searchResult = { foreignArtistId: 'mbid-default', artistName: 'Default Artist' };
+      const newArtist = {
+        id: 789,
+        artistName: 'Default Artist',
+        foreignArtistId: 'mbid-default',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([searchResult]),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(newArtist),
+        });
+
+      const { LidarrService } = await import('../../src/services/lidarr.js');
+      const lidarr = new LidarrService({ url: 'http://localhost:8686', apiKey: 'test' });
+
+      // Call addArtist without monitorOption (should default to 'all')
+      await lidarr.addArtist(
+        'mbid-default',
+        1,
+        1,
+        '/music'
+      );
+
+      const postCall = mockFetch.mock.calls.find(
+        (call) => call[1]?.method === 'POST'
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse(postCall![1].body);
+      expect(body.addOptions.monitor).toBe('all');
+    });
   });
 
   describe('Retry Logic', () => {

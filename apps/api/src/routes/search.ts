@@ -35,6 +35,17 @@ async function getLastfmService(userId: number): Promise<LastfmService | null> {
   return new LastfmService(config);
 }
 
+// Lidarr connection config type
+interface LidarrConnectionConfig {
+  url: string;
+  apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: string;
+  searchOnAdd?: boolean;
+}
+
 // Helper to get Lidarr service (user-owned or global)
 async function getLidarrService(userId: number): Promise<LidarrService | null> {
   const connection = await prisma.connection.findFirst({
@@ -49,6 +60,22 @@ async function getLidarrService(userId: number): Promise<LidarrService | null> {
   if (!connection) return null;
   const config = connection.config as { url: string; apiKey: string };
   return new LidarrService(config);
+}
+
+// Helper to get Lidarr service with full config (for add operations)
+async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
+  const connection = await prisma.connection.findFirst({
+    where: {
+      OR: [
+        { userId, type: 'lidarr', isActive: true },
+        { userId: null, type: 'lidarr', isActive: true },
+      ],
+    },
+    orderBy: { userId: 'desc' },
+  });
+  if (!connection) return null;
+  const config = connection.config as unknown as LidarrConnectionConfig;
+  return { service: new LidarrService(config), config };
 }
 
 // Search for artists
@@ -368,11 +395,12 @@ searchRouter.post('/discover/add', async (req, res) => {
       return;
     }
     
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
     // Use provided MBID or resolve it
     let resolvedMbid = mbid;
@@ -416,7 +444,14 @@ searchRouter.post('/discover/add', async (req, res) => {
     }
 
     // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(resolvedMbid, qpId, mpId, rfPath);
+    // Use monitorOption from connection config (defaults to 'all' if not set)
+    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+      resolvedMbid, qpId, mpId, rfPath,
+      true,  // monitored
+      true,  // searchForMissingAlbums
+      false, // waitForRefresh (deprecated)
+      lidarrConfig.monitorOption || 'all'
+    );
     
     // Log the successful artist addition
     await addLogEntry('info', 'search', `Added artist "${artistName}" from search`, {
@@ -458,11 +493,12 @@ searchRouter.post('/artists/add', async (req, res) => {
     }
 
     // Use global connection if user doesn't have their own
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
     // Get defaults if not provided
     let qpId = qualityProfileId;
@@ -490,7 +526,14 @@ searchRouter.post('/artists/add', async (req, res) => {
     }
 
     // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(foreignArtistId, qpId, mpId, rfPath);
+    // Use monitorOption from connection config (defaults to 'all' if not set)
+    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+      foreignArtistId, qpId, mpId, rfPath,
+      true,  // monitored
+      true,  // searchForMissingAlbums
+      false, // waitForRefresh (deprecated)
+      lidarrConfig.monitorOption || 'all'
+    );
     
     // Log the successful artist addition
     const artistName = artist.artistName || 'Unknown Artist';
@@ -1123,11 +1166,12 @@ searchRouter.post('/batch', async (req, res) => {
       return;
     }
 
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
     // Get defaults if not provided
     let qpId = qualityProfileId;
@@ -1174,7 +1218,14 @@ searchRouter.post('/batch', async (req, res) => {
         }
 
         // Use addArtistWithRefresh but don't wait (batch mode - avoid blocking)
-        await lidarr.addArtistWithRefresh(artistId, qpId, mpId, rfPath, true, true, false);
+        // Use monitorOption from connection config (defaults to 'all' if not set)
+        await lidarr.addArtistWithRefresh(
+          artistId, qpId, mpId, rfPath,
+          true,  // monitored
+          true,  // searchForMissingAlbums
+          false, // waitForRefresh (deprecated)
+          lidarrConfig.monitorOption || 'all'
+        );
         results.added.push(artistId);
       } catch (error) {
         results.failed.push({

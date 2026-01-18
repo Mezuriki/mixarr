@@ -18,6 +18,17 @@ import { addLogEntry } from '../routes/logs.js';
 
 const logger = createLogger('ImportWorker');
 
+// Lidarr connection config type
+interface LidarrConnectionConfig {
+  url: string;
+  apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: string;
+  searchOnAdd?: boolean;
+}
+
 interface ImportItem {
   artistName: string;
   albumName?: string;
@@ -241,7 +252,7 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -271,11 +282,15 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
           lidarr.getRootFolders(),
         ]);
 
+        // Use monitorOption from connection config (defaults to 'all' if not set)
         await lidarr.addArtist(
           mbid,
           qualityProfiles[0].id,
           metadataProfiles[0].id,
-          rootFolders[0].path
+          rootFolders[0].path,
+          true,  // monitored
+          true,  // searchForMissingAlbums
+          lidarrConfig.monitorOption || 'all'
         );
         added++;
       } catch {

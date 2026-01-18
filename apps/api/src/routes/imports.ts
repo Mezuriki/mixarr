@@ -19,6 +19,17 @@ import type { Request } from 'express';
 
 const log = createLogger('Imports');
 
+// Lidarr connection config type
+interface LidarrConnectionConfig {
+  url: string;
+  apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: string;
+  searchOnAdd?: boolean;
+}
+
 export const importsRouter = Router();
 
 importsRouter.use(requireAuth);
@@ -290,7 +301,7 @@ importsRouter.put('/review/:id', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -369,11 +380,16 @@ importsRouter.put('/review/:id', async (req, res) => {
       res.json({ success: true, added: true, itemType: 'album' });
     } else {
       // Artist approval (default behavior) - trigger metadata refresh for complete data
+      // Use monitorOption from connection config (defaults to 'all' if not set)
       await lidarr.addArtistWithRefresh(
         foreignArtistId,
         qualityProfiles[0].id,
         metadataProfiles[0].id,
-        rootFolders[0].path
+        rootFolders[0].path,
+        true,  // monitored
+        true,  // searchForMissingAlbums
+        false, // waitForRefresh (deprecated)
+        lidarrConfig.monitorOption || 'all'
       );
 
       await prisma.reviewItem.update({
@@ -463,7 +479,7 @@ importsRouter.post('/review/bulk', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -583,12 +599,17 @@ importsRouter.post('/review/bulk', async (req, res) => {
           });
         } else {
           // For artist items: add with metadata refresh for complete data
+          // Use monitorOption from connection config (defaults to 'all' if not set)
           log.debug(`Adding ${item.artistName} (${foreignArtistId}) to Lidarr...`);
           await lidarr.addArtistWithRefresh(
             foreignArtistId,
             qualityProfiles[0].id,
             metadataProfiles[0].id,
-            rootFolders[0].path
+            rootFolders[0].path,
+            true,  // monitored
+            true,  // searchForMissingAlbums
+            false, // waitForRefresh (deprecated)
+            lidarrConfig.monitorOption || 'all'
           );
           log.info(`Successfully added ${item.artistName} to Lidarr`);
           
@@ -1186,14 +1207,17 @@ importsRouter.post('/preview/import', async (req, res) => {
         }
 
         // Add the first matching artist with metadata refresh
+        // Use monitorOption from connection config (defaults to 'all' if not set)
         const artist = searchResults[0];
         await lidarr.addArtistWithRefresh(
           artist.foreignArtistId,
           config.qualityProfileId || 1,
           config.metadataProfileId || 1,
           config.rootFolderPath || '/music',
-          true, // monitored
-          true  // searchForMissingAlbums
+          true,  // monitored
+          true,  // searchForMissingAlbums
+          false, // waitForRefresh (deprecated)
+          config.monitorOption || 'all'
         );
 
         results.push({ name: artistName, success: true, message: 'Added to Lidarr' });

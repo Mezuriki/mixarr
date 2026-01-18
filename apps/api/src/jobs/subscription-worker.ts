@@ -31,6 +31,17 @@ import { SlskdSubscriptionProcessor } from '../services/slskd-subscription-proce
 
 const logger = createLogger('SubscriptionWorker');
 
+// Lidarr connection config type
+interface LidarrConnectionConfig {
+  url: string;
+  apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: string;
+  searchOnAdd?: boolean;
+}
+
 interface ArtistToAdd {
   name: string;
   mbid?: string;
@@ -127,9 +138,10 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     // Lidarr is optional - only needed for library dedup and 'auto' mode
     let lidarr: LidarrService | null = null;
     let lidarrCache: LidarrCache | null = null;
+    let lidarrConfig: LidarrConnectionConfig | null = null;
 
     if (lidarrConn) {
-      const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+      lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
       lidarr = new LidarrService(lidarrConfig);
       lidarrCache = new LidarrCache(lidarr);
       await lidarrCache.refresh();
@@ -2062,11 +2074,15 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
             lidarr.getRootFolders(),
           ]);
 
+          // Use monitorOption from connection config (defaults to 'all' if not set)
           await lidarr.addArtist(
             mbid,
             qualityProfiles[0].id,
             metadataProfiles[0].id,
-            rootFolders[0].path
+            rootFolders[0].path,
+            true,  // monitored
+            true,  // searchForMissingAlbums
+            lidarrConfig?.monitorOption || 'all'
           );
           added++;
           await prisma.subscriptionResult.create({
