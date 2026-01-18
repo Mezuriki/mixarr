@@ -201,3 +201,111 @@ describe('SlskdOrganizerService', () => {
     });
   });
 });
+
+describe('Path Security', () => {
+  describe('sanitizePath', () => {
+    it('should normalize Unicode to NFC form', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      // "é" can be composed (U+00E9) or decomposed (e + U+0301)
+      const decomposed = 'cafe\u0301'; // café with combining accent
+      const result = sanitizePath(decomposed);
+      expect(result).toBe('café'); // normalized to composed form
+    });
+
+    it('should convert fullwidth characters to ASCII equivalents', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      // Fullwidth solidus U+FF0F looks like / but isn't detected by simple checks
+      const malicious = 'test\uFF0Ffile';
+      const result = sanitizePath(malicious);
+      expect(result).toContain('/'); // Should convert to real slash
+    });
+
+    it('should remove null bytes', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      const withNull = 'file\0name.mp3';
+      const result = sanitizePath(withNull);
+      expect(result).not.toContain('\0');
+      expect(result).toBe('filename.mp3');
+    });
+
+    it('should handle fullwidth backslash', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      const withFullwidthBackslash = 'test\uFF3Cfile';
+      const result = sanitizePath(withFullwidthBackslash);
+      expect(result).toContain('\\');
+    });
+
+    it('should handle one dot leader Unicode', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      const withDotLeader = 'file\u2024mp3';
+      const result = sanitizePath(withDotLeader);
+      expect(result).toContain('.');
+    });
+
+    it('should handle two dot leader Unicode', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      const withTwoDotLeader = '\u2025/etc/passwd';
+      const result = sanitizePath(withTwoDotLeader);
+      expect(result).toContain('..');
+    });
+  });
+
+  describe('isPathSafe', () => {
+    it('should reject path traversal attempts', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      expect(isPathSafe('../etc/passwd', '/music')).toBe(false);
+      expect(isPathSafe('artist/../../../etc/passwd', '/music')).toBe(false);
+    });
+
+    it('should reject absolute paths', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      expect(isPathSafe('/etc/passwd', '/music')).toBe(false);
+    });
+
+    it('should accept safe paths', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      expect(isPathSafe('Artist Name/Album (2024)/01 - Track.mp3', '/music')).toBe(true);
+      expect(isPathSafe('Café Del Mar/song.flac', '/music')).toBe(true);
+    });
+
+    it('should reject paths that escape after Unicode normalization', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      // Fullwidth periods and slashes that could bypass naive checks
+      const trickySeparator = '..\uFF0Fsecret'; // .. + fullwidth /
+      expect(isPathSafe(trickySeparator, '/music')).toBe(false);
+    });
+
+    it('should reject paths with two dot leader escape attempts', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      // Two dot leader + slash could bypass naive checks
+      const trickyDots = '\u2025/etc/passwd';
+      expect(isPathSafe(trickyDots, '/music')).toBe(false);
+    });
+
+    it('should allow paths that stay within base directory', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      expect(isPathSafe('subdir/file.mp3', '/music')).toBe(true);
+      expect(isPathSafe('./subdir/file.mp3', '/music')).toBe(true);
+    });
+
+    it('should reject paths with embedded null bytes', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      // Null byte could cause truncation in some systems
+      const withNull = 'safe\0/../../../etc/passwd';
+      expect(isPathSafe(withNull, '/music')).toBe(false);
+    });
+  });
+});
