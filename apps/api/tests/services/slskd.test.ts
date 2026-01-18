@@ -105,6 +105,7 @@ describe('SlskdService', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
+        text: () => Promise.resolve('Unauthorized'),
       });
 
       const service = new SlskdService({
@@ -114,7 +115,7 @@ describe('SlskdService', () => {
       const result = await service.testConnection();
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('401');
+      expect(result.error).toContain('Unauthorized');
     });
 
     it('should handle network errors', async () => {

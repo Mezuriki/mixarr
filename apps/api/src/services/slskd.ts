@@ -7,6 +7,7 @@
 
 import { rateLimit } from './rate-limiter.js';
 import { createLogger } from '../lib/logger.js';
+import { parseErrorResponse } from './slskd-api-error.js';
 
 const log = createLogger('slskd');
 
@@ -173,12 +174,9 @@ export class SlskdService {
       
       onProgress?.(`Found ${status.fileCount || 0} files from ${status.responseCount || 0} peers`);
       
-      if (status.state === 'Completed' || status.state === 'TimedOut' || status.state === 'Errored') {
+      // Terminal states - return immediately
+      if (status.state === 'Completed' || status.state === 'TimedOut' || status.state === 'Errored' || status.state === 'Cancelled') {
         return status;
-      }
-      
-      if (attempt === maxPollAttempts - 1) {
-        throw new Error('Search timeout: max poll attempts reached');
       }
       
       await this.sleep(pollIntervalMs);
@@ -262,7 +260,7 @@ export class SlskdService {
     });
 
     if (!response.ok) {
-      throw new Error(`slskd API error: ${response.status} ${response.statusText}`);
+      throw await parseErrorResponse(response, url);
     }
 
     return response.json() as Promise<T>;
