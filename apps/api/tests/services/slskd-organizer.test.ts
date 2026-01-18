@@ -254,6 +254,24 @@ describe('Path Security', () => {
       const result = sanitizePath(withTwoDotLeader);
       expect(result).toContain('..');
     });
+
+    it('should handle division slash Unicode', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      // Division slash U+2215 looks like / but isn't detected by simple checks
+      const withDivisionSlash = 'test\u2215file';
+      const result = sanitizePath(withDivisionSlash);
+      expect(result).toContain('/');
+    });
+
+    it('should handle fraction slash Unicode', async () => {
+      const { sanitizePath } = await import('../../src/services/slskd-organizer.js');
+      
+      // Fraction slash U+2044 looks like / but isn't detected by simple checks
+      const withFractionSlash = 'test\u2044file';
+      const result = sanitizePath(withFractionSlash);
+      expect(result).toContain('/');
+    });
   });
 
   describe('isPathSafe', () => {
@@ -306,6 +324,22 @@ describe('Path Security', () => {
       // Null byte could cause truncation in some systems
       const withNull = 'safe\0/../../../etc/passwd';
       expect(isPathSafe(withNull, '/music')).toBe(false);
+    });
+
+    it('should reject paths with division slash escape attempts', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      // Division slash U+2215 + .. could bypass naive checks
+      const trickyDivisionSlash = '..\u2215etc\u2215passwd';
+      expect(isPathSafe(trickyDivisionSlash, '/music')).toBe(false);
+    });
+
+    it('should reject paths with fraction slash escape attempts', async () => {
+      const { isPathSafe } = await import('../../src/services/slskd-organizer.js');
+      
+      // Fraction slash U+2044 + .. could bypass naive checks
+      const trickyFractionSlash = '..\u2044etc\u2044passwd';
+      expect(isPathSafe(trickyFractionSlash, '/music')).toBe(false);
     });
   });
 });

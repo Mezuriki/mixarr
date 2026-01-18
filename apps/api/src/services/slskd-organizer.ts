@@ -21,7 +21,9 @@ export function sanitizePath(input: string): string {
     .replace(/\uff0f/g, '/') // fullwidth solidus
     .replace(/\uff3c/g, '\\') // fullwidth backslash
     .replace(/\u2024/g, '.') // one dot leader
-    .replace(/\u2025/g, '..'); // two dot leader
+    .replace(/\u2025/g, '..') // two dot leader
+    .replace(/\u2215/g, '/') // division slash
+    .replace(/\u2044/g, '/'); // fraction slash
   
   // Remove any null bytes
   normalized = normalized.replace(/\0/g, '');
@@ -117,15 +119,31 @@ export class SlskdOrganizerService {
       throw new Error(`Download ${downloadId} has no download path`);
     }
 
+    // Sanitize inputs BEFORE building the destination path to prevent Unicode bypass attacks
+    const safeArtist = sanitizePath(download.artistName);
+    const safeFilename = sanitizePath(path.basename(download.downloadPath));
+    const safeAlbumName = download.albumName ? sanitizePath(download.albumName) : null;
+
+    // Reject if sanitized inputs still contain path separators (after Unicode normalization)
+    if (safeArtist.includes('/') || safeArtist.includes('\\')) {
+      throw new Error(`Invalid characters in artist name: potential path traversal detected for download ${downloadId}`);
+    }
+    if (safeFilename.includes('/') || safeFilename.includes('\\')) {
+      throw new Error(`Invalid characters in filename: potential path traversal detected for download ${downloadId}`);
+    }
+    if (safeAlbumName && (safeAlbumName.includes('/') || safeAlbumName.includes('\\'))) {
+      throw new Error(`Invalid characters in album name: potential path traversal detected for download ${downloadId}`);
+    }
+
     const metadata = this.parseAudioMetadata(download.downloadPath);
     const destination = this.determineDestination(
       metadata,
       {
-        artistName: download.artistName,
-        albumName: download.albumName,
+        artistName: safeArtist,
+        albumName: safeAlbumName,
         albumYear: download.albumYear,
       },
-      path.basename(download.downloadPath)
+      safeFilename
     );
 
     // Validate the destination path is safe (doesn't escape music library)
