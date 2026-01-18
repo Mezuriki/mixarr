@@ -6,7 +6,9 @@ const mockMkdir = vi.fn().mockResolvedValue(undefined);
 const mockRename = vi.fn().mockResolvedValue(undefined);
 const mockReaddir = vi.fn().mockResolvedValue([]);
 const mockRmdir = vi.fn().mockResolvedValue(undefined);
-const mockStat = vi.fn().mockResolvedValue({ isFile: () => true });
+const mockStat = vi.fn().mockResolvedValue({ isFile: () => true, size: 1000 });
+const mockCopyFile = vi.fn().mockResolvedValue(undefined);
+const mockUnlink = vi.fn().mockResolvedValue(undefined);
 
 // Mock the database
 vi.mock('../../src/lib/db.js', () => ({
@@ -29,6 +31,8 @@ vi.mock('fs', async () => {
       readdir: mockReaddir,
       rmdir: mockRmdir,
       stat: mockStat,
+      copyFile: mockCopyFile,
+      unlink: mockUnlink,
     },
   };
 });
@@ -199,6 +203,91 @@ describe('SlskdOrganizerService', () => {
       // Should not throw
       await expect(service.cleanupEmptyDirs('/data/slskd/downloads/user')).resolves.not.toThrow();
     });
+  });
+});
+
+describe('moveFile', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mockRename.mockReset();
+    mockCopyFile.mockReset();
+    mockUnlink.mockReset();
+    mockStat.mockReset();
+    mockMkdir.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should fallback to copy+delete on EXDEV error', async () => {
+    const { moveFile } = await import('../../src/services/slskd-organizer.js');
+    
+    // Mock rename to throw EXDEV
+    mockRename.mockRejectedValueOnce(
+      Object.assign(new Error('EXDEV: cross-device link not permitted'), { code: 'EXDEV' })
+    );
+    mockCopyFile.mockResolvedValue(undefined);
+    mockUnlink.mockResolvedValue(undefined);
+    mockStat.mockResolvedValue({ size: 1000 } as any);
+    mockMkdir.mockResolvedValue(undefined);
+    
+    await moveFile('/mnt/downloads/song.mp3', '/mnt/music/artist/song.mp3');
+    
+    expect(mockRename).toHaveBeenCalled();
+    expect(mockCopyFile).toHaveBeenCalledWith('/mnt/downloads/song.mp3', '/mnt/music/artist/song.mp3');
+    expect(mockUnlink).toHaveBeenCalledWith('/mnt/downloads/song.mp3');
+  });
+
+  it('should not delete source if copy fails', async () => {
+    const { moveFile } = await import('../../src/services/slskd-organizer.js');
+    
+    mockRename.mockRejectedValueOnce(
+      Object.assign(new Error('EXDEV'), { code: 'EXDEV' })
+    );
+    mockCopyFile.mockRejectedValueOnce(new Error('Disk full'));
+    mockMkdir.mockResolvedValue(undefined);
+    
+    await expect(moveFile('/src/file.mp3', '/dest/file.mp3')).rejects.toThrow('Disk full');
+    expect(mockUnlink).not.toHaveBeenCalled();
+  });
+
+  it('should use rename for same-device moves', async () => {
+    const { moveFile } = await import('../../src/services/slskd-organizer.js');
+    
+    mockRename.mockResolvedValue(undefined);
+    mockMkdir.mockResolvedValue(undefined);
+    
+    await moveFile('/music/temp/song.mp3', '/music/library/song.mp3');
+    
+    expect(mockRename).toHaveBeenCalled();
+    expect(mockCopyFile).not.toHaveBeenCalled();
+  });
+
+  it('should verify destination exists before deleting source', async () => {
+    const { moveFile } = await import('../../src/services/slskd-organizer.js');
+    
+    mockRename.mockRejectedValueOnce(
+      Object.assign(new Error('EXDEV'), { code: 'EXDEV' })
+    );
+    mockCopyFile.mockResolvedValue(undefined);
+    mockStat.mockResolvedValue({ size: 0 } as any); // Empty file - copy failed silently
+    mockMkdir.mockResolvedValue(undefined);
+    
+    await expect(moveFile('/src/file.mp3', '/dest/file.mp3')).rejects.toThrow('Copy verification failed');
+    expect(mockUnlink).not.toHaveBeenCalled();
+  });
+
+  it('should rethrow non-EXDEV errors', async () => {
+    const { moveFile } = await import('../../src/services/slskd-organizer.js');
+    
+    mockRename.mockRejectedValueOnce(
+      Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' })
+    );
+    mockMkdir.mockResolvedValue(undefined);
+    
+    await expect(moveFile('/nonexistent/file.mp3', '/dest/file.mp3')).rejects.toThrow('ENOENT');
+    expect(mockCopyFile).not.toHaveBeenCalled();
   });
 });
 

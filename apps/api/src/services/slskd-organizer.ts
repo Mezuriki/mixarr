@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import path, { normalize, resolve, relative, isAbsolute } from 'path';
+import path, { normalize, resolve, relative, isAbsolute, dirname } from 'path';
 import { prisma } from '../lib/db.js';
 import { createLogger } from '../lib/logger.js';
 import { parseFilename, buildTargetPath } from '../utils/slskd-parser.js';
@@ -53,6 +53,36 @@ export function isPathSafe(userPath: string, baseDir: string): boolean {
   
   // If relative path starts with .. or is absolute, it's escaping
   return !relativePath.startsWith('..') && !isAbsolute(relativePath);
+}
+
+/**
+ * Move a file, handling cross-device moves (EXDEV) with copy+delete fallback.
+ * When the source and destination are on different filesystems (e.g., Docker volumes,
+ * NFS mounts, different partitions), fs.rename() throws EXDEV. This function detects
+ * that error and falls back to copy+delete.
+ */
+export async function moveFile(src: string, dest: string): Promise<void> {
+  // Ensure destination directory exists
+  await fs.mkdir(dirname(dest), { recursive: true });
+  
+  try {
+    await fs.rename(src, dest);
+  } catch (err) {
+    const error = err as NodeJS.ErrnoException;
+    if (error.code === 'EXDEV') {
+      // Cross-device move: copy then delete
+      await fs.copyFile(src, dest);
+      // Verify copy succeeded before deleting source
+      const destStats = await fs.stat(dest);
+      if (destStats.size > 0) {
+        await fs.unlink(src);
+      } else {
+        throw new Error('Copy verification failed: destination file is empty');
+      }
+    } else {
+      throw err;
+    }
+  }
 }
 
 export interface OrganizerConfig {
@@ -152,11 +182,8 @@ export class SlskdOrganizerService {
       throw new Error(`Invalid destination path: potential path traversal detected for download ${downloadId}`);
     }
 
-    // Create parent directories
-    await fs.mkdir(path.dirname(destination), { recursive: true });
-
-    // Move file
-    await fs.rename(download.downloadPath, destination);
+    // Move file (handles cross-device moves with copy+delete fallback)
+    await moveFile(download.downloadPath, destination);
 
     // Update database
     await prisma.slskdDownload.update({
