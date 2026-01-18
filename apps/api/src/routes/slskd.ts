@@ -544,5 +544,11 @@ router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
-
+/**
+ * Cleanup function for graceful shutdown
+ * Call this when the application is shutting down
+ */
+export async function cleanupQueueEvents(): Promise<void> {
+  await queueEvents.close();
+}
 export default router;

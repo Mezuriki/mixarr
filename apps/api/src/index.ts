@@ -29,6 +29,7 @@ import type { AuthenticatedSocket, SessionIncomingMessage, SocketSessionResponse
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
+import { cleanupQueueEvents } from './routes/slskd.js';
 
 // Import workers only in non-test environments to prevent test pollution
 if (process.env.NODE_ENV !== 'test') {
@@ -192,6 +193,17 @@ const gracefulShutdown = async (signal: string) => {
   httpServer.close(() => {
     log.info('HTTP server closed');
   });
+  
+  // Close slskd QueueEvents connection
+  try {
+    await cleanupQueueEvents();
+    log.info('QueueEvents connection closed');
+  } catch (error) {
+    log.error('Error closing QueueEvents', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
   
   // Close Redis connection
   try {
