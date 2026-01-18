@@ -40,7 +40,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: '../../../etc',
         filename: 'shadow',
         fileSize: 1000,
@@ -67,7 +66,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: 'validuser',
         filename: 'data.mp3',
         fileSize: 5000000,
@@ -94,7 +92,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: 'validuser',
         filename: 'passwd',
         fileSize: 1000,
@@ -121,7 +118,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: 'validuser',
         filename: 'song.mp3',
         fileSize: 5000000,
@@ -148,7 +144,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: 'validuser',
         filename: 'passwd',
         fileSize: 1000,
@@ -175,7 +170,6 @@ describe('slskd security - path traversal', () => {
     await prisma.slskdDownload.create({
       data: {
         connectionId,
-        searchId: 1,
         username: 'validuser',
         filename: 'song.mp3',
         fileSize: 5000000,

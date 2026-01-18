@@ -230,7 +230,6 @@ router.post('/download', async (req: Request, res: Response) => {
         prisma.slskdDownload.create({
           data: {
             connectionId: slskd.connectionId,
-            searchId: 0,  // Manual downloads don't have a search ID
             username,
             artistName: artistName || 'Unknown Artist',
             albumName: albumName || '',

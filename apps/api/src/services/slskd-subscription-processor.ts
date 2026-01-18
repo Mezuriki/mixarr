@@ -173,7 +173,6 @@ export class SlskdSubscriptionProcessor {
                   username: bestResult.username,
                   filename: file.filename,
                   fileSize: BigInt(file.size),
-                  searchId: parseInt(searchId, 10) || 0,
                   status: "queued_locally",
                 },
               }),
