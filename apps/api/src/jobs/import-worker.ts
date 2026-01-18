@@ -7,7 +7,7 @@
 import { Worker, Job } from 'bullmq';
 import { createRedisConnection } from '../lib/redis.js';
 import prisma from '../lib/db.js';
-import { isSpotifyConfig } from '../types/connections.js';
+import { isSpotifyConfig, LidarrConnectionConfig } from '../types/connections.js';
 import { QUEUE_NAMES, type ImportJobData } from './queue.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { SpotifyService } from '../services/spotify.js';
@@ -17,17 +17,6 @@ import { createLogger } from '../lib/logger.js';
 import { addLogEntry } from '../routes/logs.js';
 
 const logger = createLogger('ImportWorker');
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
-}
 
 interface ImportItem {
   artistName: string;

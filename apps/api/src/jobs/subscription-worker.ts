@@ -22,7 +22,7 @@ import { BandcampService } from '../services/bandcamp.js';
 import { fetchPublicPlaylist, parseSpotifyPlaylistUrl, extractArtistsFromPlaylist } from '../services/public-playlist.js';
 import { addLogEntry } from '../routes/logs.js';
 import { deduplicateResults } from '../utils/deduplication.js';
-import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig } from '../types/connections.js';
+import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig, LidarrConnectionConfig } from '../types/connections.js';
 import { findOrCreateReviewItem } from '../utils/review-queue.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
@@ -30,17 +30,6 @@ import { SlskdService } from '../services/slskd.js';
 import { SlskdSubscriptionProcessor } from '../services/slskd-subscription-processor.js';
 
 const logger = createLogger('SubscriptionWorker');
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
-}
 
 interface ArtistToAdd {
   name: string;

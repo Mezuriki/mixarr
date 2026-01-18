@@ -113,9 +113,17 @@ export function isListenBrainzConfig(config: unknown): config is ListenBrainzCon
 // Lidarr Connection Config
 // =============================================================================
 
+/** Valid Lidarr monitor options for album monitoring */
+export type LidarrMonitorOption = 'all' | 'future' | 'missing' | 'existing' | 'first' | 'latest' | 'none';
+
 export interface LidarrConnectionConfig {
   url: string;
   apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: LidarrMonitorOption;
+  searchOnAdd?: boolean;
   [key: string]: JsonValue | undefined;
 }
 

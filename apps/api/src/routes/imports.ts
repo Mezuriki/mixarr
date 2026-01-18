@@ -16,19 +16,9 @@ import { createLogger } from '../lib/logger.js';
 import { Prisma } from '@prisma/client';
 import type { ImportSource, ReviewStatus } from '@prisma/client';
 import type { Request } from 'express';
+import { LidarrConnectionConfig } from '../types/connections.js';
 
 const log = createLogger('Imports');
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
-}
 
 export const importsRouter = Router();
 

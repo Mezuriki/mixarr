@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { createRedisConnection } from '../lib/redis.js';
 import prisma from '../lib/db.js';
-import { SlskdService } from '../services/slskd-service.js';
+import { SlskdService } from '../services/slskd.js';
 import { isSlskdConfig } from '../types/connections.js';
 import { 
   slskdQueue,
@@ -37,7 +37,7 @@ export async function processSlskdJob(job: Job<SlskdJobData>): Promise<any> {
   }
   
   const { url, apiKey } = connection.config;
-  const slskdService = new SlskdService(url, apiKey);
+  const slskdService = new SlskdService({ url, apiKey });
   
   // Route to appropriate handler
   if (job.data.type === 'search') {
@@ -52,11 +52,8 @@ export async function processSlskdJob(job: Job<SlskdJobData>): Promise<any> {
 async function handleSearch(
   service: SlskdService, 
   data: SlskdSearchJobData
-): Promise<{ searchId: number }> {
-  const response = await service.createSearch({
-    searchText: data.searchText,
-    searchTimeout: data.searchTimeout,
-  });
+): Promise<{ searchId: string }> {
+  const response = await service.search(data.searchText);
   
   logger.info('Search created', { searchId: response.id });
   
@@ -67,10 +64,10 @@ async function handleQueueDownload(
   service: SlskdService, 
   data: SlskdQueueDownloadJobData
 ): Promise<{ success: true }> {
-  await service.queueDownload({
-    username: data.username,
+  await service.queueDownload(data.username, [{
     filename: data.filename,
-  });
+    size: 0,  // Size not needed for queueing
+  }]);
   
   logger.info('Download queued', { 
     username: data.username, 

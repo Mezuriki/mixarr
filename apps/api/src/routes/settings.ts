@@ -74,8 +74,8 @@ settingsRouter.get('/', async (req, res) => {
 
 // Update user setting
 settingsRouter.put('/:key', async (req, res) => {
+  const { key } = req.params;
   try {
-    const { key } = req.params;
     const { value } = req.body;
     
     await prisma.userSetting.upsert({
@@ -183,8 +183,8 @@ settingsRouter.get('/global', requireAdmin, async (_req, res) => {
 
 // Admin: Update global setting
 settingsRouter.put('/global/:key', requireAdmin, async (req, res) => {
+  const { key } = req.params;
   try {
-    const { key } = req.params;
     const { value } = req.body;
     
     await prisma.globalSetting.upsert({

@@ -12,6 +12,7 @@ import { notificationService } from '../services/notifications.js';
 import { aiService } from '../services/ai.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
+import { LidarrConnectionConfig } from '../types/connections.js';
 
 const log = createLogger('Search');
 
@@ -33,17 +34,6 @@ async function getLastfmService(userId: number): Promise<LastfmService | null> {
   if (!connection) return null;
   const config = connection.config as { apiKey: string };
   return new LastfmService(config);
-}
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
 }
 
 // Helper to get Lidarr service (user-owned or global)

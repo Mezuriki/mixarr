@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { LastfmService } from '../services/lastfm.js';
+import { LidarrConnectionConfig } from '../types/connections.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
@@ -31,17 +32,6 @@ async function getLastfmService(userId: number): Promise<LastfmService | null> {
   if (!connection) return null;
   const config = connection.config as { apiKey: string };
   return new LastfmService(config);
-}
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
 }
 
 // Helper to get Lidarr service (user-owned or global)

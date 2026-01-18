@@ -12,19 +12,9 @@ import { notificationService } from '../services/notifications.js';
 import type { Subscription } from '@prisma/client';
 import type { Request } from 'express';
 import { createLogger } from '../lib/logger.js';
+import { LidarrConnectionConfig } from '../types/connections.js';
 
 const logger = createLogger('SubscriptionsRoute');
-
-// Lidarr connection config type
-interface LidarrConnectionConfig {
-  url: string;
-  apiKey: string;
-  qualityProfileId?: number;
-  metadataProfileId?: number;
-  rootFolderPath?: string;
-  monitorOption?: string;
-  searchOnAdd?: boolean;
-}
 
 export const subscriptionsRouter = Router();
 

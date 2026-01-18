@@ -18,7 +18,7 @@
 - **Modern Stack**: Next.js 14 + Express.js + TypeScript
 - **PWA Support**: Installable, offline-capable, push notifications
 - **Multi-User**: Authentication with admin/user roles
-- **AI Recommendations**: LLM-powered discovery using OpenAI, Anthropic, or Ollama
+- **AI Recommendations**: Optional LLM-powered discovery using OpenAI, Anthropic, or Ollama
 - **Library Health**: Analyze and maintain your Lidarr library
 - **Review Queue**: Manual approval for discovered artists
 - **SSO Authentication**: Google OAuth, LDAP/AD, SAML 2.0, Plex SSO

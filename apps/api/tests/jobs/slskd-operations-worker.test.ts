@@ -2,10 +2,10 @@ import { Job } from 'bullmq';
 import { processSlskdJob } from '../../src/jobs/slskd-operations-worker';
 import { SlskdSearchJobData, SlskdQueueDownloadJobData } from '../../src/jobs/slskd-operations-queue';
 import { prisma } from '../../src/lib/db';
-import { SlskdService } from '../../src/services/slskd-service';
+import { SlskdService } from '../../src/services/slskd';
 
 // Mock SlskdService
-vi.mock('../../src/services/slskd-service');
+vi.mock('../../src/services/slskd');
 
 describe('SlskdOperationsWorker', () => {
   const createdConnections: number[] = [];
@@ -54,20 +54,17 @@ describe('SlskdOperationsWorker', () => {
     
     const mockJob = { data: jobData } as Job<SlskdSearchJobData>;
     
-    // Mock SlskdService.createSearch
-    const mockCreateSearch = vi.fn().mockResolvedValue({ id: 123 });
+    // Mock SlskdService.search - returns SlskdSearch with id field
+    const mockSearch = vi.fn().mockResolvedValue({ id: 'search-123', searchText: 'Pink Floyd', state: 'Completed' });
     vi.mocked(SlskdService).mockImplementation(function(this: any) {
-      this.createSearch = mockCreateSearch;
+      this.search = mockSearch;
       return this;
     } as any);
     
     const result = await processSlskdJob(mockJob);
     
-    expect(mockCreateSearch).toHaveBeenCalledWith({
-      searchText: 'Pink Floyd',
-      searchTimeout: 30000,
-    });
-    expect(result).toEqual({ searchId: 123 });
+    expect(mockSearch).toHaveBeenCalledWith('Pink Floyd');
+    expect(result).toEqual({ searchId: 'search-123' });
   });
   
   test('processSlskdJob handles queue-download job type', async () => {
@@ -94,6 +91,7 @@ describe('SlskdOperationsWorker', () => {
     
     const mockJob = { data: jobData } as Job<SlskdQueueDownloadJobData>;
     
+    // Mock SlskdService.queueDownload - takes (username, files[])
     const mockQueueDownload = vi.fn().mockResolvedValue(undefined);
     vi.mocked(SlskdService).mockImplementation(function(this: any) {
       this.queueDownload = mockQueueDownload;
@@ -102,10 +100,7 @@ describe('SlskdOperationsWorker', () => {
     
     const result = await processSlskdJob(mockJob);
     
-    expect(mockQueueDownload).toHaveBeenCalledWith({
-      username: 'testuser',
-      filename: 'test.flac',
-    });
+    expect(mockQueueDownload).toHaveBeenCalledWith('testuser', [{ filename: 'test.flac', size: 0 }]);
     expect(result).toEqual({ success: true });
   });
   

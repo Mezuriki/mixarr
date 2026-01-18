@@ -13,7 +13,7 @@ import { Plus, TestTube2, Trash2, Edit, Check, X, Eye, EyeOff, RefreshCw, Extern
 interface Connection {
   id: number;
   userId: number | null;
-  type: 'lidarr' | 'spotify' | 'lastfm' | 'tautulli' | 'jellyfin' | 'deezer' | 'tidal' | 'listenbrainz' | 'discogs';
+  type: 'lidarr' | 'spotify' | 'lastfm' | 'tautulli' | 'jellyfin' | 'deezer' | 'tidal' | 'listenbrainz' | 'discogs' | 'slskd';
   name: string;
   isActive: boolean;
   lastTest: string | null;
@@ -136,6 +136,11 @@ export default function ConnectionsPage() {
     listenbrainzToken: '',
     // Discogs-specific settings
     discogsToken: '',
+    // slskd-specific settings
+    slskdUrl: '',
+    slskdApiKey: '',
+    slskdDownloadDir: '',
+    slskdMusicLibraryDir: '',
   });
 
   // Lidarr data fetched when testing connection
@@ -573,6 +578,15 @@ export default function ConnectionsPage() {
       const selectedLibrary = jellyfinData?.libraries.find(l => l.libraryId === form.jellyfinLibraryId);
       config.jellyfinUserName = selectedUser?.username;
       config.jellyfinLibraryName = selectedLibrary?.name;
+    } else if (form.type === 'slskd') {
+      if (!form.slskdUrl || !form.slskdApiKey) {
+        addToast({ type: 'warning', title: 'Please enter slskd URL and API Key' });
+        return;
+      }
+      config.url = form.slskdUrl;
+      config.apiKey = form.slskdApiKey;
+      config.downloadDir = form.slskdDownloadDir || '/downloads';
+      config.musicLibraryDir = form.slskdMusicLibraryDir || '/music';
     }
 
     const payload = {
@@ -648,6 +662,10 @@ export default function ConnectionsPage() {
         listenbrainzUsername: config.username || '',
         listenbrainzToken: '', // Don't pre-fill for security
         discogsToken: '', // Don't pre-fill for security
+        slskdUrl: config.url || '',
+        slskdApiKey: '', // Don't pre-fill for security
+        slskdDownloadDir: config.downloadDir || '',
+        slskdMusicLibraryDir: config.musicLibraryDir || '',
       });
       
       // Fetch Lidarr data if editing a Lidarr connection
@@ -699,6 +717,10 @@ export default function ConnectionsPage() {
         listenbrainzUsername: '',
         listenbrainzToken: '',
         discogsToken: '',
+        slskdUrl: '',
+        slskdApiKey: '',
+        slskdDownloadDir: '',
+        slskdMusicLibraryDir: '',
       });
     }
     setLidarrData(null);
@@ -1672,6 +1694,77 @@ export default function ConnectionsPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+              </div>
+            </>
+          )}
+
+          {form.type === 'slskd' && (
+            <>
+              <div className="p-3 bg-muted/50 rounded-lg border">
+                <p className="text-sm font-medium mb-1">slskd Setup</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Connect to your slskd instance for Soulseek downloads. Get your API key from slskd Settings → Options → Web.
+                </p>
+                <a 
+                  href="https://github.com/slskd/slskd" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" /> slskd Documentation
+                </a>
+              </div>
+              <div>
+                <label className="text-sm font-medium">slskd URL</label>
+                <Input
+                  value={form.slskdUrl}
+                  onChange={(e) => setForm({ ...form, slskdUrl: e.target.value })}
+                  placeholder="http://localhost:5030"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  The URL of your slskd instance
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">API Key</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.slskdApiKey}
+                    onChange={(e) => setForm({ ...form, slskdApiKey: e.target.value })}
+                    placeholder="slskd API key"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Download Directory</label>
+                <Input
+                  value={form.slskdDownloadDir}
+                  onChange={(e) => setForm({ ...form, slskdDownloadDir: e.target.value })}
+                  placeholder="/downloads"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Where slskd downloads files (must match slskd config)
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Music Library Directory</label>
+                <Input
+                  value={form.slskdMusicLibraryDir}
+                  onChange={(e) => setForm({ ...form, slskdMusicLibraryDir: e.target.value })}
+                  placeholder="/music"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Where to organize completed downloads
+                </p>
               </div>
             </>
           )}

@@ -49,7 +49,7 @@ export interface AuthResponse {
 // CONNECTION TYPES
 // ============================================================================
 
-export type ConnectionType = 'lidarr' | 'spotify' | 'lastfm';
+export type ConnectionType = 'lidarr' | 'spotify' | 'lastfm' | 'tautulli' | 'jellyfin' | 'deezer' | 'tidal' | 'listenbrainz' | 'discogs' | 'slskd';
 
 export interface Connection {
   id: number;

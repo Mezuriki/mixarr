@@ -586,6 +586,17 @@ export function SubscriptionFormModal({
           {form.type === 'spotify_public_playlist' && (
             <div className="space-y-4">
               <div>
+                <label className="text-sm font-medium">Subscription Name</label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g., Release Radar, Discover Weekly"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional — helps distinguish between multiple playlist subscriptions
+                </p>
+              </div>
+              <div>
                 <label className="text-sm font-medium">
                   Playlist URL
                   {REQUIRED_FIELDS[form.type]?.some((r) => r.field === 'publicPlaylistUrl') && (
