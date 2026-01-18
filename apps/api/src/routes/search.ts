@@ -408,10 +408,10 @@ searchRouter.post('/discover/add', async (req, res) => {
       resolvedMbid = resolution.mbid;
     }
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -438,7 +438,7 @@ searchRouter.post('/discover/add', async (req, res) => {
     const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
       resolvedMbid, qpId, mpId, rfPath,
       true,  // monitored
-      true,  // searchForMissingAlbums
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
       lidarrConfig.monitorOption || 'all'
     );
@@ -490,10 +490,10 @@ searchRouter.post('/artists/add', async (req, res) => {
     }
     const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -520,7 +520,7 @@ searchRouter.post('/artists/add', async (req, res) => {
     const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
       foreignArtistId, qpId, mpId, rfPath,
       true,  // monitored
-      true,  // searchForMissingAlbums
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
       lidarrConfig.monitorOption || 'all'
     );
@@ -1163,10 +1163,10 @@ searchRouter.post('/batch', async (req, res) => {
     }
     const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -1212,7 +1212,7 @@ searchRouter.post('/batch', async (req, res) => {
         await lidarr.addArtistWithRefresh(
           artistId, qpId, mpId, rfPath,
           true,  // monitored
-          true,  // searchForMissingAlbums
+          lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
           false, // waitForRefresh (deprecated)
           lidarrConfig.monitorOption || 'all'
         );

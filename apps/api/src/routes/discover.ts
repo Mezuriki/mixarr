@@ -335,15 +335,40 @@ discoverRouter.post('/add', async (req, res) => {
       return;
     }
 
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
+
+    if (!qpId) {
+      const profiles = await lidarr.getQualityProfiles();
+      qpId = profiles[0]?.id;
+    }
+
+    if (!mpId) {
+      const profiles = await lidarr.getMetadataProfiles();
+      mpId = profiles[0]?.id;
+    }
+
+    if (!rfPath) {
+      const folders = await lidarr.getRootFolders();
+      rfPath = folders[0]?.path;
+    }
+
+    if (!qpId || !mpId || !rfPath) {
+      res.status(400).json({ error: 'Missing Lidarr configuration (profiles/folders)' });
+      return;
+    }
+
     // Add to Lidarr with metadata refresh to ensure complete MusicBrainz data
     // Use monitorOption from connection config (defaults to 'all' if not set)
     const { artist: result, refreshCommand } = await lidarr.addArtistWithRefresh(
       foreignArtistId,
-      qualityProfileId,
-      metadataProfileId,
-      rootFolderPath,
+      qpId,
+      mpId,
+      rfPath,
       true,  // monitored
-      true,  // searchForMissingAlbums
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
       lidarrConfig.monitorOption || 'all'
     );
