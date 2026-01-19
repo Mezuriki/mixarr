@@ -58,14 +58,14 @@ export function Modal({
       {/* Modal */}
       <div
         className={cn(
-          'relative z-10 w-full mx-4 bg-card rounded-lg shadow-lg animate-slide-in',
+          'relative z-10 w-full mx-4 bg-card rounded-lg shadow-lg animate-slide-in flex flex-col max-h-[90vh]',
           sizeClasses[size]
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || description) && (
-          <div className="flex items-start justify-between p-6 border-b">
+          <div className="flex items-start justify-between p-6 border-b flex-shrink-0">
             <div>
               {title && (
                 <h2 className="text-lg font-semibold">{title}</h2>
@@ -84,7 +84,7 @@ export function Modal({
         )}
         
         {/* Content */}
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
