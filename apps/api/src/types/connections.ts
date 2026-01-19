@@ -163,6 +163,14 @@ export function normalizeLidarrConfig(config: LidarrConnectionConfig): LidarrCon
     normalized.metadataProfileId = isNaN(parsed) || parsed === 0 ? undefined : parsed;
   }
 
+  // Validate monitorNewItems is a valid option (defaults to 'all' if invalid)
+  const validMonitorNewItems = ['all', 'none', 'new'];
+  if (normalized.monitorNewItems !== undefined) {
+    if (!validMonitorNewItems.includes(normalized.monitorNewItems as string)) {
+      normalized.monitorNewItems = 'all';
+    }
+  }
+
   return normalized;
 }
 
