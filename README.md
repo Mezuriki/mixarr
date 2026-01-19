@@ -81,6 +81,7 @@ docker run -d \
     *   **Last.fm**: Charts, Tag/Genre feeds, User Library.
     *   **Plex & Jellyfin**: Recommendations based on listening history.
     *   **MusicBrainz & ListenBrainz**: Metadata and listening habits.
+    *   **Discogs & Deezer**: Libraries, Playlists, and User Collections.
 *   **AI Recommendations**: OpenAI, Anthropic, or Ollama integration for "smart" suggestions based on your existing library.
 *   **Library Health**: Tools to analyze your Lidarr library for issues.
 
