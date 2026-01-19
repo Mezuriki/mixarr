@@ -16,7 +16,7 @@ import { createLogger } from '../lib/logger.js';
 import { Prisma } from '@prisma/client';
 import type { ImportSource, ReviewStatus } from '@prisma/client';
 import type { Request } from 'express';
-import { LidarrConnectionConfig } from '../types/connections.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 
 const log = createLogger('Imports');
 
@@ -291,7 +291,9 @@ importsRouter.put('/review/:id', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -379,7 +381,8 @@ importsRouter.put('/review/:id', async (req, res) => {
         true,  // monitored
         true,  // searchForMissingAlbums
         false, // waitForRefresh (deprecated)
-        lidarrConfig.monitorOption || 'all'
+        lidarrConfig.monitorOption || 'all',
+        lidarrConfig.monitorNewItems || 'all'
       );
 
       await prisma.reviewItem.update({
@@ -469,7 +472,9 @@ importsRouter.post('/review/bulk', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -599,7 +604,8 @@ importsRouter.post('/review/bulk', async (req, res) => {
             true,  // monitored
             true,  // searchForMissingAlbums
             false, // waitForRefresh (deprecated)
-            lidarrConfig.monitorOption || 'all'
+            lidarrConfig.monitorOption || 'all',
+            lidarrConfig.monitorNewItems || 'all'
           );
           log.info(`Successfully added ${item.artistName} to Lidarr`);
           
@@ -1181,6 +1187,7 @@ importsRouter.post('/preview/import', async (req, res) => {
       metadataProfileId?: number;
       rootFolderPath?: string;
       monitorOption?: string;
+      monitorNewItems?: string;
     };
 
     const lidarr = new LidarrService(config);
@@ -1207,7 +1214,8 @@ importsRouter.post('/preview/import', async (req, res) => {
           true,  // monitored
           true,  // searchForMissingAlbums
           false, // waitForRefresh (deprecated)
-          config.monitorOption || 'all'
+          config.monitorOption || 'all',
+          config.monitorNewItems || 'all'
         );
 
         results.push({ name: artistName, success: true, message: 'Added to Lidarr' });

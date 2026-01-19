@@ -12,7 +12,7 @@ import { notificationService } from '../services/notifications.js';
 import { aiService } from '../services/ai.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
-import { LidarrConnectionConfig } from '../types/connections.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 
 const log = createLogger('Search');
 
@@ -64,7 +64,9 @@ async function getLidarrServiceWithConfig(userId: number): Promise<{ service: Li
     orderBy: { userId: 'desc' },
   });
   if (!connection) return null;
-  const config = connection.config as unknown as LidarrConnectionConfig;
+  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
+  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+  const config = normalizeLidarrConfig(rawConfig);
   return { service: new LidarrService(config), config };
 }
 
@@ -440,7 +442,8 @@ searchRouter.post('/discover/add', async (req, res) => {
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
-      lidarrConfig.monitorOption || 'all'
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
     );
     
     // Log the successful artist addition
@@ -522,7 +525,8 @@ searchRouter.post('/artists/add', async (req, res) => {
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
-      lidarrConfig.monitorOption || 'all'
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
     );
     
     // Log the successful artist addition
@@ -1214,7 +1218,8 @@ searchRouter.post('/batch', async (req, res) => {
           true,  // monitored
           lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
           false, // waitForRefresh (deprecated)
-          lidarrConfig.monitorOption || 'all'
+          lidarrConfig.monitorOption || 'all',
+          lidarrConfig.monitorNewItems || 'all'
         );
         results.added.push(artistId);
       } catch (error) {

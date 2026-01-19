@@ -7,7 +7,7 @@
 import { Worker, Job } from 'bullmq';
 import { createRedisConnection } from '../lib/redis.js';
 import prisma from '../lib/db.js';
-import { isSpotifyConfig, LidarrConnectionConfig } from '../types/connections.js';
+import { isSpotifyConfig, LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { QUEUE_NAMES, type ImportJobData } from './queue.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { SpotifyService } from '../services/spotify.js';
@@ -241,7 +241,9 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -294,7 +296,8 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
           rfPath,
           true,  // monitored
           lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
-          lidarrConfig.monitorOption || 'all'
+          lidarrConfig.monitorOption || 'all',
+          lidarrConfig.monitorNewItems || 'all'
         );
         added++;
       } catch {

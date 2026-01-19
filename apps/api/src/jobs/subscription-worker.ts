@@ -22,7 +22,7 @@ import { BandcampService } from '../services/bandcamp.js';
 import { fetchPublicPlaylist, parseSpotifyPlaylistUrl, extractArtistsFromPlaylist } from '../services/public-playlist.js';
 import { addLogEntry } from '../routes/logs.js';
 import { deduplicateResults } from '../utils/deduplication.js';
-import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig, LidarrConnectionConfig } from '../types/connections.js';
+import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig, LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { findOrCreateReviewItem } from '../utils/review-queue.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
@@ -130,7 +130,9 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     let lidarrConfig: LidarrConnectionConfig | null = null;
 
     if (lidarrConn) {
-      lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+      const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+      // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+      lidarrConfig = normalizeLidarrConfig(rawConfig);
       lidarr = new LidarrService(lidarrConfig);
       lidarrCache = new LidarrCache(lidarr);
       await lidarrCache.refresh();
@@ -2085,7 +2087,8 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
             rfPath,
             true,  // monitored
             lidarrConfig?.searchOnAdd !== false,  // searchForMissingAlbums from config
-            lidarrConfig?.monitorOption || 'all'
+            lidarrConfig?.monitorOption || 'all',
+            lidarrConfig?.monitorNewItems || 'all'
           );
           added++;
           await prisma.subscriptionResult.create({

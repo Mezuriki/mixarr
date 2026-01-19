@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { LastfmService } from '../services/lastfm.js';
-import { LidarrConnectionConfig } from '../types/connections.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
@@ -63,7 +63,9 @@ async function getLidarrServiceWithConfig(userId: number): Promise<{ service: Li
     orderBy: { userId: 'desc' },
   });
   if (!connection) return null;
-  const config = connection.config as unknown as LidarrConnectionConfig;
+  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
+  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+  const config = normalizeLidarrConfig(rawConfig);
   return { service: new LidarrService(config), config };
 }
 
@@ -370,7 +372,8 @@ discoverRouter.post('/add', async (req, res) => {
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
       false, // waitForRefresh (deprecated)
-      lidarrConfig.monitorOption || 'all'
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
     );
 
     // Log the addition
@@ -409,11 +412,12 @@ discoverRouter.post('/add', async (req, res) => {
 /**
  * GET /api/discover/profiles
  * Get Lidarr quality and metadata profiles for the add form
+ * Includes connection's default selections
  */
 discoverRouter.get('/profiles', async (req, res) => {
   try {
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ 
         error: 'Discover requires a Lidarr connection',
         code: 'LIDARR_REQUIRED',
@@ -422,16 +426,26 @@ discoverRouter.get('/profiles', async (req, res) => {
       return;
     }
 
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
+
     const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
       lidarr.getQualityProfiles(),
       lidarr.getMetadataProfiles(),
       lidarr.getRootFolders(),
     ]);
 
+    // Include connection's default selections so frontend can initialize correctly
     res.json({
       qualityProfiles,
       metadataProfiles,
       rootFolders,
+      defaults: {
+        qualityProfileId: lidarrConfig.qualityProfileId,
+        metadataProfileId: lidarrConfig.metadataProfileId,
+        rootFolderPath: lidarrConfig.rootFolderPath,
+        monitorOption: lidarrConfig.monitorOption,
+        searchOnAdd: lidarrConfig.searchOnAdd,
+      },
     });
   } catch (error) {
     logger.error('Failed to get profiles', {

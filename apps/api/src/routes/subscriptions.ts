@@ -12,7 +12,7 @@ import { notificationService } from '../services/notifications.js';
 import type { Subscription } from '@prisma/client';
 import type { Request } from 'express';
 import { createLogger } from '../lib/logger.js';
-import { LidarrConnectionConfig } from '../types/connections.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 
 const logger = createLogger('SubscriptionsRoute');
 
@@ -272,7 +272,9 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
 
     // Get or find MBID
@@ -337,7 +339,8 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
           true,  // monitored
           true,  // searchForMissingAlbums
           false, // waitForRefresh (deprecated)
-          lidarrConfig.monitorOption || 'all'
+          lidarrConfig.monitorOption || 'all',
+          lidarrConfig.monitorNewItems || 'all'
         );
 
         // Log success
