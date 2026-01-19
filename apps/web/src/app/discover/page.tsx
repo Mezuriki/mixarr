@@ -39,6 +39,13 @@ interface Profiles {
   qualityProfiles: Array<{ id: number; name: string }>;
   metadataProfiles: Array<{ id: number; name: string }>;
   rootFolders: Array<{ id: number; path: string }>;
+  defaults?: {
+    qualityProfileId?: number;
+    metadataProfileId?: number;
+    rootFolderPath?: string;
+    monitorOption?: string;
+    searchOnAdd?: boolean;
+  };
 }
 
 export default function DiscoverPage() {
@@ -120,23 +127,34 @@ export default function DiscoverPage() {
     staleTime: 5 * 60 * 1000, // Profiles rarely change
   });
 
-  // Initialize profile selections when profiles load
+  // Initialize profile selections when profiles load - use connection defaults if available
   useEffect(() => {
     if (profiles) {
+      // Use connection defaults, fall back to first available
       if (profiles.qualityProfiles.length > 0 && selectedQuality === null) {
-        setSelectedQuality(profiles.qualityProfiles[0].id);
+        const defaultId = profiles.defaults?.qualityProfileId;
+        // Check if default exists in the profiles list
+        const validDefault = defaultId && profiles.qualityProfiles.some(p => p.id === defaultId);
+        setSelectedQuality(validDefault ? defaultId : profiles.qualityProfiles[0].id);
       }
       if (profiles.metadataProfiles.length > 0 && selectedMetadata === null) {
-        setSelectedMetadata(profiles.metadataProfiles[0].id);
+        const defaultId = profiles.defaults?.metadataProfileId;
+        const validDefault = defaultId && profiles.metadataProfiles.some(p => p.id === defaultId);
+        setSelectedMetadata(validDefault ? defaultId : profiles.metadataProfiles[0].id);
       }
       if (profiles.rootFolders.length > 0 && selectedRootFolder === null) {
-        setSelectedRootFolder(profiles.rootFolders[0].path);
+        const defaultPath = profiles.defaults?.rootFolderPath;
+        const validDefault = defaultPath && profiles.rootFolders.some(f => f.path === defaultPath);
+        setSelectedRootFolder(validDefault ? defaultPath : profiles.rootFolders[0].path);
       }
       if (addProfiles.qualityProfileId === 0) {
+        const defaultQuality = profiles.defaults?.qualityProfileId || profiles.qualityProfiles[0]?.id || 0;
+        const defaultMetadata = profiles.defaults?.metadataProfileId || profiles.metadataProfiles[0]?.id || 0;
+        const defaultRoot = profiles.defaults?.rootFolderPath || profiles.rootFolders[0]?.path || '';
         setAddProfiles({
-          qualityProfileId: profiles.qualityProfiles[0]?.id || 0,
-          metadataProfileId: profiles.metadataProfiles[0]?.id || 0,
-          rootFolderPath: profiles.rootFolders[0]?.path || ''
+          qualityProfileId: defaultQuality,
+          metadataProfileId: defaultMetadata,
+          rootFolderPath: defaultRoot
         });
       }
     }

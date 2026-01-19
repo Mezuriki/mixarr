@@ -321,6 +321,7 @@ connectionsRouter.get('/:id', async (req, res) => {
       safeConfig.qualityProfileId = config.qualityProfileId;
       safeConfig.rootFolderPath = config.rootFolderPath;
       safeConfig.monitorOption = config.monitorOption;
+      safeConfig.monitorNewItems = config.monitorNewItems;
       safeConfig.searchOnAdd = config.searchOnAdd;
     } else if (connection.type === 'spotify') {
       safeConfig.clientId = config.clientId;

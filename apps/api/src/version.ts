@@ -11,6 +11,7 @@ export const PRODUCT = 'Mixarr';
  * Print startup banner with ASCII art logo
  */
 export function printBanner(): void {
+  const versionLine = `  Version: v${VERSION}`.padEnd(30) + `License: ${LICENSE}`.padEnd(28);
   const banner = `
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
@@ -22,7 +23,7 @@ export function printBanner(): void {
 ║                                                          ║
 ║  Music Discovery for Lidarr                              ║
 ║                                                          ║
-║  Version: v${VERSION.padEnd(12)}License: ${LICENSE.padEnd(12)}║
+║${versionLine}║
 ╚══════════════════════════════════════════════════════════╝
 `;
   console.log(banner);
