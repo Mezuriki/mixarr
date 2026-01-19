@@ -274,6 +274,25 @@ describe('Lidarr Service', () => {
       const body = JSON.parse(postCall![1].body);
       expect(body.addOptions.monitor).toBe('all');
     });
+
+    it('should include monitorNewItems in request body', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [{ foreignArtistId: 'mbid-test', artistName: 'Test' }] })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 1 }) });
+      
+      vi.stubGlobal('fetch', fetchMock);
+      
+      const { LidarrService } = await import('../../src/services/lidarr.js');
+      const service = new LidarrService({ url: 'http://localhost:8686', apiKey: 'test' });
+      await service.addArtist('mbid-test', 1, 1, '/music', true, true, 'all', 'new');
+      
+      const postCall = fetchMock.mock.calls.find((c: unknown[]) => 
+        (c[1] as { method?: string })?.method === 'POST'
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse((postCall![1] as { body: string }).body);
+      expect(body.monitorNewItems).toBe('new');
+    });
   });
 
   describe('Retry Logic', () => {
