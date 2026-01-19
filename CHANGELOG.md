@@ -9,7 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v1.2.0] - Unreleased
 
+### Added
+
+#### Lidarr Monitor New Items
+- Add "Monitor New Albums" dropdown to Lidarr connection settings
+- Support for None, All, New, and Existing monitor options
+- Automatically apply monitor setting when adding artists via subscriptions
+
 ### Fixed
+- Fix modals not scrollable on small screens
 - Fix subscription edit using PUT to match API route
 - Fix Spotify category preset field name mismatch
 - Fix Docker image typo (aquantumofdonums → aquantumofdonuts)
