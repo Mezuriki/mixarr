@@ -444,6 +444,8 @@ model AISettings {
   openaiApiKey     String?    @map("openai_api_key") @db.Text
   openaiEnabled    Boolean    @default(false) @map("openai_enabled")
   openaiStrategy   AIStrategy @default(similar) @map("openai_strategy")
+  openaiBaseUrl    String?    @map("openai_base_url") @db.Text
+  openaiModel      String?    @map("openai_model") @db.VarChar(100)
   anthropicApiKey  String?    @map("anthropic_api_key") @db.Text
   anthropicEnabled Boolean    @default(false) @map("anthropic_enabled")
   anthropicStrategy AIStrategy @default(similar) @map("anthropic_strategy")

@@ -28,6 +28,8 @@ aiRouter.get('/settings', async (req, res) => {
         settings: {
           openaiEnabled: false,
           openaiConfigured: false,
+          openaiBaseUrl: null,
+          openaiModel: null,
           anthropicEnabled: false,
           anthropicConfigured: false,
         },
@@ -38,11 +40,16 @@ aiRouter.get('/settings', async (req, res) => {
     // For non-admins, hide API keys but show if configured
     const isAdmin = req.user?.role === 'admin';
     
+    // OpenAI is configured if it has an API key OR a custom base URL (for Ollama, etc.)
+    const openaiConfigured = !!settings.openaiApiKey || !!settings.openaiBaseUrl;
+    
     res.json({
       settings: {
         openaiEnabled: settings.openaiEnabled,
-        openaiConfigured: !!settings.openaiApiKey,
+        openaiConfigured,
         openaiApiKey: isAdmin ? settings.openaiApiKey : undefined,
+        openaiBaseUrl: isAdmin ? settings.openaiBaseUrl : undefined,
+        openaiModel: isAdmin ? settings.openaiModel : undefined,
         anthropicEnabled: settings.anthropicEnabled,
         anthropicConfigured: !!settings.anthropicApiKey,
         anthropicApiKey: isAdmin ? settings.anthropicApiKey : undefined,
@@ -61,6 +68,8 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
       openaiApiKey,
       openaiEnabled,
       openaiStrategy,
+      openaiBaseUrl,
+      openaiModel,
       anthropicApiKey,
       anthropicEnabled,
       anthropicStrategy,
@@ -81,6 +90,28 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     if (openaiApiKey !== undefined) {
       // Allow setting to null/empty to clear, or set new key
       data.openaiApiKey = openaiApiKey || null;
+    }
+    if (openaiBaseUrl !== undefined) {
+      // Validate URL format if provided (basic check)
+      if (openaiBaseUrl && typeof openaiBaseUrl === 'string') {
+        try {
+          new URL(openaiBaseUrl);
+          data.openaiBaseUrl = openaiBaseUrl;
+        } catch {
+          res.status(400).json({ error: 'Invalid OpenAI base URL format' });
+          return;
+        }
+      } else {
+        data.openaiBaseUrl = null;
+      }
+    }
+    if (openaiModel !== undefined) {
+      // Allow setting to null/empty to clear, or set new model
+      if (openaiModel && typeof openaiModel === 'string' && openaiModel.length <= 100) {
+        data.openaiModel = openaiModel;
+      } else {
+        data.openaiModel = null;
+      }
     }
     
     if (typeof anthropicEnabled === 'boolean') {
@@ -104,6 +135,8 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
           openaiEnabled: data.openaiEnabled ?? false,
           openaiStrategy: data.openaiStrategy ?? 'similar',
           openaiApiKey: data.openaiApiKey ?? null,
+          openaiBaseUrl: data.openaiBaseUrl ?? null,
+          openaiModel: data.openaiModel ?? null,
           anthropicEnabled: data.anthropicEnabled ?? false,
           anthropicStrategy: data.anthropicStrategy ?? 'similar',
           anthropicApiKey: data.anthropicApiKey ?? null,
@@ -114,11 +147,14 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     // Reload AI service settings
     await aiService.loadSettings();
 
+    // OpenAI is configured if it has an API key OR a custom base URL
+    const openaiConfigured = !!settings.openaiApiKey || !!settings.openaiBaseUrl;
+
     res.json({
       success: true,
       settings: {
         openaiEnabled: settings.openaiEnabled,
-        openaiConfigured: !!settings.openaiApiKey,
+        openaiConfigured,
         anthropicEnabled: settings.anthropicEnabled,
         anthropicConfigured: !!settings.anthropicApiKey,
       },

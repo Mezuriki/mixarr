@@ -24,10 +24,14 @@ interface AISettings {
   openaiApiKey: string | null;
   openaiEnabled: boolean;
   openaiStrategy: AIStrategy;
+  openaiBaseUrl: string | null;
+  openaiModel: string | null;
   anthropicApiKey: string | null;
   anthropicEnabled: boolean;
   anthropicStrategy: AIStrategy;
 }
+
+const DEFAULT_OPENAI_MODEL = 'gpt-3.5-turbo';
 
 const STRATEGY_PROMPTS: Record<AIStrategy, string> = {
   similar: 'find 5 similar artists with comparable sound, style, and genre',
@@ -53,14 +57,23 @@ export class AIService {
       openaiApiKey: settings.openaiApiKey,
       openaiEnabled: settings.openaiEnabled,
       openaiStrategy: settings.openaiStrategy,
+      openaiBaseUrl: settings.openaiBaseUrl,
+      openaiModel: settings.openaiModel,
       anthropicApiKey: settings.anthropicApiKey,
       anthropicEnabled: settings.anthropicEnabled,
       anthropicStrategy: settings.anthropicStrategy,
     };
 
     // Initialize clients if enabled
-    if (this.settings.openaiEnabled && this.settings.openaiApiKey) {
-      this.openaiClient = new OpenAI({ apiKey: this.settings.openaiApiKey });
+    // For custom base URLs (Ollama, LiteLLM, etc.), API key may not be required
+    const hasOpenAIKey = !!this.settings.openaiApiKey;
+    const hasCustomBaseUrl = !!this.settings.openaiBaseUrl;
+    
+    if (this.settings.openaiEnabled && (hasOpenAIKey || hasCustomBaseUrl)) {
+      this.openaiClient = new OpenAI({
+        apiKey: this.settings.openaiApiKey || 'not-required',
+        ...(this.settings.openaiBaseUrl && { baseURL: this.settings.openaiBaseUrl }),
+      });
     }
     
     if (this.settings.anthropicEnabled && this.settings.anthropicApiKey) {
@@ -148,8 +161,9 @@ Return ONLY a JSON array of artist names, nothing else. Format:
 Return at least 5 unique artists total, maximum 10.`;
 
     try {
+      const model = this.settings?.openaiModel || DEFAULT_OPENAI_MODEL;
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model,
         messages: [
           {
             role: 'system',
@@ -283,8 +297,9 @@ Return ONLY a JSON array of artist names, nothing else. Format:
     // Try OpenAI if enabled
     if (this.settings.openaiEnabled && this.openaiClient) {
       try {
+        const model = this.settings.openaiModel || DEFAULT_OPENAI_MODEL;
         const response = await this.openaiClient.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model,
           messages: [
             {
               role: 'system',
@@ -359,8 +374,12 @@ Return ONLY a JSON array of artist names, nothing else. Format:
     
     if (!this.settings) return false;
     
+    // OpenAI is available if enabled AND (has API key OR has custom base URL)
+    const openaiAvailable = this.settings.openaiEnabled && 
+      (!!this.settings.openaiApiKey || !!this.settings.openaiBaseUrl);
+    
     return (
-      (this.settings.openaiEnabled && !!this.settings.openaiApiKey) ||
+      openaiAvailable ||
       (this.settings.anthropicEnabled && !!this.settings.anthropicApiKey)
     );
   }
