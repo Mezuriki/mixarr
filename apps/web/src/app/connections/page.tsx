@@ -118,6 +118,7 @@ export default function ConnectionsPage() {
     qualityProfileId: '',
     rootFolderPath: '',
     monitorOption: 'all',
+    monitorNewItems: 'all',
     searchOnAdd: true,
     // Last.fm-specific settings
     lastfmUsername: '',
@@ -527,9 +528,11 @@ export default function ConnectionsPage() {
     if (form.type === 'lidarr') {
       config.url = form.url;
       config.apiKey = form.apiKey;
-      config.qualityProfileId = form.qualityProfileId;
+      // Parse qualityProfileId to number - dropdown values are strings
+      config.qualityProfileId = form.qualityProfileId ? parseInt(form.qualityProfileId, 10) : undefined;
       config.rootFolderPath = form.rootFolderPath;
       config.monitorOption = form.monitorOption;
+      config.monitorNewItems = form.monitorNewItems;
       config.searchOnAdd = form.searchOnAdd;
     } else if (form.type === 'spotify') {
       config.clientId = form.clientId;
@@ -649,6 +652,7 @@ export default function ConnectionsPage() {
         qualityProfileId: config.qualityProfileId || '',
         rootFolderPath: config.rootFolderPath || '',
         monitorOption: config.monitorOption || 'all',
+        monitorNewItems: config.monitorNewItems || 'all',
         searchOnAdd: config.searchOnAdd !== false,
         lastfmUsername: config.username || '',
         tautulliUrl: config.tautulliUrl || '',
@@ -704,6 +708,7 @@ export default function ConnectionsPage() {
         qualityProfileId: '',
         rootFolderPath: '',
         monitorOption: 'all',
+        monitorNewItems: 'all',
         searchOnAdd: true,
         lastfmUsername: '',
         tautulliUrl: '',
@@ -1186,7 +1191,7 @@ export default function ConnectionsPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium">Monitor Option</label>
+                    <label className="text-sm font-medium">Monitor Existing Albums</label>
                     <Select
                       value={form.monitorOption}
                       onChange={(e) => setForm({ ...form, monitorOption: e.target.value })}
@@ -1198,6 +1203,20 @@ export default function ConnectionsPage() {
                         { value: 'none', label: 'None' },
                       ]}
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Monitor New Albums</label>
+                    <Select
+                      value={form.monitorNewItems}
+                      onChange={(e) => setForm({ ...form, monitorNewItems: e.target.value })}
+                      options={[
+                        { value: 'all', label: 'All New Albums' },
+                        { value: 'new', label: 'New Releases Only' },
+                        { value: 'none', label: 'None' },
+                      ]}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">How to handle future album releases</p>
                   </div>
 
                   <div className="flex items-center justify-between">
