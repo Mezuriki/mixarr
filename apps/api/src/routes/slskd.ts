@@ -12,7 +12,8 @@ import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import prisma from '../lib/db.js';
-import { SlskdDownloadStatus, Prisma } from '@prisma/client';
+import { serializeForJson } from '../utils/serialize.js';
+import { Prisma } from '@prisma/client';
 import { SlskdService } from '../services/slskd.js';
 import { SlskdOrganizerService } from '../services/slskd-organizer.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -231,7 +232,7 @@ router.post('/download', async (req: Request, res: Response) => {
             connectionId: slskd.connectionId,
             username,
             artistName: artistName || 'Unknown Artist',
-            albumName,
+            albumName: albumName || '',
             albumYear,
             filename: file.filename,
             fileSize: file.size,
@@ -241,7 +242,7 @@ router.post('/download', async (req: Request, res: Response) => {
       )
     );
 
-    res.json({ success: true, downloads });
+    res.json(serializeForJson({ success: true, downloads }));
   } catch (error) {
     log.error('Failed to queue download', { error: error instanceof Error ? error.message : error });
     res.status(500).json({ error: 'Failed to queue download' });
@@ -265,7 +266,7 @@ router.get('/downloads', async (req: Request, res: Response) => {
     const where: Prisma.SlskdDownloadWhereInput = {};
     
     if (status && typeof status === 'string') {
-      const statuses = status.split(',').map(s => s.trim()) as SlskdDownloadStatus[];
+      const statuses = status.split(',').map(s => s.trim());
       if (statuses.length === 1) {
         where.status = statuses[0];
       } else {
@@ -279,7 +280,7 @@ router.get('/downloads', async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' },
       take: Math.min(parseInt(limit as string, 10) || 100, MAX_DOWNLOADS_QUERY),
     });
-    res.json(downloads);
+    res.json(serializeForJson(downloads));
   } catch (error) {
     log.error('Failed to get downloads', { error: error instanceof Error ? error.message : error });
     res.status(500).json({ error: 'Failed to get downloads' });
@@ -333,7 +334,7 @@ router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
         // Legacy path: direct slskd call
         await slskd.service.queueDownload(download.username, [{
           filename: download.filename,
-          size: download.fileSize,
+          size: Number(download.fileSize),
         }]);
       }
     } catch (error) {
@@ -351,7 +352,7 @@ router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
       data: { status: 'pending', error: null },
     });
     
-    res.json({ success: true, download: updated });
+    res.json(serializeForJson({ success: true, download: updated }));
   } catch (error) {
     log.error('Failed to retry download', { error: error instanceof Error ? error.message : error });
     res.status(500).json({ error: 'Failed to retry download' });
@@ -542,5 +543,11 @@ router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
-
+/**
+ * Cleanup function for graceful shutdown
+ * Call this when the application is shutting down
+ */
+export async function cleanupQueueEvents(): Promise<void> {
+  await queueEvents.close();
+}
 export default router;

@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { LastfmService } from '../services/lastfm.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
@@ -48,6 +49,24 @@ async function getLidarrService(userId: number): Promise<LidarrService | null> {
   if (!connection) return null;
   const config = connection.config as { url: string; apiKey: string };
   return new LidarrService(config);
+}
+
+// Helper to get Lidarr service with full config (for add operations)
+async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
+  const connection = await prisma.connection.findFirst({
+    where: {
+      OR: [
+        { userId, type: 'lidarr', isActive: true },
+        { userId: null, type: 'lidarr', isActive: true },
+      ],
+    },
+    orderBy: { userId: 'desc' },
+  });
+  if (!connection) return null;
+  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
+  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+  const config = normalizeLidarrConfig(rawConfig);
+  return { service: new LidarrService(config), config };
 }
 
 /**
@@ -119,8 +138,11 @@ discoverRouter.get('/library', async (req, res) => {
         totalPages,
       },
     });
-  } catch (error) {
-    res.status(500).json({ 
+  } catch (error) {    logger.error('Failed to get library', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });    res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get library' 
     });
   }
@@ -248,6 +270,11 @@ discoverRouter.post('/similar', async (req, res) => {
       total: recsWithImages.length,
     });
   } catch (error) {
+    logger.error('Failed to get recommendations', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get recommendations' 
     });
@@ -267,8 +294,8 @@ discoverRouter.post('/add', async (req, res) => {
       return;
     }
 
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ 
         error: 'Discover requires a Lidarr connection',
         code: 'LIDARR_REQUIRED',
@@ -276,6 +303,7 @@ discoverRouter.post('/add', async (req, res) => {
       });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
 
     let foreignArtistId: string | undefined;
 
@@ -309,12 +337,43 @@ discoverRouter.post('/add', async (req, res) => {
       return;
     }
 
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
+
+    if (!qpId) {
+      const profiles = await lidarr.getQualityProfiles();
+      qpId = profiles[0]?.id;
+    }
+
+    if (!mpId) {
+      const profiles = await lidarr.getMetadataProfiles();
+      mpId = profiles[0]?.id;
+    }
+
+    if (!rfPath) {
+      const folders = await lidarr.getRootFolders();
+      rfPath = folders[0]?.path;
+    }
+
+    if (!qpId || !mpId || !rfPath) {
+      res.status(400).json({ error: 'Missing Lidarr configuration (profiles/folders)' });
+      return;
+    }
+
     // Add to Lidarr with metadata refresh to ensure complete MusicBrainz data
+    // Use monitorOption from connection config (defaults to 'all' if not set)
     const { artist: result, refreshCommand } = await lidarr.addArtistWithRefresh(
       foreignArtistId,
-      qualityProfileId,
-      metadataProfileId,
-      rootFolderPath
+      qpId,
+      mpId,
+      rfPath,
+      true,  // monitored
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+      false, // waitForRefresh (deprecated)
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
     );
 
     // Log the addition
@@ -353,11 +412,12 @@ discoverRouter.post('/add', async (req, res) => {
 /**
  * GET /api/discover/profiles
  * Get Lidarr quality and metadata profiles for the add form
+ * Includes connection's default selections
  */
 discoverRouter.get('/profiles', async (req, res) => {
   try {
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ 
         error: 'Discover requires a Lidarr connection',
         code: 'LIDARR_REQUIRED',
@@ -366,18 +426,33 @@ discoverRouter.get('/profiles', async (req, res) => {
       return;
     }
 
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
+
     const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
       lidarr.getQualityProfiles(),
       lidarr.getMetadataProfiles(),
       lidarr.getRootFolders(),
     ]);
 
+    // Include connection's default selections so frontend can initialize correctly
     res.json({
       qualityProfiles,
       metadataProfiles,
       rootFolders,
+      defaults: {
+        qualityProfileId: lidarrConfig.qualityProfileId,
+        metadataProfileId: lidarrConfig.metadataProfileId,
+        rootFolderPath: lidarrConfig.rootFolderPath,
+        monitorOption: lidarrConfig.monitorOption,
+        searchOnAdd: lidarrConfig.searchOnAdd,
+      },
     });
   } catch (error) {
+    logger.error('Failed to get profiles', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get profiles' 
     });
@@ -394,6 +469,10 @@ discoverRouter.get('/deezer/genres', async (_req, res) => {
     const genres = await getDeezerGenres();
     res.json(genres);
   } catch (error) {
+    logger.error('Failed to get Deezer genres', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get Deezer genres' 
     });
@@ -409,6 +488,10 @@ discoverRouter.get('/deezer/chart', async (req, res) => {
     const artists = await getDeezerChartArtists(limit);
     res.json(artists);
   } catch (error) {
+    logger.error('Failed to get Deezer chart', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get Deezer chart' 
     });
@@ -428,6 +511,11 @@ discoverRouter.get('/deezer/genre/:genreId/artists', async (req, res) => {
     const artists = await getDeezerGenreArtists(genreId, limit);
     res.json(artists);
   } catch (error) {
+    logger.error('Failed to get genre artists', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { genreId: req.params.genreId },
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get genre artists' 
     });

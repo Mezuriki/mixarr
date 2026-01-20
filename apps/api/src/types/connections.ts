@@ -113,9 +113,21 @@ export function isListenBrainzConfig(config: unknown): config is ListenBrainzCon
 // Lidarr Connection Config
 // =============================================================================
 
+/** Valid Lidarr monitor options for album monitoring (one-time on add) */
+export type LidarrMonitorOption = 'all' | 'future' | 'missing' | 'existing' | 'first' | 'latest' | 'none';
+
+/** Valid Lidarr options for monitoring NEW albums (ongoing) */
+export type LidarrMonitorNewItems = 'all' | 'none' | 'new';
+
 export interface LidarrConnectionConfig {
   url: string;
   apiKey: string;
+  qualityProfileId?: number;
+  metadataProfileId?: number;
+  rootFolderPath?: string;
+  monitorOption?: LidarrMonitorOption;
+  monitorNewItems?: LidarrMonitorNewItems;
+  searchOnAdd?: boolean;
   [key: string]: JsonValue | undefined;
 }
 
@@ -125,6 +137,41 @@ export function isLidarrConfig(config: unknown): config is LidarrConnectionConfi
   }
   const c = config as Record<string, unknown>;
   return typeof c.url === 'string' && typeof c.apiKey === 'string';
+}
+
+/**
+ * Normalizes a Lidarr connection config by converting string profile IDs to numbers.
+ * This handles the case where the frontend saves profile IDs as strings
+ * (from select dropdown values) but the Lidarr API expects numbers.
+ */
+export function normalizeLidarrConfig(config: LidarrConnectionConfig): LidarrConnectionConfig {
+  const normalized = { ...config };
+
+  // Convert qualityProfileId to number if it's a string
+  if (normalized.qualityProfileId !== undefined) {
+    const parsed = typeof normalized.qualityProfileId === 'string'
+      ? parseInt(normalized.qualityProfileId, 10)
+      : normalized.qualityProfileId;
+    normalized.qualityProfileId = isNaN(parsed) || parsed === 0 ? undefined : parsed;
+  }
+
+  // Convert metadataProfileId to number if it's a string
+  if (normalized.metadataProfileId !== undefined) {
+    const parsed = typeof normalized.metadataProfileId === 'string'
+      ? parseInt(normalized.metadataProfileId, 10)
+      : normalized.metadataProfileId;
+    normalized.metadataProfileId = isNaN(parsed) || parsed === 0 ? undefined : parsed;
+  }
+
+  // Validate monitorNewItems is a valid option (defaults to 'all' if invalid)
+  const validMonitorNewItems = ['all', 'none', 'new'];
+  if (normalized.monitorNewItems !== undefined) {
+    if (!validMonitorNewItems.includes(normalized.monitorNewItems as string)) {
+      normalized.monitorNewItems = 'all';
+    }
+  }
+
+  return normalized;
 }
 
 // =============================================================================

@@ -57,6 +57,10 @@ export const subscriptionTypes = [
   'listenbrainz_fresh_releases',
   'listenbrainz_radio',
   // MusicBrainz types
+  'musicbrainz',
+  'musicbrainz_new',
+  // Combined type
+  'combined',
   // AI types
   'ai_recommendation',
   // Discogs types

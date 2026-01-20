@@ -4,8 +4,9 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { SlskdService, SlskdFile } from "./slskd-service.js";
+import { SlskdService, SlskdFile } from "./slskd.js";
 import { logger as log } from "../lib/logger.js";
+import { selectBestPeer, SlskdPeer } from "./slskd-peer-scorer.js";
 import { 
   enqueueSlskdSearch, 
   enqueueSlskdDownload,
@@ -17,7 +18,8 @@ import { createRedisConnection } from "../lib/redis.js";
 
 export interface ProcessArtistRequest {
   name: string;
-  album: string;
+  album?: string;  // Optional - if not provided, searches by artist name only
+  mbid?: string;   // Optional MusicBrainz ID
 }
 
 export interface ProcessContext {
@@ -30,7 +32,7 @@ export interface ProcessContext {
 }
 
 export interface ProcessResult {
-  status: "queued" | "no_results" | "error";
+  status: "queued" | "no_results" | "error" | "not_found";
   downloadId?: number;
   searchResultCount?: number;
   error?: string;
@@ -66,7 +68,7 @@ export class SlskdSubscriptionProcessor {
     context: ProcessContext,
   ): Promise<ProcessResult> {
     const { connectionId, preferences } = context;
-    const searchText = `${artist.name} ${artist.album}`;
+    const searchText = artist.album ? `${artist.name} ${artist.album}` : artist.name;
 
     // IMPORTANT FIX #4: Validate connectionId
     if (!connectionId || connectionId <= 0) {
@@ -80,7 +82,7 @@ export class SlskdSubscriptionProcessor {
           // Read flag fresh on each operation to avoid stale cache
           const useQueue = await isSlskdRateLimitingEnabled();
 
-          let searchId: number;
+          let searchId: string;
 
           if (useQueue) {
             // Enqueue search and wait for completion
@@ -96,7 +98,7 @@ export class SlskdSubscriptionProcessor {
             });
 
             // CRITICAL FIX #2: Catch timeout errors from waitUntilFinished
-            let searchResult: { searchId: number };
+            let searchResult: { searchId: string };
             try {
               // Wait for job to complete (60s timeout includes queue wait + execution)
               searchResult = await searchJob.waitUntilFinished(
@@ -119,35 +121,32 @@ export class SlskdSubscriptionProcessor {
               album: artist.album,
             });
 
-            const search = await this.slskdService.createSearch({
-              searchText,
-              searchTimeout: 30000,
-            });
-
+            const search = await this.slskdService.search(searchText);
             searchId = search.id;
           }
 
           // Poll for results (simplified for testing)
-          const searchResult = await this.slskdService.getSearch(searchId);
+          const searchResult = await this.slskdService.getSearchResults(String(searchId));
 
           if (searchResult.state === "Errored") {
             throw new Error("Search failed");
           }
 
           // No results is a valid response - do NOT retry
-          if (!searchResult.responses.length) {
+          const responses = searchResult.responses || [];
+          if (!responses.length) {
             return { status: "no_results", searchResultCount: 0 };
           }
 
           // Find best result (simplified scoring)
           const bestResult = this.selectBestResult(
-            searchResult.responses,
+            responses,
             preferences,
           );
           if (!bestResult) {
             return {
               status: "no_results",
-              searchResultCount: searchResult.responses.length,
+              searchResultCount: responses.length,
             };
           }
 
@@ -159,7 +158,7 @@ export class SlskdSubscriptionProcessor {
           if (!filesToDownload.length) {
             return {
               status: "no_results",
-              searchResultCount: searchResult.responses.length,
+              searchResultCount: responses.length,
             };
           }
 
@@ -170,11 +169,10 @@ export class SlskdSubscriptionProcessor {
                 data: {
                   connectionId,
                   artistName: artist.name,
-                  albumName: artist.album,
+                  albumName: artist.album || '',
                   username: bestResult.username,
                   filename: file.filename,
                   fileSize: BigInt(file.size),
-                  searchId: searchId,
                   status: "queued_locally",
                 },
               }),
@@ -196,10 +194,10 @@ export class SlskdSubscriptionProcessor {
                 await downloadJob.waitUntilFinished(this.queueEvents, 10000);
               } else {
                 // Direct call (legacy path)
-                await this.slskdService.queueDownload({
-                  username: bestResult.username,
+                await this.slskdService.queueDownload(bestResult.username, [{
                   filename: file.filename,
-                });
+                  size: file.size,
+                }]);
               }
             }
 
@@ -220,7 +218,7 @@ export class SlskdSubscriptionProcessor {
             return {
               status: "queued",
               downloadId: downloads[0]?.id,
-              searchResultCount: searchResult.responses.length,
+              searchResultCount: responses.length,
             };
           } catch (error) {
             // Queue failed - mark downloads as failed
@@ -241,7 +239,7 @@ export class SlskdSubscriptionProcessor {
             return {
               status: "error",
               error: error instanceof Error ? error.message : "Queue failed",
-              searchResultCount: searchResult.responses.length,
+              searchResultCount: responses.length,
             };
           }
         } catch (error) {
@@ -292,14 +290,35 @@ export class SlskdSubscriptionProcessor {
     responses: Array<{
       username: string;
       files: SlskdFile[];
-      uploadSpeed: number;
+      uploadSpeed?: number;
+      queueLength?: number;
     }>,
     _preferences: { preferLossless?: boolean },
   ) {
     if (!responses.length) return null;
 
-    // Simplified: return first result with files
-    return responses.find((r) => r.files.length > 0) || null;
+    // Filter to responses with files first
+    const withFiles = responses.filter((r) => r.files.length > 0);
+    if (!withFiles.length) return null;
+
+    // Convert to SlskdPeer format for scoring
+    const peers: SlskdPeer[] = withFiles.map((r) => ({
+      username: r.username,
+      uploadSpeed: r.uploadSpeed || 0,
+      queueLength: r.queueLength || 0,
+      files: r.files.map((f) => ({
+        filename: f.filename,
+        bitRate: f.bitRate,
+        size: f.size,
+      })),
+    }));
+
+    // Select best peer using quality scoring
+    const bestPeer = selectBestPeer(peers);
+    if (!bestPeer) return null;
+
+    // Find and return the original response
+    return withFiles.find((r) => r.username === bestPeer.username) || null;
   }
 
   private filterFiles(

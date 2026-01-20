@@ -269,6 +269,8 @@ export async function getRecentJobs(queueName: string, limit: number = 20) {
         data: enrichedData,
         timestamp: job.timestamp,
         finishedOn: job.finishedOn,
+        failedReason: job.failedReason,
+        returnvalue: job.returnvalue,
       };
     })
   );

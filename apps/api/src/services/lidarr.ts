@@ -234,7 +234,9 @@ export class LidarrService {
     metadataProfileId: number,
     rootFolderPath: string,
     monitored: boolean = true,
-    searchForMissingAlbums: boolean = true
+    searchForMissingAlbums: boolean = true,
+    monitorOption: string = 'all',
+    monitorNewItems: string = 'all'
   ): Promise<LidarrArtist> {
     // Use slower rate limit for add operations to avoid overwhelming Lidarr
     await rateLimit('lidarr_add');
@@ -263,8 +265,9 @@ export class LidarrService {
       metadataProfileId,
       rootFolderPath,
       monitored,
+      monitorNewItems,
       addOptions: {
-        monitor: 'all',
+        monitor: monitorOption,
         searchForMissingAlbums: searchForMissingAlbums,
       },
     };
@@ -412,7 +415,9 @@ export class LidarrService {
     rootFolderPath: string,
     monitored: boolean = true,
     searchForMissingAlbums: boolean = true,
-    _waitForRefresh: boolean = false  // Kept for API compatibility, no longer used
+    _waitForRefresh: boolean = false,  // Kept for API compatibility, no longer used
+    monitorOption: string = 'all',
+    monitorNewItems: string = 'all'
   ): Promise<{ artist: LidarrArtist; refreshCommand?: LidarrCommand }> {
     const artist = await this.addArtist(
       foreignArtistId,
@@ -420,7 +425,9 @@ export class LidarrService {
       metadataProfileId,
       rootFolderPath,
       monitored,
-      searchForMissingAlbums
+      searchForMissingAlbums,
+      monitorOption,
+      monitorNewItems
     );
 
     // No longer triggering refresh - Lidarr's addArtist already fetches metadata

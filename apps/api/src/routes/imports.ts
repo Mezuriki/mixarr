@@ -16,6 +16,7 @@ import { createLogger } from '../lib/logger.js';
 import { Prisma } from '@prisma/client';
 import type { ImportSource, ReviewStatus } from '@prisma/client';
 import type { Request } from 'express';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 
 const log = createLogger('Imports');
 
@@ -42,6 +43,11 @@ importsRouter.get('/', async (req, res) => {
     });
     res.json({ sources });
   } catch (error) {
+    log.error('Failed to fetch import sources', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id },
+    });
     res.status(500).json({ error: 'Failed to fetch import sources' });
   }
 });
@@ -66,6 +72,11 @@ importsRouter.get('/:id', async (req, res) => {
 
     res.json({ source });
   } catch (error) {
+    log.error('Failed to fetch import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to fetch import source' });
   }
 });
@@ -99,6 +110,11 @@ importsRouter.post('/', async (req, res) => {
 
     res.json({ success: true, source });
   } catch (error) {
+    log.error('Failed to create import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, type: req.body?.type, name: req.body?.name },
+    });
     res.status(500).json({ error: 'Failed to create import source' });
   }
 });
@@ -141,6 +157,11 @@ importsRouter.put('/:id', async (req, res) => {
 
     res.json({ success: true, source });
   } catch (error) {
+    log.error('Failed to update import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to update import source' });
   }
 });
@@ -168,6 +189,11 @@ importsRouter.delete('/:id', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
+    log.error('Failed to delete import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { userId: req.user?.id, sourceId: req.params.id },
+    });
     res.status(500).json({ error: 'Failed to delete import source' });
   }
 });
@@ -265,7 +291,9 @@ importsRouter.put('/review/:id', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -344,11 +372,17 @@ importsRouter.put('/review/:id', async (req, res) => {
       res.json({ success: true, added: true, itemType: 'album' });
     } else {
       // Artist approval (default behavior) - trigger metadata refresh for complete data
+      // Use monitorOption from connection config (defaults to 'all' if not set)
       await lidarr.addArtistWithRefresh(
         foreignArtistId,
         qualityProfiles[0].id,
         metadataProfiles[0].id,
-        rootFolders[0].path
+        rootFolders[0].path,
+        true,  // monitored
+        true,  // searchForMissingAlbums
+        false, // waitForRefresh (deprecated)
+        lidarrConfig.monitorOption || 'all',
+        lidarrConfig.monitorNewItems || 'all'
       );
 
       await prisma.reviewItem.update({
@@ -438,7 +472,9 @@ importsRouter.post('/review/bulk', async (req, res) => {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -558,12 +594,18 @@ importsRouter.post('/review/bulk', async (req, res) => {
           });
         } else {
           // For artist items: add with metadata refresh for complete data
+          // Use monitorOption from connection config (defaults to 'all' if not set)
           log.debug(`Adding ${item.artistName} (${foreignArtistId}) to Lidarr...`);
           await lidarr.addArtistWithRefresh(
             foreignArtistId,
             qualityProfiles[0].id,
             metadataProfiles[0].id,
-            rootFolders[0].path
+            rootFolders[0].path,
+            true,  // monitored
+            true,  // searchForMissingAlbums
+            false, // waitForRefresh (deprecated)
+            lidarrConfig.monitorOption || 'all',
+            lidarrConfig.monitorNewItems || 'all'
           );
           log.info(`Successfully added ${item.artistName} to Lidarr`);
           
@@ -654,7 +696,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const artists = await spotify.getAllFollowedArtists();
       sourceCounts['followed_artists'] = artists.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['followed_artists'] = 0;
     }
 
@@ -662,7 +704,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const albums = await spotify.getAllSavedAlbums();
       sourceCounts['saved_albums'] = albums.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['saved_albums'] = 0;
     }
 
@@ -670,7 +712,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const songs = await spotify.getAllLikedSongs();
       sourceCounts['liked_songs'] = songs.length;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['liked_songs'] = 0;
     }
 
@@ -678,7 +720,7 @@ importsRouter.post('/refresh', async (req, res) => {
     try {
       const response = await spotify.getUserPlaylists(50, 0);
       sourceCounts['playlists'] = response.total;
-    } catch (e) {
+    } catch (error) {
       sourceCounts['playlists'] = 0;
     }
 
@@ -1145,6 +1187,7 @@ importsRouter.post('/preview/import', async (req, res) => {
       metadataProfileId?: number;
       rootFolderPath?: string;
       monitorOption?: string;
+      monitorNewItems?: string;
     };
 
     const lidarr = new LidarrService(config);
@@ -1161,14 +1204,18 @@ importsRouter.post('/preview/import', async (req, res) => {
         }
 
         // Add the first matching artist with metadata refresh
+        // Use monitorOption from connection config (defaults to 'all' if not set)
         const artist = searchResults[0];
         await lidarr.addArtistWithRefresh(
           artist.foreignArtistId,
           config.qualityProfileId || 1,
           config.metadataProfileId || 1,
           config.rootFolderPath || '/music',
-          true, // monitored
-          true  // searchForMissingAlbums
+          true,  // monitored
+          true,  // searchForMissingAlbums
+          false, // waitForRefresh (deprecated)
+          config.monitorOption || 'all',
+          config.monitorNewItems || 'all'
         );
 
         results.push({ name: artistName, success: true, message: 'Added to Lidarr' });

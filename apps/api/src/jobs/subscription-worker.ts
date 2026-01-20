@@ -22,7 +22,7 @@ import { BandcampService } from '../services/bandcamp.js';
 import { fetchPublicPlaylist, parseSpotifyPlaylistUrl, extractArtistsFromPlaylist } from '../services/public-playlist.js';
 import { addLogEntry } from '../routes/logs.js';
 import { deduplicateResults } from '../utils/deduplication.js';
-import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig } from '../types/connections.js';
+import { isSpotifyConfig, isLastFMConfig, isDeezerConfig, isTidalConfig, isListenBrainzConfig, isTautulliConfig, isJellyfinConfig, isSlskdConfig, LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { findOrCreateReviewItem } from '../utils/review-queue.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
@@ -50,6 +50,9 @@ interface AlbumToAdd {
 
 async function processSubscription(job: Job<SubscriptionJobData>): Promise<void> {
   const { subscriptionId, userId } = job.data;
+  
+  // Declare slskdProcessor outside try block so it's accessible in finally block for cleanup
+  let slskdProcessor: SlskdSubscriptionProcessor | null = null;
   
   // Create run record
   const run = await prisma.subscriptionRun.create({
@@ -124,16 +127,18 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
     // Lidarr is optional - only needed for library dedup and 'auto' mode
     let lidarr: LidarrService | null = null;
     let lidarrCache: LidarrCache | null = null;
+    let lidarrConfig: LidarrConnectionConfig | null = null;
 
     if (lidarrConn) {
-      const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+      const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+      // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+      lidarrConfig = normalizeLidarrConfig(rawConfig);
       lidarr = new LidarrService(lidarrConfig);
       lidarrCache = new LidarrCache(lidarr);
       await lidarrCache.refresh();
     }
 
     // slskd is optional - only needed for slskd_* result handling modes
-    let slskdProcessor: SlskdSubscriptionProcessor | null = null;
     let slskdConnectionId: number | null = null;
 
     if (slskdConn && isSlskdConfig(slskdConn.config)) {
@@ -2054,17 +2059,36 @@ async function processSubscription(job: Job<SubscriptionJobData>): Promise<void>
         }
 
         try {
-          const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
-            lidarr.getQualityProfiles(),
-            lidarr.getMetadataProfiles(),
-            lidarr.getRootFolders(),
-          ]);
+          // Use connection config for profiles/folders, fall back to fetching first available
+          let qpId = lidarrConfig?.qualityProfileId;
+          let mpId = lidarrConfig?.metadataProfileId;
+          let rfPath = lidarrConfig?.rootFolderPath;
 
+          if (!qpId || !mpId || !rfPath) {
+            const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
+              !qpId ? lidarr.getQualityProfiles() : Promise.resolve([]),
+              !mpId ? lidarr.getMetadataProfiles() : Promise.resolve([]),
+              !rfPath ? lidarr.getRootFolders() : Promise.resolve([]),
+            ]);
+            if (!qpId) qpId = qualityProfiles[0]?.id;
+            if (!mpId) mpId = metadataProfiles[0]?.id;
+            if (!rfPath) rfPath = rootFolders[0]?.path;
+          }
+
+          if (!qpId || !mpId || !rfPath) {
+            throw new Error('Missing Lidarr configuration (profiles/folders)');
+          }
+
+          // Use monitorOption from connection config (defaults to 'all' if not set)
           await lidarr.addArtist(
             mbid,
-            qualityProfiles[0].id,
-            metadataProfiles[0].id,
-            rootFolders[0].path
+            qpId,
+            mpId,
+            rfPath,
+            true,  // monitored
+            lidarrConfig?.searchOnAdd !== false,  // searchForMissingAlbums from config
+            lidarrConfig?.monitorOption || 'all',
+            lidarrConfig?.monitorNewItems || 'all'
           );
           added++;
           await prisma.subscriptionResult.create({

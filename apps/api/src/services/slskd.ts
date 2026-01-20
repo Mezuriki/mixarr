@@ -7,6 +7,7 @@
 
 import { rateLimit } from './rate-limiter.js';
 import { createLogger } from '../lib/logger.js';
+import { parseErrorResponse } from './slskd-api-error.js';
 
 const log = createLogger('slskd');
 
@@ -95,6 +96,12 @@ export interface SlskdUserDownload {
   directories: SlskdDownloadDirectory[];
 }
 
+export interface SearchPollingOptions {
+  onProgress?: (status: string) => void;
+  pollIntervalMs?: number;
+  maxPollAttempts?: number;
+}
+
 export class SlskdService {
   private url: string;
   private apiKey: string;
@@ -145,6 +152,39 @@ export class SlskdService {
     return this.callApi<SlskdSearch>(endpoint);
   }
 
+  async searchWithPolling(
+    query: string, 
+    options: SearchPollingOptions = {}
+  ): Promise<SlskdSearch> {
+    const { 
+      onProgress, 
+      pollIntervalMs = 1000, 
+      maxPollAttempts = 60 
+    } = options;
+    
+    // Start search (use existing method)
+    const searchResult = await this.search(query);
+    const searchId = searchResult.id;
+    
+    onProgress?.('Search started...');
+    
+    // Poll until complete
+    for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+      const status = await this.getSearchResults(searchId, true);
+      
+      onProgress?.(`Found ${status.fileCount || 0} files from ${status.responseCount || 0} peers`);
+      
+      // Terminal states - return immediately
+      if (status.state === 'Completed' || status.state === 'TimedOut' || status.state === 'Errored' || status.state === 'Cancelled') {
+        return status;
+      }
+      
+      await this.sleep(pollIntervalMs);
+    }
+    
+    throw new Error('Search timeout: max poll attempts reached');
+  }
+
   async cancelSearch(searchId: string): Promise<void> {
     await this.callApi<void>(`/api/v0/searches/${searchId}`, {
       method: 'PUT',
@@ -182,12 +222,35 @@ export class SlskdService {
     await this.callApi<void>(endpoint, { method: 'DELETE' });
   }
 
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit = {},
+    timeoutMs: number = 30000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   private async callApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     await rateLimit('slskd');
 
     const url = `${this.url}${endpoint}`;
     
-    const response = await fetch(url, {
+    const response = await this.fetchWithTimeout(url, {
       ...options,
       headers: {
         'X-API-Key': this.apiKey,
@@ -197,7 +260,7 @@ export class SlskdService {
     });
 
     if (!response.ok) {
-      throw new Error(`slskd API error: ${response.status} ${response.statusText}`);
+      throw await parseErrorResponse(response, url);
     }
 
     return response.json() as Promise<T>;

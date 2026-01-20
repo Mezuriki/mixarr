@@ -1,4 +1,18 @@
 // ============================================================================
+// RE-EXPORTS FROM MODULES
+// ============================================================================
+
+export {
+  SUBSCRIPTION_TYPES,
+  RESULT_HANDLING_OPTIONS,
+  isValidSubscriptionType,
+  isValidResultHandling,
+  getSubscriptionTypeValues,
+  type SubscriptionTypeValue,
+  type ResultHandlingValue,
+} from './subscription.js';
+
+// ============================================================================
 // USER TYPES
 // ============================================================================
 
@@ -35,7 +49,7 @@ export interface AuthResponse {
 // CONNECTION TYPES
 // ============================================================================
 
-export type ConnectionType = 'lidarr' | 'spotify' | 'lastfm';
+export type ConnectionType = 'lidarr' | 'spotify' | 'lastfm' | 'tautulli' | 'jellyfin' | 'deezer' | 'tidal' | 'listenbrainz' | 'discogs' | 'slskd';
 
 export interface Connection {
   id: number;
