@@ -337,6 +337,19 @@ The slim image uses `tini` for proper signal handling. If a process crashes:
 2. Check logs for the crash reason
 3. Both API and Web must be healthy for the container to stay running
 
+### CSS/Styling missing after upgrade
+
+If the UI appears unstyled after upgrading Mixarr:
+
+1. **Hard refresh**: Press `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+2. **Clear site data**: 
+   - Open browser DevTools (F12)
+   - Go to **Application** tab → **Storage**
+   - Click **Clear site data**
+3. **Open in incognito/private window** to bypass cache
+
+This happens because the browser caches old CSS files with hash-based filenames that change on each build.
+
 ---
 
 ## Migration from Unified to Slim
