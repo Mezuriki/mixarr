@@ -98,7 +98,7 @@ export default function LogsPage() {
     <>
       <PageHeader
         title="Logs"
-        description={total > 0 ? `${total.toLocaleString()} total entries` : 'View application activity and errors'}
+        description={total > 0 ? <span className="tabular-nums">{total.toLocaleString()} total entries</span> : 'View application activity and errors'}
       >
         <Button variant="outline" onClick={handleRefresh} disabled={isFetching}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
@@ -211,7 +211,7 @@ export default function LogsPage() {
                   ) : (
                     <ChevronDown className="h-4 w-4 mr-2" />
                   )}
-                  Load More ({logs.length} of {total.toLocaleString()})
+                  Load More (<span className="tabular-nums">{logs.length} of {total.toLocaleString()}</span>)
                 </Button>
               </div>
             )}

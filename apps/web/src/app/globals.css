@@ -173,6 +173,12 @@
   }
 }
 
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 /* Reduced motion accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,

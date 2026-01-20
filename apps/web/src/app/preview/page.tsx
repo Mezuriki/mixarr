@@ -282,7 +282,7 @@ export default function PreviewPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{artist.name}</p>
                         {artist.listeners && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground tabular-nums">
                             {parseInt(artist.listeners).toLocaleString()} listeners
                           </p>
                         )}

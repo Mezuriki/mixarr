@@ -190,7 +190,7 @@ export function ArtistCard({
                 <span>{(fans / 1000).toFixed(0)}K fans</span>
               )}
               {listeners !== undefined && listeners > 0 && (
-                <span>{listeners.toLocaleString()} listeners</span>
+                <span className="tabular-nums">{listeners.toLocaleString()} listeners</span>
               )}
             </div>
           )}
