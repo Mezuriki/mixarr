@@ -17,7 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatically apply monitor setting when adding artists via subscriptions
 
 ### Fixed
+- Issue #24: Lidarr import settings are not respected
+- Issue #22: Allow renaming custom spotify playlists
+- Issue #21: Can't access the WebUI on http
+- Issue #20: slskd server ban (warning)
 - Fix modals not scrollable on small screens
+- Fix Discogs subscription error on save
 - Fix subscription edit using PUT to match API route
 - Fix Spotify category preset field name mismatch
 - Fix Docker image typo (aquantumofdonums → aquantumofdonuts)
