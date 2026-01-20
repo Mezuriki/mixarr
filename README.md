@@ -63,6 +63,46 @@ docker run -d \
 
 ---
 
+## Deployment Options
+
+Mixarr offers two Docker image variants:
+
+| Image | Size | Contents | Best For |
+|-------|------|----------|----------|
+| `mixarr:latest` | ~800MB | Full stack (API, Web, MariaDB, Redis, Caddy) | Beginners, single-container setups |
+| `mixarr:slim` | ~200MB | API + Web only | Production, Kubernetes, existing infrastructure |
+
+### Option 1: Unified Image (Default)
+
+Everything in one container - the examples above use this approach.
+
+### Option 2: Slim Image with Compose
+
+Separate containers for better reliability and scalability:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/aquantumofdonuts/mixarr/prod/docker-compose.slim.yml -o docker-compose.yml
+docker compose up -d
+```
+
+### Option 3: Slim Image with Existing Infrastructure
+
+For users with existing MariaDB/MySQL and Redis:
+
+```bash
+docker run -d \
+  --name mixarr \
+  -p 3000:3000 -p 3005:3005 \
+  -e DATABASE_URL=mysql://user:pass@your-db:3306/mixarr \
+  -e REDIS_URL=redis://your-redis:6379 \
+  -e SESSION_SECRET=your-secret-here \
+  ghcr.io/aquantumofdonuts/mixarr:slim
+```
+
+See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions including Kubernetes, reverse proxy examples, and troubleshooting.
+
+---
+
 ## Post-Installation Setup
 
 1.  **Create Admin Account**: Follow the prompts on first launch.
