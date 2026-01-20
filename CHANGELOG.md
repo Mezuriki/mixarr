@@ -7,9 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.2.0] - Unreleased
-
-### Added
+## [v1.5.0] - Unreleased
 
 #### Docker Slim Image
 - New `mixarr:slim` Docker image containing only API + Web (~200MB vs ~800MB unified)
@@ -20,10 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive deployment guide (`docs/DEPLOYMENT.md`)
 - CI/CD pipeline builds both `latest` and `slim` images on release
 
-#### Lidarr Monitor New Items
-- Add "Monitor New Albums" dropdown to Lidarr connection settings
-- Support for None, All, New, and Existing monitor options
-- Automatically apply monitor setting when adding artists via subscriptions
+### Changed
+- Slim image uses `tini` for proper PID 1 signal handling
+- Slim image runs as non-root user (`mixarr:1000`)
+- Slim image properly exits when child processes crash (enables orchestrator restarts)
+
+
+## [v1.2.0] - Unreleased
+
 
 ### Fixed
 - Issue #24: Lidarr import settings are not respected
@@ -48,6 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Lidarr Monitor New Items
+- Add "Monitor New Albums" dropdown to Lidarr connection settings
+- Support for None, All, New, and Existing monitor options
+- Automatically apply monitor setting when adding artists via subscriptions
+
 #### Subscription System Refactoring
 - Extract SubscriptionService with TDD (business logic layer)
 - Add SubscriptionController with TDD (HTTP layer)
@@ -68,10 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add pre-release cleanup documentation
 - Add deployment guide for Docker images (`docs/DEPLOYMENT.md`)
 
-### Changed
-- Slim image uses `tini` for proper PID 1 signal handling
-- Slim image runs as non-root user (`mixarr:1000`)
-- Slim image properly exits when child processes crash (enables orchestrator restarts)
+
 
 ---
 

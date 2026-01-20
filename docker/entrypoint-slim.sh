@@ -41,7 +41,8 @@ echo "⏳ Waiting for database..."
 MAX_RETRIES=30
 RETRY=0
 
-until node -e "
+# Note: Must run from /app/api where node_modules and Prisma client are located
+until cd /app/api && node -e "
   const { PrismaClient } = require('@prisma/client');
   const prisma = new PrismaClient();
   prisma.\$connect()
@@ -64,7 +65,8 @@ echo "✅ Database connected"
 echo "⏳ Waiting for Redis..."
 RETRY=0
 
-until node -e "
+# Note: Must run from /app/api where node_modules are located
+until cd /app/api && node -e "
   const Redis = require('ioredis');
   const r = new Redis(process.env.REDIS_URL, { 
     maxRetriesPerRequest: 1,
@@ -101,15 +103,14 @@ echo ""
 # ============================================
 # 5. Start services
 # ============================================
-cd /app
-
 echo "🚀 Starting API server on :3005..."
-node /app/api/dist/index.js &
+cd /app/api
+PORT=3005 node dist/index.js &
 API_PID=$!
 
 echo "🌐 Starting Web server on :3000..."
-cd /app/web
-HOSTNAME=0.0.0.0 node server.js &
+cd /app/web/apps/web
+PORT=3000 HOSTNAME=0.0.0.0 node server.js &
 WEB_PID=$!
 
 echo ""

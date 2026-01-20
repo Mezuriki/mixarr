@@ -16,18 +16,6 @@ The unified image includes everything needed to run Mixarr:
 - Redis cache/queue
 - Caddy reverse proxy (with automatic HTTPS)
 
-**Pros:**
-- Single container, zero configuration
-- Works out of the box
-- Automatic HTTPS via Caddy
-- Self-signed certificate included
-
-**Cons:**
-- Larger image (~800MB)
-- Database/Redis upgrades require image rebuild
-- Harder to scale horizontally
-- Internal service failures may be hidden from orchestrators
-
 **Best for:** Quick demos, single-user setups, users new to Docker
 
 ### Slim Image (`mixarr:slim`)
@@ -38,18 +26,6 @@ The slim image contains only the Mixarr application:
 - Web UI (Next.js)
 
 **Requires:** External MariaDB/MySQL and Redis
-
-**Pros:**
-- Smaller image (~200MB)
-- Use your own managed database/Redis
-- Proper container crash propagation
-- Easy to scale and orchestrate
-- Better for CI/CD pipelines
-
-**Cons:**
-- Requires docker-compose or external services
-- You manage database backups
-- No built-in HTTPS (use your own reverse proxy)
 
 **Best for:** Production deployments, Kubernetes, existing infrastructure
 
@@ -72,7 +48,7 @@ docker run -d \
 
 Access at https://YOUR-IP:3443
 
-### Using Slim Image with Compose
+### Using Slim Image with Compose (equivalent to Unified Image)
 
 ```bash
 # Download compose file

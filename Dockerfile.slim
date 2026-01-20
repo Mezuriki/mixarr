@@ -5,7 +5,7 @@
 # Requires: External DATABASE_URL and REDIS_URL
 # 
 # Build: docker build -f Dockerfile.slim -t mixarr:slim .
-# Size: ~200-300MB (vs ~800MB unified)
+# Size: ~700-800MB (production deps only, vs ~1.6GB with dev deps)
 # =============================================================================
 
 # =============================================================================
@@ -40,6 +40,16 @@ WORKDIR /app
 RUN npm run build --workspace=@mixarr/api
 
 # =============================================================================
+# PRODUCTION DEPENDENCIES STAGE - Prune to production deps only
+# =============================================================================
+FROM deps AS prod-deps
+COPY . .
+# Build shared-types since it's a production dependency of the API
+RUN npm run build --workspace=@mixarr/shared-types
+# Prune to production dependencies only
+RUN npm prune --omit=dev
+
+# =============================================================================
 # BUILD STAGE - WEB
 # =============================================================================
 FROM deps AS builder-web
@@ -70,16 +80,23 @@ RUN apk add --no-cache \
     curl \
     openssl
 
-# -----------------------------------------------------------------------------
-# Copy API build
-# -----------------------------------------------------------------------------
-COPY --from=builder-api /app/apps/api/dist /app/api/dist
-COPY --from=builder-api /app/apps/api/package*.json /app/api/
-COPY --from=builder-api /app/apps/api/prisma /app/api/prisma
+# Create data directory with proper ownership before switching to non-root
+RUN mkdir -p /data && chown node:node /data
 
-# Copy node_modules - both root hoisted deps AND api-specific deps
-COPY --from=builder-api /app/node_modules /app/api/node_modules
-COPY --from=builder-api /app/apps/api/node_modules /app/api/node_modules
+# -----------------------------------------------------------------------------
+# Copy API build (with proper ownership to avoid chown overhead)
+# -----------------------------------------------------------------------------
+COPY --from=builder-api --chown=node:node /app/apps/api/dist /app/api/dist
+COPY --from=builder-api --chown=node:node /app/apps/api/package*.json /app/api/
+COPY --from=builder-api --chown=node:node /app/apps/api/prisma /app/api/prisma
+
+# Copy production-only node_modules (pruned from full deps)
+# Root-level hoisted dependencies
+COPY --from=prod-deps --chown=node:node /app/node_modules /app/api/node_modules
+# API-specific dependencies (if any)
+COPY --from=prod-deps --chown=node:node /app/apps/api/node_modules /app/api/node_modules
+# Shared-types (built package required at runtime)
+COPY --from=prod-deps --chown=node:node /app/packages/shared-types /app/packages/shared-types
 
 # Generate Prisma client in production
 WORKDIR /app/api
@@ -89,26 +106,18 @@ RUN npx prisma generate
 # Copy Web build (Next.js standalone output)
 # -----------------------------------------------------------------------------
 WORKDIR /app
-COPY --from=builder-web /app/apps/web/.next/standalone /app/web/
-COPY --from=builder-web /app/apps/web/.next/static /app/web/apps/web/.next/static
-COPY --from=builder-web /app/apps/web/public /app/web/apps/web/public
+COPY --from=builder-web --chown=node:node /app/apps/web/.next/standalone /app/web/
+COPY --from=builder-web --chown=node:node /app/apps/web/.next/static /app/web/apps/web/.next/static
+COPY --from=builder-web --chown=node:node /app/apps/web/public /app/web/apps/web/public
 
 # -----------------------------------------------------------------------------
 # Copy entrypoint
 # -----------------------------------------------------------------------------
-COPY docker/entrypoint-slim.sh /entrypoint.sh
+COPY --chown=node:node docker/entrypoint-slim.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# -----------------------------------------------------------------------------
-# Create non-root user
-# -----------------------------------------------------------------------------
-RUN addgroup -g 1000 mixarr && \
-    adduser -u 1000 -G mixarr -s /bin/sh -D mixarr && \
-    mkdir -p /data && \
-    chown -R mixarr:mixarr /app /data
-
 # Switch to non-root user
-USER mixarr
+USER node
 
 # -----------------------------------------------------------------------------
 # Environment defaults
