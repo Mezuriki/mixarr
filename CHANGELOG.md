@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Docker Slim Image
+- New `mixarr:slim` Docker image containing only API + Web (~200MB vs ~800MB unified)
+- `docker-compose.slim.yml` for production deployments with external MariaDB and Redis
+- `docker-compose.byo.yml` for users with existing database/Redis infrastructure
+- Health check endpoint at `GET /api/health` (returns 503 if DB or Redis down)
+- Liveness endpoint at `GET /api/health/live` (always returns 200)
+- Comprehensive deployment guide (`docs/DEPLOYMENT.md`)
+- CI/CD pipeline builds both `latest` and `slim` images on release
+
 #### Lidarr Monitor New Items
 - Add "Monitor New Albums" dropdown to Lidarr connection settings
 - Support for None, All, New, and Existing monitor options
@@ -57,6 +66,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Add pre-release cleanup documentation
+- Add deployment guide for Docker images (`docs/DEPLOYMENT.md`)
+
+### Changed
+- Slim image uses `tini` for proper PID 1 signal handling
+- Slim image runs as non-root user (`mixarr:1000`)
+- Slim image properly exits when child processes crash (enables orchestrator restarts)
 
 ---
 
