@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';

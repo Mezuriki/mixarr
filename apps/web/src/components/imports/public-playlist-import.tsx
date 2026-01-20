@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Input, Modal, Checkbox, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import Check from 'lucide-react/dist/esm/icons/check';
 import Link2 from 'lucide-react/dist/esm/icons/link-2';

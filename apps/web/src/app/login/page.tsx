@@ -2,7 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import Eye from 'lucide-react/dist/esm/icons/eye';

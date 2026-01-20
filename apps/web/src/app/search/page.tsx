@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { Button, Card, CardContent, Input, Badge, useToast, LoadingOverlay, Modal, ModalFooter, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { LoadingOverlay } from '@/components/ui/loading';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { ArtistCard } from '@/components/ArtistCard';
 import { AlbumCard } from '@/components/AlbumCard';

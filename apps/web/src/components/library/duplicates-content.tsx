@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Card, CardContent, Badge, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import Check from 'lucide-react/dist/esm/icons/check';

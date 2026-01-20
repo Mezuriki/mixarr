@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, Select, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { useLogs } from '@/lib/hooks';
 import { useQueryClient } from '@tanstack/react-query';

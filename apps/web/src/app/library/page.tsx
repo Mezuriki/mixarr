@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Badge, useToast, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { DuplicatesContent } from '@/components/library/duplicates-content';
 import { api } from '@/lib/api';

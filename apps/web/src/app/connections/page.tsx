@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Modal, ModalFooter, useToast, Select, Badge } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';

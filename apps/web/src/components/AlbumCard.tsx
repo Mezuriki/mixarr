@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import Disc from 'lucide-react/dist/esm/icons/disc';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import { MusicBrainzIcon } from '@/components/ExternalLinks';

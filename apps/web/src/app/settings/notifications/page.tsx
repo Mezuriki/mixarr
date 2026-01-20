@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Card, CardContent, Input, useToast, Select, Modal, Checkbox } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
+import { Modal } from '@/components/ui/modal';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import Bell from 'lucide-react/dist/esm/icons/bell';

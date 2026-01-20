@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useToast, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AISettings } from '@/components/settings/ai-settings';
 import { SSOSettings } from '@/components/settings/sso-settings';

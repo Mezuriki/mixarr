@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, useToast, Loading } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Loading } from '@/components/ui/loading';
 import { PageHeader } from '@/components/layout/page-header';
 import { useSlskdDownloads, useRetrySlskdDownload, useCancelSlskdDownload, SlskdDownload } from '@/lib/hooks';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Card, CardContent, Input, Badge, useToast, Loading, Modal, ModalFooter } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Loading } from '@/components/ui/loading';
+import { Modal, ModalFooter } from '@/components/ui/modal';
 import { PageHeader } from '@/components/layout/page-header';
 import { ReleaseTypeFilter, useReleaseTypeFilter } from '@/components/ReleaseTypeFilter';
 import { GenrePills } from '@/components/GenrePills';

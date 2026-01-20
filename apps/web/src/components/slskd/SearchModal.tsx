@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Button, Badge, useToast } from '@/components/ui';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down';
 import CheckSquare from 'lucide-react/dist/esm/icons/check-square';

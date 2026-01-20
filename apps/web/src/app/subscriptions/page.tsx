@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import {

@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Modal, ModalFooter, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';

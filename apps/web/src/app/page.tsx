@@ -10,7 +10,8 @@ import Search from 'lucide-react/dist/esm/icons/search';
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent, Badge } from '@/components/ui';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useDashboardStats, useDashboardActivity, useDashboardConnections } from '@/lib/hooks';
 
 const quickLinks = [

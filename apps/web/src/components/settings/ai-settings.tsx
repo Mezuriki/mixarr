@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import Brain from 'lucide-react/dist/esm/icons/brain';
 import Eye from 'lucide-react/dist/esm/icons/eye';

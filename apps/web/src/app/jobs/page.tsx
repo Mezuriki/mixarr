@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';

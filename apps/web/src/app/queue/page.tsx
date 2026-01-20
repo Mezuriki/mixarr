@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, useToast, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { useReviewQueue, useUpdateReviewItem, useBulkUpdateReview } from '@/lib/hooks';
