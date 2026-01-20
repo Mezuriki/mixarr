@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mixarr-v2';
+const CACHE_NAME = 'mixarr-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -57,6 +57,12 @@ self.addEventListener('fetch', (event) => {
 
   // Skip external requests
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Skip Next.js static assets - they have content hashes for cache busting
+  // Let the browser handle these normally to avoid stale CSS/JS after upgrades
+  if (url.pathname.startsWith('/_next/')) {
     return;
   }
 
