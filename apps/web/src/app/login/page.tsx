@@ -5,7 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import LogIn from 'lucide-react/dist/esm/icons/log-in';
 
 function LoginPageContent() {
   const [username, setUsername] = useState('');

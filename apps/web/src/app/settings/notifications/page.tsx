@@ -4,7 +4,17 @@ import { useState, useEffect } from 'react';
 import { Button, Card, CardContent, Input, useToast, Select, Modal, Checkbox } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { Bell, Plus, Trash2, TestTube, Edit2, Check, X, MessageCircle, Webhook, Mail, Send } from 'lucide-react';
+import Bell from 'lucide-react/dist/esm/icons/bell';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2';
+import Mail from 'lucide-react/dist/esm/icons/mail';
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Send from 'lucide-react/dist/esm/icons/send';
+import TestTube from 'lucide-react/dist/esm/icons/test-tube';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Webhook from 'lucide-react/dist/esm/icons/webhook';
+import X from 'lucide-react/dist/esm/icons/x';
 
 interface NotificationChannel {
   id: number;

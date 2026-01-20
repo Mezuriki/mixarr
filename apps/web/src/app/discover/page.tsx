@@ -7,11 +7,22 @@ import { ReleaseTypeFilter, useReleaseTypeFilter } from '@/components/ReleaseTyp
 import { GenrePills } from '@/components/GenrePills';
 import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { api } from '@/lib/api';
-import { 
-  Search, Sparkles, Plus, Check, ChevronLeft, ChevronRight, 
-  CheckSquare, Square, Music2, RefreshCw, ChevronDown, ChevronUp, X,
-  Download, Filter, Library
-} from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Filter from 'lucide-react/dist/esm/icons/filter';
+import Library from 'lucide-react/dist/esm/icons/library';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Square from 'lucide-react/dist/esm/icons/square';
+import X from 'lucide-react/dist/esm/icons/x';
 import { LastfmIcon, MusicBrainzIcon } from '@/components/ExternalLinks';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';

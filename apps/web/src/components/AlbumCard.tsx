@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Button, Card } from '@/components/ui';
-import { Plus, Disc } from 'lucide-react';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 import { MusicBrainzIcon } from '@/components/ExternalLinks';
 import { cn } from '@/lib/utils';
 

@@ -5,18 +5,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Download, 
-  CheckCircle, 
-  XCircle, 
-  Sparkles, 
-  Music2, 
-  Radio,
-  Users,
-  Loader2
-} from 'lucide-react';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Radio from 'lucide-react/dist/esm/icons/radio';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Users from 'lucide-react/dist/esm/icons/users';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 
 interface Artist {
   id?: string;

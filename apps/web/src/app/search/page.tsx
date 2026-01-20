@@ -8,7 +8,16 @@ import { AlbumCard } from '@/components/AlbumCard';
 import { ExternalLinks } from '@/components/ExternalLinks';
 import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { api } from '@/lib/api';
-import { Search as SearchIcon, Plus, Music, ChevronLeft, ChevronRight, CheckSquare, Square, X, Loader2, Sparkles } from 'lucide-react';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music from 'lucide-react/dist/esm/icons/music';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import SearchIcon from 'lucide-react/dist/esm/icons/search';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Square from 'lucide-react/dist/esm/icons/square';
+import X from 'lucide-react/dist/esm/icons/x';
 
 type SearchType = 'artist' | 'album' | 'label' | 'year' | 'ai';
 type SearchSource = 'spotify' | 'deezer' | 'tidal' | 'bandcamp';

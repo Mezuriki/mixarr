@@ -6,7 +6,17 @@ import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { useReviewQueue, useUpdateReviewItem, useBulkUpdateReview } from '@/lib/hooks';
 import { SlskdSearchModal } from '@/components/slskd/SearchModal';
-import { Check, X, Music2, Clock, User, Search, CheckSquare, Square, Loader2, Disc, Users } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Square from 'lucide-react/dist/esm/icons/square';
+import User from 'lucide-react/dist/esm/icons/user';
+import Users from 'lucide-react/dist/esm/icons/users';
+import X from 'lucide-react/dist/esm/icons/x';
 
 export default function QueuePage() {
   const { user } = useAuth();

@@ -3,24 +3,22 @@
 import { useState, useEffect } from 'react';
 import { Button, Card, CardContent, Badge, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
-import { 
-  Scan, 
-  ExternalLink, 
-  X, 
-  ChevronDown, 
-  ChevronUp,
-  Music2,
-  HardDrive,
-  Disc,
-  Loader2,
-  AlertTriangle,
-  CheckCircle,
-  Check,
-  FolderOpen,
-  Settings2,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
+import FolderOpen from 'lucide-react/dist/esm/icons/folder-open';
+import HardDrive from 'lucide-react/dist/esm/icons/hard-drive';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Scan from 'lucide-react/dist/esm/icons/scan';
+import Settings2 from 'lucide-react/dist/esm/icons/settings-2';
+import X from 'lucide-react/dist/esm/icons/x';
 
 interface ArtistInfo {
   id: number;

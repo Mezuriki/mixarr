@@ -5,7 +5,15 @@ import { Button, Card, CardContent, Badge, Select, Input } from '@/components/ui
 import { PageHeader } from '@/components/layout/page-header';
 import { useLogs } from '@/lib/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, RefreshCw, Filter, AlertCircle, Info, AlertTriangle, Bug, ChevronDown, Loader2 } from 'lucide-react';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Bug from 'lucide-react/dist/esm/icons/bug';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Filter from 'lucide-react/dist/esm/icons/filter';
+import Info from 'lucide-react/dist/esm/icons/info';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 
 const levelConfig = {
   debug: { icon: Bug, color: 'text-gray-500', bg: 'bg-gray-500/10' },

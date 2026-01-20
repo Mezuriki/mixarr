@@ -1,6 +1,12 @@
 'use client';
 
-import { Music, Plus, Check, CheckSquare, Square, Loader2, Search } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music from 'lucide-react/dist/esm/icons/music';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Square from 'lucide-react/dist/esm/icons/square';
 import { Card, Badge, Button } from '@/components/ui';
 import { GenrePills } from '@/components/GenrePills';
 import { SpotifyIcon, LastfmIcon, MusicBrainzIcon } from '@/components/ExternalLinks';

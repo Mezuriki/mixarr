@@ -3,11 +3,20 @@
 import { useState, useEffect } from 'react';
 import { Modal, Button, Badge, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
-import { 
-  Search, Download, Music, User, HardDrive, FileAudio, 
-  CheckSquare, Square, X, Loader2, Filter, ArrowUpDown,
-  Clock, XCircle
-} from 'lucide-react';
+import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Download from 'lucide-react/dist/esm/icons/download';
+import FileAudio from 'lucide-react/dist/esm/icons/file-audio';
+import Filter from 'lucide-react/dist/esm/icons/filter';
+import HardDrive from 'lucide-react/dist/esm/icons/hard-drive';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music from 'lucide-react/dist/esm/icons/music';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Square from 'lucide-react/dist/esm/icons/square';
+import User from 'lucide-react/dist/esm/icons/user';
+import X from 'lucide-react/dist/esm/icons/x';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 
 interface SlskdSearchFile {
   filename: string;

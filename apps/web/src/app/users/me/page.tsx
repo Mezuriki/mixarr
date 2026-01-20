@@ -5,7 +5,11 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { User, KeyRound, Shield, LogOut, AtSign } from 'lucide-react';
+import AtSign from 'lucide-react/dist/esm/icons/at-sign';
+import KeyRound from 'lucide-react/dist/esm/icons/key-round';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Shield from 'lucide-react/dist/esm/icons/shield';
+import User from 'lucide-react/dist/esm/icons/user';
 
 export default function MyProfilePage() {
   const { user, logout } = useAuth();

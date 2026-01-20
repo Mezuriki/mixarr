@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import Monitor from 'lucide-react/dist/esm/icons/monitor';
+import Moon from 'lucide-react/dist/esm/icons/moon';
+import Sun from 'lucide-react/dist/esm/icons/sun';
 import { cn } from '@/lib/utils';
 
 const themeOptions = [

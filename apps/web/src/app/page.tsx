@@ -1,6 +1,13 @@
 'use client';
 
-import { Plug, TrendingUp, Activity, Clock, CheckCircle2, Search, FileText, Loader2 } from 'lucide-react';
+import Activity from 'lucide-react/dist/esm/icons/activity';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Plug from 'lucide-react/dist/esm/icons/plug';
+import Search from 'lucide-react/dist/esm/icons/search';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, Badge } from '@/components/ui';

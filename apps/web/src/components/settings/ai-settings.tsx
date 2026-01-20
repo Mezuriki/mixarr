@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
-import { Brain, Save, Eye, EyeOff } from 'lucide-react';
+import Brain from 'lucide-react/dist/esm/icons/brain';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
+import Save from 'lucide-react/dist/esm/icons/save';
 
 interface AISettingsData {
   openaiEnabled: boolean;

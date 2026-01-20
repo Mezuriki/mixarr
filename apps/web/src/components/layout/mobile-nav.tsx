@@ -2,13 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  ListTodo, 
-  Calendar, 
-  Search,
-  Library 
-} from 'lucide-react';
+import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import Home from 'lucide-react/dist/esm/icons/home';
+import Library from 'lucide-react/dist/esm/icons/library';
+import ListTodo from 'lucide-react/dist/esm/icons/list-todo';
+import Search from 'lucide-react/dist/esm/icons/search';
 import { useOfflineStatus } from '@/lib/use-offline-status';
 
 interface NavItem {

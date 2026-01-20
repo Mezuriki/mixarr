@@ -1,7 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { AlertCircle, CheckCircle2, Info, XCircle, X } from 'lucide-react';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Info from 'lucide-react/dist/esm/icons/info';
+import X from 'lucide-react/dist/esm/icons/x';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import { cn } from '@/lib/utils';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

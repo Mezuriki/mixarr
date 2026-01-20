@@ -4,7 +4,13 @@ import { useState } from 'react';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { RefreshCw, Clock, CheckCircle, XCircle, PlayCircle, Loader2, User } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import PlayCircle from 'lucide-react/dist/esm/icons/play-circle';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import User from 'lucide-react/dist/esm/icons/user';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
