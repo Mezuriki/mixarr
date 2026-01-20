@@ -70,7 +70,7 @@ Mixarr offers two Docker image variants:
 | Image | Size | Contents | Best For |
 |-------|------|----------|----------|
 | `mixarr:latest` | ~800MB | Full stack (API, Web, MariaDB, Redis, Caddy) | Beginners, single-container setups |
-| `mixarr:slim` | ~200MB | API + Web only | Production, Kubernetes, existing infrastructure |
+| `mixarr:slim` | ~700MB | API + Web only | Production, Kubernetes, existing infrastructure |
 
 ### Option 1: Unified Image (Default)
 

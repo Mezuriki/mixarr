@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.5.0] - Unreleased
 
 #### Docker Slim Image
-- New `mixarr:slim` Docker image containing only API + Web (~200MB vs ~800MB unified)
+- New `mixarr:slim` Docker image containing only API + Web (~700MB vs ~1.5GB unified)
 - `docker-compose.slim.yml` for production deployments with external MariaDB and Redis
 - `docker-compose.byo.yml` for users with existing database/Redis infrastructure
 - Health check endpoint at `GET /api/health` (returns 503 if DB or Redis down)

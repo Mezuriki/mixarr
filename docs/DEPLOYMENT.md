@@ -375,7 +375,7 @@ The slim image uses `tini` for proper signal handling. If a process crashes:
 
 - Runs as non-root user (`mixarr:1000`)
 - No secrets baked into image
-- Minimal attack surface (~200MB vs ~800MB)
+- Minimal attack surface (~700MB vs ~1.5GB)
 - Uses `tini` for proper signal handling
 
 ### Recommendations
