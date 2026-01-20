@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Check from 'lucide-react/dist/esm/icons/check';
 import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -104,16 +105,19 @@ export function ArtistCard({
         )}
         
         {/* Thumbnail - standardized size matching Discover page */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted">
           {imageUrl ? (
-            <img 
+            <Image 
               src={imageUrl} 
               alt={artistName} 
-              className="w-full h-full object-cover" 
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 64px, 80px"
+              className="object-cover" 
             />
           ) : (
-            <Music className="h-8 w-8 text-muted-foreground" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Music className="h-8 w-8 text-muted-foreground" />
+            </div>
           )}
         </div>
         
