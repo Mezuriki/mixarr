@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mixarr - Record Store Theme Mockup</title>
+  <style>
+    /* Reset */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* 
+     * RECORD STORE THEME
+     * Warm, dark, editorial restraint
+     * Inspired by browsing vinyl in a well-curated shop
+     */
+    
+    :root {
+      /* Warm dark palette - not cold blue-black */
+      --bg-primary: #1a1814;
+      --bg-secondary: #242019;
+      --bg-card: #2a251f;
+      --bg-elevated: #332d26;
+      
+      /* Text with warmth */
+      --text-primary: #f5f0e8;
+      --text-secondary: #a89f8f;
+      --text-muted: #6b6358;
+      
+      /* Warm amber accent - like aged paper or vinyl sleeve */
+      --accent: #d4a574;
+      --accent-hover: #e0b584;
+      --accent-muted: rgba(212, 165, 116, 0.15);
+      
+      /* Status colors - desaturated to not fight the warmth */
+      --success: #7cb87c;
+      --warning: #d4a574;
+      --error: #c47070;
+      
+      /* Borders - barely there */
+      --border: rgba(168, 159, 143, 0.12);
+      --border-hover: rgba(168, 159, 143, 0.25);
+      
+      /* Type scale */
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-heading: 'Georgia', 'Times New Roman', serif;
+      
+      /* Spacing */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+    }
+    
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+    
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .logo {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: var(--space-2xl);
+      letter-spacing: -0.02em;
+    }
+    
+    .logo span {
+      color: var(--accent);
+    }
+    
+    .nav-section {
+      margin-bottom: var(--space-xl);
+    }
+    
+    .nav-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+      padding-left: var(--space-sm);
+    }
+    
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.15s, background 0.15s;
+    }
+    
+    .nav-link:hover {
+      color: var(--text-primary);
+    }
+    
+    .nav-link.active {
+      color: var(--accent);
+      background: var(--accent-muted);
+      border-left: 2px solid var(--accent);
+      margin-left: -2px;
+    }
+    
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+    
+    /* Main content */
+    .main {
+      padding: var(--space-xl);
+      overflow-y: auto;
+    }
+    
+    /* Page header */
+    .page-header {
+      margin-bottom: var(--space-xl);
+    }
+    
+    .page-title {
+      font-family: var(--font-heading);
+      font-size: 1.75rem;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-xs);
+    }
+    
+    .page-description {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+    
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: var(--space-lg);
+    }
+    
+    .stat-value {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: var(--space-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Section headers */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-md);
+    }
+    
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 1.125rem;
+      font-weight: 400;
+      color: var(--text-primary);
+    }
+    
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: var(--space-lg);
+    }
+    
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+    
+    /* Album grid - the visual interest comes from album art */
+    .album-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: var(--space-md);
+    }
+    
+    .album-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: var(--space-md);
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    
+    .album-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    
+    .album-cover {
+      aspect-ratio: 1;
+      background: var(--bg-elevated);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2rem;
+    }
+    
+    .album-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .album-artist {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover {
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--space-xs) var(--space-sm);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+    }
+    
+    .badge-success {
+      background: rgba(124, 184, 124, 0.15);
+      color: var(--success);
+    }
+    
+    .badge-warning {
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+    
+    /* Table */
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .table th {
+      text-align: left;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .table td {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    
+    .table tr:hover {
+      background: var(--bg-elevated);
+    }
+    
+    /* Activity list */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .activity-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+    
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--accent-muted);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      flex-shrink: 0;
+    }
+    
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .activity-title {
+      font-size: 0.875rem;
+      color: var(--text-primary);
+    }
+    
+    .activity-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Footer note */
+    .mockup-note {
+      position: fixed;
+      bottom: var(--space-md);
+      right: var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.75rem;
+      color: var(--accent);
+      z-index: 1000;
+    }
+    
+    /* Two column layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-lg);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">Mix<span>arr</span></div>
+      
+      <nav class="nav-section">
+        <div class="nav-label">Navigate</div>
+        <a href="#" class="nav-link active">
+          <span class="nav-icon">◉</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⚡</span>
+          Discover
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">↻</span>
+          Subscriptions
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⬇</span>
+          Downloads
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">♫</span>
+          Library
+        </a>
+      </nav>
+      
+      <nav class="nav-section">
+        <div class="nav-label">System</div>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⚙</span>
+          Connections
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">◷</span>
+          Jobs
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">☰</span>
+          Logs
+        </a>
+      </nav>
+    </aside>
+    
+    <!-- Main content -->
+    <main class="main">
+      <header class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-description">Welcome back to Mixarr</p>
+      </header>
+      
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">12</div>
+          <div class="stat-label">Active Subscriptions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">47</div>
+          <div class="stat-label">Artists Added (30d)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">8</div>
+          <div class="stat-label">Pending Reviews</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">2</div>
+          <div class="stat-label">Jobs Running</div>
+        </div>
+      </div>
+      
+      <div class="two-col">
+        <!-- Recent Discoveries -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Recent Discoveries</h2>
+            <button class="btn btn-secondary">View All</button>
+          </div>
+          
+          <div class="album-grid">
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">Brat</div>
+              <div class="album-artist">Charli XCX</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">Hit Me Hard and Soft</div>
+              <div class="album-artist">Billie Eilish</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">The Rise and Fall of a Midwest Princess</div>
+              <div class="album-artist">Chappell Roan</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">GNX</div>
+              <div class="album-artist">Kendrick Lamar</div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Activity -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Recent Activity</h2>
+          </div>
+          
+          <div class="card">
+            <div class="activity-list">
+              <div class="activity-item">
+                <div class="activity-icon">+</div>
+                <div class="activity-content">
+                  <div class="activity-title">Added Charli XCX to library</div>
+                  <div class="activity-meta">via ListenBrainz Radio • 2 min ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon">↓</div>
+                <div class="activity-content">
+                  <div class="activity-title">Downloaded "Brat" (FLAC)</div>
+                  <div class="activity-meta">via Slskd • 15 min ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon">✓</div>
+                <div class="activity-content">
+                  <div class="activity-title">Subscription "New Releases" completed</div>
+                  <div class="activity-meta">Found 12 new albums • 1 hour ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon">!</div>
+                <div class="activity-content">
+                  <div class="activity-title">Lidarr connection restored</div>
+                  <div class="activity-meta">Was offline for 5 min • 2 hours ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  
+  <div class="mockup-note">
+    Mockup 1: Record Store Theme (Dark)
+  </div>
+</body>
+</html>
