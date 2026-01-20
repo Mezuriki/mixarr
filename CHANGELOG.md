@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issue #20: slskd server ban (warning)
 - Fix modals not scrollable on small screens
 - Fix Discogs subscription error on save
+- Fix Musicbrainz subscription error on save
 - Fix subscription edit using PUT to match API route
 - Fix Spotify category preset field name mismatch
 - Fix Docker image typo (aquantumofdonums → aquantumofdonuts)
