@@ -92,12 +92,25 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
       data.openaiApiKey = openaiApiKey || null;
     }
     if (openaiBaseUrl !== undefined) {
-      // Validate URL format if provided (basic check)
+      // Validate URL format if provided
       if (openaiBaseUrl && typeof openaiBaseUrl === 'string') {
+        // Security: Limit URL length to prevent DoS
+        if (openaiBaseUrl.length > 2048) {
+          logger.warn('Rejected base URL: too long', { length: openaiBaseUrl.length });
+          res.status(400).json({ error: 'Base URL is too long (max 2048 characters)' });
+          return;
+        }
         try {
-          new URL(openaiBaseUrl);
+          const parsed = new URL(openaiBaseUrl);
+          // Security: Only allow http and https schemes to prevent SSRF
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            logger.warn('Rejected base URL: invalid scheme', { protocol: parsed.protocol });
+            res.status(400).json({ error: 'Base URL must use http or https protocol' });
+            return;
+          }
           data.openaiBaseUrl = openaiBaseUrl;
         } catch {
+          logger.warn('Rejected base URL: invalid format', { url: openaiBaseUrl.slice(0, 100) });
           res.status(400).json({ error: 'Invalid OpenAI base URL format' });
           return;
         }
@@ -107,7 +120,21 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     }
     if (openaiModel !== undefined) {
       // Allow setting to null/empty to clear, or set new model
-      if (openaiModel && typeof openaiModel === 'string' && openaiModel.length <= 100) {
+      if (openaiModel && typeof openaiModel === 'string') {
+        // Validate length
+        if (openaiModel.length > 100) {
+          logger.warn('Rejected model name: too long', { length: openaiModel.length });
+          res.status(400).json({ error: 'Model name must be 100 characters or less' });
+          return;
+        }
+        // Security: Validate model name format to prevent injection
+        // Allows alphanumeric, dots, dashes, colons, underscores (covers all known model naming schemes)
+        const MODEL_NAME_REGEX = /^[a-zA-Z0-9._:-]+$/;
+        if (!MODEL_NAME_REGEX.test(openaiModel)) {
+          logger.warn('Rejected model name: invalid characters', { model: openaiModel.slice(0, 50) });
+          res.status(400).json({ error: 'Invalid model name format (alphanumeric, dots, dashes, colons, underscores only)' });
+          return;
+        }
         data.openaiModel = openaiModel;
       } else {
         data.openaiModel = null;

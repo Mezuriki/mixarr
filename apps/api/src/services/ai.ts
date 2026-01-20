@@ -33,6 +33,13 @@ interface AISettings {
 
 const DEFAULT_OPENAI_MODEL = 'gpt-3.5-turbo';
 
+/**
+ * Placeholder API key used when connecting to OpenAI-compatible endpoints
+ * that don't require authentication (e.g., local Ollama instances).
+ * The OpenAI SDK requires a non-empty API key, so we provide this placeholder.
+ */
+const PLACEHOLDER_API_KEY = 'ollama-local-no-key-required';
+
 const STRATEGY_PROMPTS: Record<AIStrategy, string> = {
   similar: 'find 5 similar artists with comparable sound, style, and genre',
   genre_expansion: 'find 5 artists from related genres and subgenres that would appeal to fans',
@@ -71,7 +78,7 @@ export class AIService {
     
     if (this.settings.openaiEnabled && (hasOpenAIKey || hasCustomBaseUrl)) {
       this.openaiClient = new OpenAI({
-        apiKey: this.settings.openaiApiKey || 'not-required',
+        apiKey: this.settings.openaiApiKey || PLACEHOLDER_API_KEY,
         ...(this.settings.openaiBaseUrl && { baseURL: this.settings.openaiBaseUrl }),
       });
     }

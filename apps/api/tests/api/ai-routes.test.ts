@@ -320,20 +320,112 @@ describe('AI Routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('should reject model names longer than 100 characters', async () => {
+    it('should reject model names longer than 100 characters with 400 error', async () => {
       const res = await request(app)
         .put('/api/ai/settings')
         .send({
           openaiModel: 'a'.repeat(101), // Too long
         });
 
-      // Should accept but truncate to null (based on implementation)
-      expect(res.status).toBe(200);
-      expect(prisma.aISettings.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          openaiModel: null,
-        }),
+      // Should return 400 with clear error message (not silently truncate)
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('100 characters');
+    });
+
+    // Security: URL scheme validation (SSRF prevention)
+    it('should reject file:// URLs to prevent SSRF', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: 'file:///etc/passwd',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('http or https');
+    });
+
+    it('should reject javascript: URLs to prevent SSRF', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: 'javascript:alert(1)',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('http or https');
+    });
+
+    it('should reject ftp:// URLs to prevent SSRF', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: 'ftp://example.com/file',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('http or https');
+    });
+
+    // Security: URL length limit (DoS prevention)
+    it('should reject URLs longer than 2048 characters', async () => {
+      const longUrl = 'http://example.com/' + 'a'.repeat(2048);
+      
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: longUrl,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('too long');
+    });
+
+    // Security: Model name character validation
+    it('should reject model names with newline characters', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiModel: 'llama3.2\n\ninjected',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid model name');
+    });
+
+    it('should reject model names with control characters', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiModel: 'llama3.2\x00null',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid model name');
+    });
+
+    it('should accept valid model names with dots, dashes, colons', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.aISettings.create).mockResolvedValue({
+        id: 1,
+        openaiApiKey: null,
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: 'meta-llama:llama-3.2-8b_q4',
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
+
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiModel: 'meta-llama:llama-3.2-8b_q4',
+        });
+
+      expect(res.status).toBe(200);
     });
 
     it('should allow clearing base URL and model', async () => {
