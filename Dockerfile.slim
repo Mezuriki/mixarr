@@ -1,0 +1,150 @@
+# syntax=docker/dockerfile:1.4
+# =============================================================================
+# Mixarr Slim Image
+# Contains: API + Web only (no MariaDB, Redis, or Caddy)
+# Requires: External DATABASE_URL and REDIS_URL
+# 
+# Build: docker build -f Dockerfile.slim -t mixarr:slim .
+# Size: ~200-300MB (vs ~800MB unified)
+# =============================================================================
+
+# =============================================================================
+# BASE STAGE
+# =============================================================================
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN apk add --no-cache openssl openssl-dev
+
+# =============================================================================
+# DEPENDENCIES STAGE
+# =============================================================================
+FROM base AS deps
+COPY package*.json ./
+COPY turbo.json ./
+COPY tsconfig.base.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY apps/web/package*.json ./apps/web/
+COPY packages/shared-types/package*.json ./packages/shared-types/
+COPY packages/config/package*.json ./packages/config/
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
+
+# =============================================================================
+# BUILD STAGE - API
+# =============================================================================
+FROM deps AS builder-api
+COPY . .
+WORKDIR /app/apps/api
+RUN npx prisma generate
+WORKDIR /app
+RUN npm run build --workspace=@mixarr/api
+
+# =============================================================================
+# BUILD STAGE - WEB
+# =============================================================================
+FROM deps AS builder-web
+COPY . .
+# API_URL points to internal API on same container
+ARG API_URL=http://localhost:3005
+ENV API_URL=${API_URL}
+# CI=true disables build-time font optimization to prevent timeouts during slow ARM64 builds
+ENV CI=true
+# Build shared-types first (web depends on it)
+RUN npm run build --workspace=@mixarr/shared-types
+RUN npm run build --workspace=@mixarr/web
+
+# =============================================================================
+# PRODUCTION RUNTIME STAGE
+# =============================================================================
+FROM node:20-alpine AS production
+WORKDIR /app
+
+# Install minimal runtime dependencies
+# - tini: proper PID 1 signal handling
+# - bash: for entrypoint script
+# - curl: for health checks
+# - openssl: for Prisma
+RUN apk add --no-cache \
+    tini \
+    bash \
+    curl \
+    openssl
+
+# -----------------------------------------------------------------------------
+# Copy API build
+# -----------------------------------------------------------------------------
+COPY --from=builder-api /app/apps/api/dist /app/api/dist
+COPY --from=builder-api /app/apps/api/package*.json /app/api/
+COPY --from=builder-api /app/apps/api/prisma /app/api/prisma
+
+# Copy node_modules - both root hoisted deps AND api-specific deps
+COPY --from=builder-api /app/node_modules /app/api/node_modules
+COPY --from=builder-api /app/apps/api/node_modules /app/api/node_modules
+
+# Generate Prisma client in production
+WORKDIR /app/api
+RUN npx prisma generate
+
+# -----------------------------------------------------------------------------
+# Copy Web build (Next.js standalone output)
+# -----------------------------------------------------------------------------
+WORKDIR /app
+COPY --from=builder-web /app/apps/web/.next/standalone /app/web/
+COPY --from=builder-web /app/apps/web/.next/static /app/web/apps/web/.next/static
+COPY --from=builder-web /app/apps/web/public /app/web/apps/web/public
+
+# -----------------------------------------------------------------------------
+# Copy entrypoint
+# -----------------------------------------------------------------------------
+COPY docker/entrypoint-slim.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# -----------------------------------------------------------------------------
+# Create non-root user
+# -----------------------------------------------------------------------------
+RUN addgroup -g 1000 mixarr && \
+    adduser -u 1000 -G mixarr -s /bin/sh -D mixarr && \
+    mkdir -p /data && \
+    chown -R mixarr:mixarr /app /data
+
+# Switch to non-root user
+USER mixarr
+
+# -----------------------------------------------------------------------------
+# Environment defaults
+# -----------------------------------------------------------------------------
+ENV NODE_ENV=production
+ENV PORT=3005
+ENV HOSTNAME=0.0.0.0
+
+# -----------------------------------------------------------------------------
+# Expose ports
+# -----------------------------------------------------------------------------
+# 3000 = Web UI (Next.js)
+# 3005 = API (Express)
+EXPOSE 3000 3005
+
+# -----------------------------------------------------------------------------
+# Health check
+# -----------------------------------------------------------------------------
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3005/api/health || exit 1
+
+# -----------------------------------------------------------------------------
+# Volume for persistent data (config, logs, etc)
+# -----------------------------------------------------------------------------
+VOLUME ["/data"]
+
+# -----------------------------------------------------------------------------
+# Entrypoint with tini for proper signal handling
+# -----------------------------------------------------------------------------
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["/entrypoint.sh"]
+
+# -----------------------------------------------------------------------------
+# Labels
+# -----------------------------------------------------------------------------
+LABEL org.opencontainers.image.title="Mixarr Slim"
+LABEL org.opencontainers.image.description="Mixarr music management - slim image (API + Web only)"
+LABEL org.opencontainers.image.source="https://github.com/aquantumofdonuts/mixarr"
+LABEL org.opencontainers.image.licenses="MIT"
