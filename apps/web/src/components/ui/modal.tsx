@@ -21,6 +21,8 @@ const sizeClasses = {
   full: 'max-w-4xl',
 };
 
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   isOpen,
   onClose,
@@ -29,18 +31,71 @@ export function Modal({
   children,
   size = 'md',
 }: ModalProps) {
+  const modalRef = React.useRef<HTMLDivElement>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElement = React.useRef<HTMLElement | null>(null);
+  
+  const titleId = React.useId();
+  const descriptionId = React.useId();
+
   React.useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    if (isOpen) {
+      previouslyFocusedElement.current = document.activeElement as HTMLElement;
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (closeButtonRef.current) {
+          closeButtonRef.current.focus();
+        } else if (modalRef.current) {
+          const firstFocusable = modalRef.current.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+          firstFocusable?.focus();
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen && previouslyFocusedElement.current) {
+      previouslyFocusedElement.current.focus();
+      previouslyFocusedElement.current = null;
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
     };
     
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
     
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
@@ -53,10 +108,16 @@ export function Modal({
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
+        aria-hidden="true"
       />
       
       {/* Modal */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
           'relative z-10 w-full mx-4 bg-card rounded-lg shadow-lg animate-slide-in flex flex-col max-h-[90vh]',
           sizeClasses[size]
@@ -68,19 +129,33 @@ export function Modal({
           <div className="flex items-start justify-between p-6 border-b flex-shrink-0">
             <div>
               {title && (
-                <h2 className="text-lg font-semibold">{title}</h2>
+                <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
               )}
               {description && (
-                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">{description}</p>
               )}
             </div>
             <button
+              ref={closeButtonRef}
               onClick={onClose}
+              aria-label="Close"
               className="rounded-lg p-1 hover:bg-accent transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
+        )}
+        
+        {/* Close button when no header */}
+        {!title && !description && (
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-4 right-4 rounded-lg p-1 hover:bg-accent transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         )}
         
         {/* Content */}
