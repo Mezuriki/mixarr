@@ -59,7 +59,7 @@ docker run -d \
   ghcr.io/aquantumofdonuts/mixarr:latest
 ```
 
-> **Note**: Access the web interface at **`https://YOUR-IP:3443`**. Accept the self-signed certificate warning if you haven't configured your own.
+> **Note**: Access the web interface at **`https://YOUR-IP:3443`**.
 
 ---
 
@@ -69,8 +69,8 @@ Mixarr offers two Docker image variants:
 
 | Image | Size | Contents | Best For |
 |-------|------|----------|----------|
-| `mixarr:latest` | ~800MB | Full stack (API, Web, MariaDB, Redis, Caddy) | Beginners, single-container setups |
-| `mixarr:slim` | ~700MB | API + Web only | Production, Kubernetes, existing infrastructure |
+| `mixarr:latest` | Full stack (API, Web, MariaDB, Redis, Caddy) | Docker, single-container setups |
+| `mixarr:slim` | API + Web only | Production, Kubernetes, existing infrastructure |
 
 ### Option 1: Unified Image (Default)
 
