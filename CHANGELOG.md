@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v2.0.0] - Unreleased
+## [v1.3.0] - Unreleased
 
 ### Theme Consolidation
 - Replace 6-theme system with single "Listening Room" theme (light/dark modes)
