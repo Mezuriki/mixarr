@@ -19,7 +19,25 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/';
 
+  // Check if setup is required (independent of auth context for robustness)
+  useEffect(() => {
+    api.get<{ setupRequired: boolean }>('/api/auth/setup-required')
+      .then(({ data }) => {
+        if (data?.setupRequired) {
+          router.push('/setup');
+        }
+      });
+  }, [router]);
+
+  useEffect(() => {
+    api.get<{ providers: Array<{ type: string; name: string }> }>('/api/auth/sso/enabled')
+      .then(({ data }) => {
+        if (data) setSsoProviders(data.providers);
+      });
+  }, []);
+
   // Check for insecure HTTP access in production
+  // Must be AFTER all hooks to comply with React Rules of Hooks
   const isInsecureAccess = typeof window !== 'undefined' &&
     window.location.protocol === 'http:' &&
     process.env.NODE_ENV === 'production';
@@ -49,23 +67,6 @@ function LoginPageContent() {
       </div>
     );
   }
-
-  // Check if setup is required (independent of auth context for robustness)
-  useEffect(() => {
-    api.get<{ setupRequired: boolean }>('/api/auth/setup-required')
-      .then(({ data }) => {
-        if (data?.setupRequired) {
-          router.push('/setup');
-        }
-      });
-  }, [router]);
-
-  useEffect(() => {
-    api.get<{ providers: Array<{ type: string; name: string }> }>('/api/auth/sso/enabled')
-      .then(({ data }) => {
-        if (data) setSsoProviders(data.providers);
-      });
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
