@@ -20,9 +20,10 @@ function LoginPageContent() {
   const returnTo = searchParams.get('returnTo') || '/';
 
   // Check for insecure HTTP access in production
+  // TODO: Remove 'true ||' after testing - this forces the check for dev testing
   const isInsecureAccess = typeof window !== 'undefined' &&
     window.location.protocol === 'http:' &&
-    process.env.NODE_ENV === 'production';
+    (true || process.env.NODE_ENV === 'production');
 
   // Show warning if accessing over plain HTTP in production
   if (isInsecureAccess) {
