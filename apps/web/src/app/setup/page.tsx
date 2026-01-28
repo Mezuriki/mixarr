@@ -2,10 +2,20 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { ChevronRight, User, Check, Globe, Sparkles, Loader2, Music2, Search, Plug } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Globe from 'lucide-react/dist/esm/icons/globe';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Plug from 'lucide-react/dist/esm/icons/plug';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import User from 'lucide-react/dist/esm/icons/user';
 
 type Step = 'welcome' | 'admin' | 'url' | 'success';
 const steps: Step[] = ['welcome', 'admin', 'url', 'success'];

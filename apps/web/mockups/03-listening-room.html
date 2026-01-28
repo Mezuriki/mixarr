@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mixarr - Listening Room Theme Mockup</title>
+  <style>
+    /* Reset */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* 
+     * LISTENING ROOM THEME
+     * Warm, focused, like a well-lit studio or den
+     * Neither cold tech nor overly retro
+     */
+    
+    :root {
+      /* Warm neutrals - like linen and wood */
+      --bg-primary: #1c1b19;
+      --bg-secondary: #252320;
+      --bg-card: #2d2b27;
+      --bg-elevated: #373431;
+      
+      /* Cream text - not harsh white */
+      --text-primary: #ebe7df;
+      --text-secondary: #a8a49a;
+      --text-muted: #706c64;
+      
+      /* Rust/copper accent - organic, not digital */
+      --accent: #bf7a56;
+      --accent-hover: #cf8a66;
+      --accent-muted: rgba(191, 122, 86, 0.15);
+      
+      /* Secondary accent - muted teal for variety */
+      --accent-alt: #5a8a87;
+      
+      /* Status */
+      --success: #6b9b6b;
+      --warning: #bf9a56;
+      --error: #bf6b5a;
+      
+      /* Borders */
+      --border: rgba(168, 164, 154, 0.1);
+      --border-hover: rgba(168, 164, 154, 0.2);
+      
+      /* Type - system fonts only */
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono: 'SF Mono', 'Menlo', 'Monaco', monospace;
+      
+      /* Spacing */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+      
+      /* Radius - subtle, not zero or chunky */
+      --radius-sm: 4px;
+      --radius-md: 6px;
+    }
+    
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+    
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 56px 200px 1fr;
+      min-height: 100vh;
+    }
+    
+    /* Icon rail - compact navigation */
+    .icon-rail {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-md) 0;
+    }
+    
+    .icon-rail-logo {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      margin-bottom: var(--space-xl);
+      border-radius: var(--radius-sm);
+    }
+    
+    .icon-rail-item {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-xs);
+      font-size: 1.125rem;
+    }
+    
+    .icon-rail-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+    
+    .icon-rail-item.active {
+      color: var(--accent);
+      background: var(--accent-muted);
+    }
+    
+    /* Secondary sidebar - context panel */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sidebar-header {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-md);
+      font-weight: 600;
+    }
+    
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border-radius: var(--radius-sm);
+      margin-bottom: 2px;
+    }
+    
+    .sidebar-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+    
+    .sidebar-item.active {
+      color: var(--accent);
+      background: var(--accent-muted);
+    }
+    
+    .sidebar-item-count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    
+    /* Main content */
+    .main {
+      padding: var(--space-xl);
+      overflow-y: auto;
+      background: var(--bg-primary);
+    }
+    
+    /* Page header - clean, informative */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-xs);
+    }
+    
+    .page-description {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+    
+    .page-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+    
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--accent-muted);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      font-size: 1.125rem;
+    }
+    
+    .stat-icon.alt {
+      background: rgba(90, 138, 135, 0.15);
+      color: var(--accent-alt);
+    }
+    
+    .stat-content {
+      flex: 1;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Section headers */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-md);
+    }
+    
+    .section-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .section-action {
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    
+    .section-action:hover {
+      text-decoration: underline;
+    }
+    
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    
+    .card-header {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .card-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    
+    .card-body {
+      padding: var(--space-md);
+    }
+    
+    /* Album grid */
+    .album-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: var(--space-md);
+    }
+    
+    .album-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    
+    .album-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    
+    .album-cover {
+      aspect-ratio: 1;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2rem;
+    }
+    
+    .album-info {
+      padding: var(--space-sm);
+    }
+    
+    .album-title {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .album-artist {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      border-radius: var(--radius-sm);
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg-primary);
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+    }
+    
+    .btn-secondary:hover {
+      color: var(--text-primary);
+    }
+    
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    
+    .btn-ghost:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+    
+    /* Table */
+    .table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .table th {
+      text-align: left;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      background: var(--bg-elevated);
+    }
+    
+    .table td {
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .table tr:hover {
+      background: var(--bg-elevated);
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px var(--space-sm);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+    }
+    
+    .badge-success {
+      background: rgba(107, 155, 107, 0.15);
+      color: var(--success);
+    }
+    
+    .badge-warning {
+      background: rgba(191, 154, 86, 0.15);
+      color: var(--warning);
+    }
+    
+    .badge-accent {
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+    
+    /* Two column layout */
+    .grid-2-1 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-lg);
+    }
+    
+    /* Activity list */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .activity-item {
+      display: flex;
+      gap: var(--space-md);
+      padding: var(--space-sm) 0;
+      align-items: flex-start;
+    }
+    
+    .activity-item + .activity-item {
+      border-top: 1px solid var(--border);
+    }
+    
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    
+    .activity-dot.alt {
+      background: var(--accent-alt);
+    }
+    
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .activity-title {
+      font-size: 0.8125rem;
+      color: var(--text-primary);
+    }
+    
+    .activity-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Footer note */
+    .mockup-note {
+      position: fixed;
+      bottom: var(--space-md);
+      right: var(--space-md);
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.75rem;
+      color: var(--accent);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Icon Rail -->
+    <nav class="icon-rail">
+      <div class="icon-rail-logo">M</div>
+      <div class="icon-rail-item active" title="Dashboard">◉</div>
+      <div class="icon-rail-item" title="Discover">⚡</div>
+      <div class="icon-rail-item" title="Subscriptions">↻</div>
+      <div class="icon-rail-item" title="Downloads">⬇</div>
+      <div class="icon-rail-item" title="Library">♫</div>
+      <div style="flex:1"></div>
+      <div class="icon-rail-item" title="Settings">⚙</div>
+    </nav>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">Subscriptions</div>
+      <div class="sidebar-item active">
+        All Active
+        <span class="sidebar-item-count">12</span>
+      </div>
+      <div class="sidebar-item">
+        ListenBrainz Radio
+        <span class="sidebar-item-count">4</span>
+      </div>
+      <div class="sidebar-item">
+        New Releases
+        <span class="sidebar-item-count">3</span>
+      </div>
+      <div class="sidebar-item">
+        Spotify Playlist
+        <span class="sidebar-item-count">2</span>
+      </div>
+      <div class="sidebar-item">
+        MusicBrainz
+        <span class="sidebar-item-count">3</span>
+      </div>
+      
+      <div style="margin-top: auto;"></div>
+      
+      <div class="sidebar-header">Connections</div>
+      <div class="sidebar-item">
+        <span style="color: var(--success);">●</span>
+        Lidarr
+      </div>
+      <div class="sidebar-item">
+        <span style="color: var(--success);">●</span>
+        Slskd
+      </div>
+      <div class="sidebar-item">
+        <span style="color: var(--warning);">●</span>
+        ListenBrainz
+      </div>
+    </aside>
+    
+    <!-- Main content -->
+    <main class="main">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Dashboard</h1>
+          <p class="page-description">Your music discovery at a glance</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost">Refresh</button>
+          <button class="btn btn-primary">+ New Subscription</button>
+        </div>
+      </header>
+      
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon">↻</div>
+          <div class="stat-content">
+            <div class="stat-value">12</div>
+            <div class="stat-label">Active Subscriptions</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon alt">♫</div>
+          <div class="stat-content">
+            <div class="stat-value">47</div>
+            <div class="stat-label">Artists Added (30d)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">◷</div>
+          <div class="stat-content">
+            <div class="stat-value">8</div>
+            <div class="stat-label">Pending Reviews</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon alt">⚡</div>
+          <div class="stat-content">
+            <div class="stat-value">2</div>
+            <div class="stat-label">Jobs Running</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid-2-1">
+        <!-- Recent Discoveries -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Recent Discoveries</h2>
+            <a class="section-action">View all →</a>
+          </div>
+          
+          <div class="album-grid">
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-info">
+                <div class="album-title">Brat</div>
+                <div class="album-artist">Charli XCX</div>
+              </div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-info">
+                <div class="album-title">Hit Me Hard and Soft</div>
+                <div class="album-artist">Billie Eilish</div>
+              </div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-info">
+                <div class="album-title">The Rise and Fall of...</div>
+                <div class="album-artist">Chappell Roan</div>
+              </div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-info">
+                <div class="album-title">GNX</div>
+                <div class="album-artist">Kendrick Lamar</div>
+              </div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-info">
+                <div class="album-title">Cowboy Carter</div>
+                <div class="album-artist">Beyoncé</div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Activity -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Recent Activity</h2>
+          </div>
+          
+          <div class="card">
+            <div class="card-body">
+              <div class="activity-list">
+                <div class="activity-item">
+                  <div class="activity-dot"></div>
+                  <div class="activity-content">
+                    <div class="activity-title">Added Charli XCX</div>
+                    <div class="activity-meta">ListenBrainz Radio • 2m ago</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot alt"></div>
+                  <div class="activity-content">
+                    <div class="activity-title">Downloaded "Brat"</div>
+                    <div class="activity-meta">FLAC via Slskd • 15m ago</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot"></div>
+                  <div class="activity-content">
+                    <div class="activity-title">Subscription completed</div>
+                    <div class="activity-meta">New Releases • 1h ago</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot alt"></div>
+                  <div class="activity-content">
+                    <div class="activity-title">Connection restored</div>
+                    <div class="activity-meta">Lidarr • 2h ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  
+  <div class="mockup-note">
+    Mockup 3: Listening Room Theme (Dark)
+  </div>
+</body>
+</html>

@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.2.0] - 2026-01-27
+## [v2.0.0] - Unreleased
+
+### Theme Consolidation
+- Replace 6-theme system with single "Listening Room" theme (light/dark modes)
+- Remove legacy themes: dark-luxe, editorial-clean, neo-brutalist, soft-gradient, vinyl-retro, midnight-modern
+- Simplify theme picker to Light/Dark/System toggle
+- Warm color palette: off-whites (#f8f6f3) and warm grays (#1c1b19)
+- Rust/copper accent (#bf7a56) with muted teal secondary (#5a8a87)
+- Subtle 6px border radius throughout
+
+### Accessibility Improvements
+- Add focus trap to modals (Tab cycles within modal)
+- Add focus restoration when modals close
+- Add screen reader support for loading spinner
+- Respect `prefers-reduced-motion` user preference
+- Add proper ARIA attributes to modals (role=dialog, aria-modal, aria-labelledby)
+- Escape key closes modals
+
+### Performance Improvements
+- Remove 8 external Google Font dependencies (Inter, Playfair, IBM Plex, etc.)
+- Use system font stack (eliminates font loading latency)
+- Replace lucide-react barrel imports with direct imports (better tree-shaking)
+- Replace @/components/ui barrel imports with direct imports (better code splitting)
+- Migrate to next/image for automatic image optimization (WebP, srcset, lazy loading)
+
+### UX Improvements
+- Add tabular-nums to numeric displays (prevents layout shift)
+- Add motion-safe animations for modal transitions
+- Configure remote image patterns for cover art (coverartarchive.org, musicbrainz.org)
+
+### Documentation
+- Add theme system README with design principles and color palette reference 
+
+## [v1.2.0] - Unreleased
 
 ### Added
 
@@ -38,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global rate limiting for CodeQL findings
 
 ### Added
+
+#### Lidarr Monitor New Items
+- Add "Monitor New Albums" dropdown to Lidarr connection settings
+- Support for None, All, New, and Existing monitor options
+- Automatically apply monitor setting when adding artists via subscriptions
 
 #### Subscription System Refactoring
 - Extract SubscriptionService with TDD (business logic layer)

@@ -2,12 +2,26 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Badge, useToast, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { DuplicatesContent } from '@/components/library/duplicates-content';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { RefreshCw, Search, CheckCircle, AlertTriangle, Image, FileText, Music, ChevronUp, ChevronDown, Copy } from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
+import Copy from 'lucide-react/dist/esm/icons/copy';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Image from 'lucide-react/dist/esm/icons/image';
+import Music from 'lucide-react/dist/esm/icons/music';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Search from 'lucide-react/dist/esm/icons/search';
 
 interface LidarrArtist {
   id: number;

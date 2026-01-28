@@ -3,26 +3,24 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Home,
-  Plug,
-  Search,
-  Sparkles,
-  TrendingUp,
-  FileText,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  Users,
-  Layers,
-  ListChecks,
-  LogOut,
-  ChevronDown,
-  Library,
-  Download,
-} from 'lucide-react';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Download from 'lucide-react/dist/esm/icons/download';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Home from 'lucide-react/dist/esm/icons/home';
+import Layers from 'lucide-react/dist/esm/icons/layers';
+import Library from 'lucide-react/dist/esm/icons/library';
+import ListChecks from 'lucide-react/dist/esm/icons/list-checks';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Menu from 'lucide-react/dist/esm/icons/menu';
+import Plug from 'lucide-react/dist/esm/icons/plug';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Settings from 'lucide-react/dist/esm/icons/settings';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import Users from 'lucide-react/dist/esm/icons/users';
+import X from 'lucide-react/dist/esm/icons/x';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';

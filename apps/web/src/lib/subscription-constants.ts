@@ -5,18 +5,16 @@
  * Extracted from the subscriptions page for reuse across components.
  */
 
-import {
-  TrendingUp,
-  Music2,
-  Globe,
-  Tag,
-  Sparkles,
-  Headphones,
-  Disc,
-  ShoppingBag,
-  Brain,
-  type LucideIcon,
-} from 'lucide-react';
+import Brain from 'lucide-react/dist/esm/icons/brain';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import Globe from 'lucide-react/dist/esm/icons/globe';
+import Headphones from 'lucide-react/dist/esm/icons/headphones';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import ShoppingBag from 'lucide-react/dist/esm/icons/shopping-bag';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Tag from 'lucide-react/dist/esm/icons/tag';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import type { LucideIcon } from 'lucide-react';
 
 // ============================================================================
 // Type Definitions

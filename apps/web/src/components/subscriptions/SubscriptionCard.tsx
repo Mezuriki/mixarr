@@ -1,8 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { Play, Pause, Trash2, Edit, Clock, Eye, TrendingUp } from 'lucide-react';
-import { Button, Card, CardContent, Badge } from '@/components/ui';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import Pause from 'lucide-react/dist/esm/icons/pause';
+import Play from 'lucide-react/dist/esm/icons/play';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { subscriptionTypes, scheduleOptions } from '@/lib/subscription-constants';
 
 // ============================================================================

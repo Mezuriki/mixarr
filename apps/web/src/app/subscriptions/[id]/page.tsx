@@ -1,10 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Card, CardContent, Badge, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { ArrowLeft, Play, CheckCircle, XCircle, Clock, RefreshCw, Music2, Loader2 } from 'lucide-react';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Play from 'lucide-react/dist/esm/icons/play';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ExternalLinks } from '@/components/ExternalLinks';

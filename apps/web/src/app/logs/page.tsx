@@ -1,11 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, Select, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { useLogs } from '@/lib/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, RefreshCw, Filter, AlertCircle, Info, AlertTriangle, Bug, ChevronDown, Loader2 } from 'lucide-react';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import Bug from 'lucide-react/dist/esm/icons/bug';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Filter from 'lucide-react/dist/esm/icons/filter';
+import Info from 'lucide-react/dist/esm/icons/info';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 
 const levelConfig = {
   debug: { icon: Bug, color: 'text-gray-500', bg: 'bg-gray-500/10' },
@@ -86,7 +98,7 @@ export default function LogsPage() {
     <>
       <PageHeader
         title="Logs"
-        description={total > 0 ? `${total.toLocaleString()} total entries` : 'View application activity and errors'}
+        description={total > 0 ? <span className="tabular-nums">{total.toLocaleString()} total entries</span> : 'View application activity and errors'}
       >
         <Button variant="outline" onClick={handleRefresh} disabled={isFetching}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
@@ -199,7 +211,7 @@ export default function LogsPage() {
                   ) : (
                     <ChevronDown className="h-4 w-4 mr-2" />
                   )}
-                  Load More ({logs.length} of {total.toLocaleString()})
+                  Load More (<span className="tabular-nums">{logs.length} of {total.toLocaleString()}</span>)
                 </Button>
               </div>
             )}

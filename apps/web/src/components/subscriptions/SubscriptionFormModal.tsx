@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button, Input, Modal, ModalFooter, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import {
   subscriptionTypes,
@@ -11,7 +14,9 @@ import {
   getResultHandlingOptions,
   getSubscriptionTypeConfig,
 } from '@/lib/subscription-constants';
-import { Plus, ChevronRight, AlertTriangle } from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 
 // ============================================================================
 // Types

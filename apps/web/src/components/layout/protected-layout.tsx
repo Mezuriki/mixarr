@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Sidebar } from './sidebar';
-import { LoadingPage } from '@/components/ui';
+import { LoadingPage } from '@/components/ui/loading';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
