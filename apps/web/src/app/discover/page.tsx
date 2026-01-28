@@ -5,6 +5,7 @@ import { Button, Card, CardContent, Input, Badge, useToast, Loading, Modal, Moda
 import { PageHeader } from '@/components/layout/page-header';
 import { ReleaseTypeFilter, useReleaseTypeFilter } from '@/components/ReleaseTypeFilter';
 import { GenrePills } from '@/components/GenrePills';
+import { SlskdSearchModal } from '@/components/slskd/SearchModal';
 import { api } from '@/lib/api';
 import { 
   Search, Sparkles, Plus, Check, ChevronLeft, ChevronRight, 
@@ -38,6 +39,13 @@ interface Profiles {
   qualityProfiles: Array<{ id: number; name: string }>;
   metadataProfiles: Array<{ id: number; name: string }>;
   rootFolders: Array<{ id: number; path: string }>;
+  defaults?: {
+    qualityProfileId?: number;
+    metadataProfileId?: number;
+    rootFolderPath?: string;
+    monitorOption?: string;
+    searchOnAdd?: boolean;
+  };
 }
 
 export default function DiscoverPage() {
@@ -63,6 +71,10 @@ export default function DiscoverPage() {
   
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [addingArtist, setAddingArtist] = useState<string | null>(null);
+  
+  // slskd Search state
+  const [slskdModalOpen, setSlskdModalOpen] = useState(false);
+  const [slskdSearchArtist, setSlskdSearchArtist] = useState<{ name: string; image?: string } | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -115,23 +127,34 @@ export default function DiscoverPage() {
     staleTime: 5 * 60 * 1000, // Profiles rarely change
   });
 
-  // Initialize profile selections when profiles load
+  // Initialize profile selections when profiles load - use connection defaults if available
   useEffect(() => {
     if (profiles) {
+      // Use connection defaults, fall back to first available
       if (profiles.qualityProfiles.length > 0 && selectedQuality === null) {
-        setSelectedQuality(profiles.qualityProfiles[0].id);
+        const defaultId = profiles.defaults?.qualityProfileId;
+        // Check if default exists in the profiles list
+        const validDefault = defaultId && profiles.qualityProfiles.some(p => p.id === defaultId);
+        setSelectedQuality(validDefault ? defaultId : profiles.qualityProfiles[0].id);
       }
       if (profiles.metadataProfiles.length > 0 && selectedMetadata === null) {
-        setSelectedMetadata(profiles.metadataProfiles[0].id);
+        const defaultId = profiles.defaults?.metadataProfileId;
+        const validDefault = defaultId && profiles.metadataProfiles.some(p => p.id === defaultId);
+        setSelectedMetadata(validDefault ? defaultId : profiles.metadataProfiles[0].id);
       }
       if (profiles.rootFolders.length > 0 && selectedRootFolder === null) {
-        setSelectedRootFolder(profiles.rootFolders[0].path);
+        const defaultPath = profiles.defaults?.rootFolderPath;
+        const validDefault = defaultPath && profiles.rootFolders.some(f => f.path === defaultPath);
+        setSelectedRootFolder(validDefault ? defaultPath : profiles.rootFolders[0].path);
       }
       if (addProfiles.qualityProfileId === 0) {
+        const defaultQuality = profiles.defaults?.qualityProfileId || profiles.qualityProfiles[0]?.id || 0;
+        const defaultMetadata = profiles.defaults?.metadataProfileId || profiles.metadataProfiles[0]?.id || 0;
+        const defaultRoot = profiles.defaults?.rootFolderPath || profiles.rootFolders[0]?.path || '';
         setAddProfiles({
-          qualityProfileId: profiles.qualityProfiles[0]?.id || 0,
-          metadataProfileId: profiles.metadataProfiles[0]?.id || 0,
-          rootFolderPath: profiles.rootFolders[0]?.path || ''
+          qualityProfileId: defaultQuality,
+          metadataProfileId: defaultMetadata,
+          rootFolderPath: defaultRoot
         });
       }
     }
@@ -709,20 +732,34 @@ export default function DiscoverPage() {
                           Added
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => addToLidarr(rec)}
-                          disabled={addingArtist === rec.name}
-                        >
-                          {addingArtist === rec.name ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => addToLidarr(rec)}
+                            disabled={addingArtist === rec.name}
+                            title="Add to Lidarr"
+                          >
+                            {addingArtist === rec.name ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSlskdSearchArtist({ name: rec.name, image: rec.imageUrl });
+                              setSlskdModalOpen(true);
+                            }}
+                            title="Search on Soulseek"
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -835,6 +872,19 @@ export default function DiscoverPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* slskd Search Modal */}
+      {slskdSearchArtist && (
+        <SlskdSearchModal
+          isOpen={slskdModalOpen}
+          onClose={() => {
+            setSlskdModalOpen(false);
+            setSlskdSearchArtist(null);
+          }}
+          artistName={slskdSearchArtist.name}
+          artistImage={slskdSearchArtist.image}
+        />
+      )}
     </div>
   );
 }

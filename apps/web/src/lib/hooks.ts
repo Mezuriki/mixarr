@@ -213,6 +213,52 @@ export function useToggleSubscription() {
   });
 }
 
+export function useCreateSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (data: {
+      name: string;
+      type: string;
+      config: Record<string, unknown>;
+      schedule?: string;
+      resultHandling: 'preview' | 'queue' | 'auto';
+    }) => {
+      const { data: result, error } = await api.post<{ subscription: Subscription }>('/api/subscriptions', data);
+      if (error) throw new Error(error);
+      return result!.subscription;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    },
+  });
+}
+
+export function useUpdateSubscription() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, data }: {
+      id: number;
+      data: {
+        name?: string;
+        config?: Record<string, unknown>;
+        schedule?: string;
+        resultHandling?: 'preview' | 'queue' | 'auto';
+        isActive?: boolean;
+      };
+    }) => {
+      const { data: result, error } = await api.put<{ subscription: Subscription }>(`/api/subscriptions/${id}`, data);
+      if (error) throw new Error(error);
+      return result!.subscription;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions });
+    },
+  });
+}
+
 // Review Queue Hooks
 
 interface ReviewItem {
@@ -520,5 +566,66 @@ export function useAISettings() {
       return data!.settings;
     },
     staleTime: 60 * 1000,
+  });
+}
+// slskd Download Hooks
+
+export interface SlskdDownload {
+  id: number;
+  connectionId: number;
+  username: string;
+  artistName: string;
+  albumName?: string;
+  albumYear?: number;
+  filename: string;
+  fileSize: number;
+  downloadPath?: string;
+  organizedPath?: string;
+  status: 'pending' | 'downloading' | 'completed' | 'failed' | 'cancelled';
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useSlskdDownloads(status?: string) {
+  const queryParams = status ? `?status=${status}` : '';
+  return useQuery({
+    queryKey: ['slskd', 'downloads', status],
+    queryFn: async () => {
+      const { data, error } = await api.get<SlskdDownload[]>(`/api/slskd/downloads${queryParams}`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    staleTime: 10 * 1000, // Refresh every 10s for active downloads
+    refetchInterval: status === 'downloading' || status === 'pending' ? 5000 : false,
+  });
+}
+
+export function useRetrySlskdDownload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { data, error } = await api.post<{ success: boolean }>(`/api/slskd/downloads/${id}/retry`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['slskd', 'downloads'] });
+    },
+  });
+}
+
+export function useCancelSlskdDownload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, remove = false }: { id: number; remove?: boolean }) => {
+      const queryParams = remove ? '?remove=true' : '';
+      const { data, error } = await api.delete<{ success: boolean }>(`/api/slskd/downloads/${id}${queryParams}`);
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['slskd', 'downloads'] });
+    },
   });
 }

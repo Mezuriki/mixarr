@@ -21,6 +21,7 @@ import {
   LogOut,
   ChevronDown,
   Library,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/discover', label: 'Discover', icon: Sparkles },
   { href: '/subscriptions', label: 'Subscriptions', icon: TrendingUp },
   { href: '/queue', label: 'Review Queue', icon: ListChecks },
+  { href: '/downloads', label: 'Downloads', icon: Download },
   { href: '/jobs', label: 'Jobs', icon: Layers, adminOnly: true },
   { href: '/logs', label: 'Logs', icon: FileText, adminOnly: true },
   { href: '/users', label: 'Users', icon: Users, adminOnly: true },

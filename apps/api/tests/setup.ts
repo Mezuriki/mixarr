@@ -7,6 +7,7 @@
  * - Test utilities
  */
 
+import 'dotenv/config';
 import { beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
 // Mock environment variables

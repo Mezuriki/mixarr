@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createLogger } from './lib/logger.js';
+import { printBanner } from './version.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { connectionsRouter } from './routes/connections.js';
@@ -25,12 +26,21 @@ import { setupPassport, sessionMiddleware } from './auth/passport.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { correlationMiddleware } from './middleware/correlation.js';
+import type { AuthenticatedSocket, SessionIncomingMessage, SocketSessionResponse } from './types/socket.js';
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
-// Import workers to start them
-import './jobs/subscription-worker.js';
-import './jobs/import-worker.js';
+import { cleanupQueueEvents } from './routes/slskd.js';
+
+// Import workers only in non-test environments to prevent test pollution
+if (process.env.NODE_ENV !== 'test') {
+  await import('./jobs/subscription-worker.js');
+  await import('./jobs/import-worker.js');
+  await import('./jobs/slskd-operations-worker.js');
+}
+
+// Print startup banner
+printBanner();
 
 // Validate required environment variables in production
 const sessionSecret = process.env.SESSION_SECRET;
@@ -91,6 +101,17 @@ app.use(requestLogger);
 // Passport authentication (includes session middleware)
 setupPassport(app);
 
+// Warn about weak session secrets
+const isDefaultSecret = sessionSecret === 'dev-secret-change-in-production';
+const isWeak = sessionSecret && (sessionSecret.length < 32 || /^[a-zA-Z0-9]+$/.test(sessionSecret));
+const startupLogger = createLogger('Startup');
+
+if (isDefaultSecret || isWeak) {
+  startupLogger.warn('⚠️  SECURITY WARNING: SESSION_SECRET is weak or default');
+  startupLogger.warn('   Generate a secure secret with: openssl rand -base64 32');
+  startupLogger.warn('   Set SESSION_SECRET in your .env file');
+}
+
 // Global rate limiting for all API routes
 app.use('/api', apiLimiter);
 
@@ -119,14 +140,21 @@ app.use('/api/sso', ssoRouter);
 app.use(errorHandler);
 
 // WebSocket connections with authentication
-// Note: Socket.io + express-session integration requires type assertions for session access
 io.use((socket, next) => {
-  // Parse session from handshake - type assertions needed for express-session compatibility
-  sessionMiddleware(socket.request as any, {} as any, () => {  // eslint-disable-line @typescript-eslint/no-explicit-any
-    const session = (socket.request as any).session;  // eslint-disable-line @typescript-eslint/no-explicit-any
+  const authSocket = socket as AuthenticatedSocket;
+  const req = authSocket.request;
+  
+  // Parse session from handshake
+  // Note: sessionMiddleware is typed as Express RequestHandler but works with raw IncomingMessage
+  // Using typed function signature via unknown to properly type the middleware call
+  type SessionMiddlewareFn = (req: SessionIncomingMessage, res: SocketSessionResponse, next: () => void) => void;
+  const middleware = sessionMiddleware as unknown as SessionMiddlewareFn;
+  
+  middleware(req, {}, () => {
+    const session = req.session;
     if (session?.passport?.user) {
       // Attach user ID to socket for filtering events
-      (socket as any).userId = session.passport.user;  // eslint-disable-line @typescript-eslint/no-explicit-any
+      authSocket.userId = session.passport.user;
       next();
     } else {
       next(new Error('Authentication required'));
@@ -137,7 +165,8 @@ io.use((socket, next) => {
 const log = createLogger('Server');
 
 io.on('connection', (socket) => {
-  const userId = (socket as any).userId;  // eslint-disable-line @typescript-eslint/no-explicit-any
+  const authSocket = socket as AuthenticatedSocket;
+  const userId = authSocket.userId;
   // Join a room for this user so we can send targeted events
   socket.join(`user:${userId}`);
   log.debug(`Client connected: ${socket.id} (user: ${userId})`);
@@ -147,14 +176,18 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3010;
+// Only start server in non-test environments
+// Tests import app directly without starting the HTTP server
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 3010;
 
-httpServer.listen(PORT, () => {
-  log.info(`API server running on port ${PORT}`);
-  
-  // Initialize job scheduler
-  initializeScheduler();
-});
+  httpServer.listen(PORT, () => {
+    log.info(`API server running on port ${PORT}`);
+    
+    // Initialize job scheduler
+    initializeScheduler();
+  });
+}
 
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
@@ -165,12 +198,26 @@ const gracefulShutdown = async (signal: string) => {
     log.info('HTTP server closed');
   });
   
+  // Close slskd QueueEvents connection
+  try {
+    await cleanupQueueEvents();
+    log.info('QueueEvents connection closed');
+  } catch (error) {
+    log.error('Error closing QueueEvents', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+  
   // Close Redis connection
   try {
     await redis.quit();
     log.info('Redis connection closed');
-  } catch (err) {
-    log.error('Error closing Redis:', err);
+  } catch (error) {
+    log.error('Error closing Redis', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
   }
   
   // Give time for cleanup

@@ -7,7 +7,7 @@
 import { Worker, Job } from 'bullmq';
 import { createRedisConnection } from '../lib/redis.js';
 import prisma from '../lib/db.js';
-import { isSpotifyConfig } from '../types/connections.js';
+import { isSpotifyConfig, LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import { QUEUE_NAMES, type ImportJobData } from './queue.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { SpotifyService } from '../services/spotify.js';
@@ -241,7 +241,9 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
       return;
     }
 
-    const lidarrConfig = lidarrConn.config as { url: string; apiKey: string };
+    const rawConfig = lidarrConn.config as unknown as LidarrConnectionConfig;
+    // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+    const lidarrConfig = normalizeLidarrConfig(rawConfig);
     const lidarr = new LidarrService(lidarrConfig);
     const cache = new LidarrCache(lidarr);
     await cache.refresh();
@@ -265,17 +267,37 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
       }
 
       try {
-        const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
-          lidarr.getQualityProfiles(),
-          lidarr.getMetadataProfiles(),
-          lidarr.getRootFolders(),
-        ]);
+        // Use connection config for profiles/folders, fall back to fetching first available
+        let qpId = lidarrConfig.qualityProfileId;
+        let mpId = lidarrConfig.metadataProfileId;
+        let rfPath = lidarrConfig.rootFolderPath;
 
+        if (!qpId || !mpId || !rfPath) {
+          const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
+            !qpId ? lidarr.getQualityProfiles() : Promise.resolve([]),
+            !mpId ? lidarr.getMetadataProfiles() : Promise.resolve([]),
+            !rfPath ? lidarr.getRootFolders() : Promise.resolve([]),
+          ]);
+          if (!qpId) qpId = qualityProfiles[0]?.id;
+          if (!mpId) mpId = metadataProfiles[0]?.id;
+          if (!rfPath) rfPath = rootFolders[0]?.path;
+        }
+
+        if (!qpId || !mpId || !rfPath) {
+          skipped++;
+          continue;
+        }
+
+        // Use monitorOption from connection config (defaults to 'all' if not set)
         await lidarr.addArtist(
           mbid,
-          qualityProfiles[0].id,
-          metadataProfiles[0].id,
-          rootFolders[0].path
+          qpId,
+          mpId,
+          rfPath,
+          true,  // monitored
+          lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+          lidarrConfig.monitorOption || 'all',
+          lidarrConfig.monitorNewItems || 'all'
         );
         added++;
       } catch {

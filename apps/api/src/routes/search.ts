@@ -12,6 +12,7 @@ import { notificationService } from '../services/notifications.js';
 import { aiService } from '../services/ai.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
+import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 
 const log = createLogger('Search');
 
@@ -49,6 +50,24 @@ async function getLidarrService(userId: number): Promise<LidarrService | null> {
   if (!connection) return null;
   const config = connection.config as { url: string; apiKey: string };
   return new LidarrService(config);
+}
+
+// Helper to get Lidarr service with full config (for add operations)
+async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
+  const connection = await prisma.connection.findFirst({
+    where: {
+      OR: [
+        { userId, type: 'lidarr', isActive: true },
+        { userId: null, type: 'lidarr', isActive: true },
+      ],
+    },
+    orderBy: { userId: 'desc' },
+  });
+  if (!connection) return null;
+  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
+  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
+  const config = normalizeLidarrConfig(rawConfig);
+  return { service: new LidarrService(config), config };
 }
 
 // Search for artists
@@ -368,11 +387,12 @@ searchRouter.post('/discover/add', async (req, res) => {
       return;
     }
     
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
     // Use provided MBID or resolve it
     let resolvedMbid = mbid;
@@ -390,10 +410,10 @@ searchRouter.post('/discover/add', async (req, res) => {
       resolvedMbid = resolution.mbid;
     }
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -416,7 +436,15 @@ searchRouter.post('/discover/add', async (req, res) => {
     }
 
     // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(resolvedMbid, qpId, mpId, rfPath);
+    // Use monitorOption from connection config (defaults to 'all' if not set)
+    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+      resolvedMbid, qpId, mpId, rfPath,
+      true,  // monitored
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+      false, // waitForRefresh (deprecated)
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
+    );
     
     // Log the successful artist addition
     await addLogEntry('info', 'search', `Added artist "${artistName}" from search`, {
@@ -458,16 +486,17 @@ searchRouter.post('/artists/add', async (req, res) => {
     }
 
     // Use global connection if user doesn't have their own
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -490,7 +519,15 @@ searchRouter.post('/artists/add', async (req, res) => {
     }
 
     // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(foreignArtistId, qpId, mpId, rfPath);
+    // Use monitorOption from connection config (defaults to 'all' if not set)
+    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+      foreignArtistId, qpId, mpId, rfPath,
+      true,  // monitored
+      lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+      false, // waitForRefresh (deprecated)
+      lidarrConfig.monitorOption || 'all',
+      lidarrConfig.monitorNewItems || 'all'
+    );
     
     // Log the successful artist addition
     const artistName = artist.artistName || 'Unknown Artist';
@@ -740,8 +777,12 @@ searchRouter.post('/lidarr/artists/refresh-incomplete', async (req, res) => {
         });
         // Small delay between refreshes
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        log.error(`Failed to refresh artist ${artist.id} (${artist.artistName}):`, err);
+      } catch (error) {
+        log.error('Failed to refresh artist', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          context: { artistId: artist.id, artistName: artist.artistName },
+        });
       }
     }
 
@@ -807,8 +848,12 @@ searchRouter.post('/lidarr/artists/refresh-by-issue', async (req, res) => {
         });
         // Small delay between refreshes
         await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        log.error(`Failed to refresh artist ${artist.id} (${artist.artistName}):`, err);
+      } catch (error) {
+        log.error('Failed to refresh artist', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          context: { artistId: artist.id, artistName: artist.artistName },
+        });
       }
     }
 
@@ -1115,16 +1160,17 @@ searchRouter.post('/batch', async (req, res) => {
       return;
     }
 
-    const lidarr = await getLidarrService(req.user!.id);
-    if (!lidarr) {
+    const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
+    if (!lidarrResult) {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    const { service: lidarr, config: lidarrConfig } = lidarrResult;
     
-    // Get defaults if not provided
-    let qpId = qualityProfileId;
-    let mpId = metadataProfileId;
-    let rfPath = rootFolderPath;
+    // Get defaults from connection config, then fall back to fetching first available
+    let qpId = qualityProfileId || lidarrConfig.qualityProfileId;
+    let mpId = metadataProfileId || lidarrConfig.metadataProfileId;
+    let rfPath = rootFolderPath || lidarrConfig.rootFolderPath;
 
     if (!qpId) {
       const profiles = await lidarr.getQualityProfiles();
@@ -1166,7 +1212,15 @@ searchRouter.post('/batch', async (req, res) => {
         }
 
         // Use addArtistWithRefresh but don't wait (batch mode - avoid blocking)
-        await lidarr.addArtistWithRefresh(artistId, qpId, mpId, rfPath, true, true, false);
+        // Use monitorOption from connection config (defaults to 'all' if not set)
+        await lidarr.addArtistWithRefresh(
+          artistId, qpId, mpId, rfPath,
+          true,  // monitored
+          lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+          false, // waitForRefresh (deprecated)
+          lidarrConfig.monitorOption || 'all',
+          lidarrConfig.monitorNewItems || 'all'
+        );
         results.added.push(artistId);
       } catch (error) {
         results.failed.push({

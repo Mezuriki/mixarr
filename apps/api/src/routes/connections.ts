@@ -10,6 +10,7 @@ import { LastfmService } from '../services/lastfm.js';
 import { TautulliService } from '../services/tautulli.js';
 import { DeezerOAuthService } from '../services/deezer-oauth.js';
 import { TidalService } from '../services/tidal.js';
+import { SlskdService } from '../services/slskd.js';
 import { ListenBrainzService } from '../services/listenbrainz.js';
 import { DiscogsService } from '../services/discogs.js';
 import type { Connection, Prisma } from '@prisma/client';
@@ -68,8 +69,8 @@ connectionsRouter.get('/:id/spotify/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number; returnTo?: string };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }
@@ -199,6 +200,21 @@ connectionsRouter.post('/test', validateBody(testConnectionSchema), async (req, 
         return;
       }
 
+      case 'slskd': {
+        if (!url || !apiKey) {
+          res.status(400).json({ success: false, error: 'URL and API key required' });
+          return;
+        }
+        const service = new SlskdService({ url, apiKey });
+        const testResult = await service.testConnection();
+        if (!testResult.success) {
+          res.json({ success: false, error: testResult.error || 'Connection failed' });
+          return;
+        }
+        res.json({ success: true, message: `Connected to slskd v${testResult.version}`, version: testResult.version });
+        return;
+      }
+
       default:
         res.status(400).json({ success: false, error: `Unknown connection type: ${type}` });
     }
@@ -305,6 +321,7 @@ connectionsRouter.get('/:id', async (req, res) => {
       safeConfig.qualityProfileId = config.qualityProfileId;
       safeConfig.rootFolderPath = config.rootFolderPath;
       safeConfig.monitorOption = config.monitorOption;
+      safeConfig.monitorNewItems = config.monitorNewItems;
       safeConfig.searchOnAdd = config.searchOnAdd;
     } else if (connection.type === 'spotify') {
       safeConfig.clientId = config.clientId;
@@ -1105,8 +1122,8 @@ connectionsRouter.get('/:id/deezer/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }
@@ -1365,8 +1382,8 @@ connectionsRouter.get('/:id/tidal/callback', async (req, res) => {
     let stateData: { connectionId: number; userId: number; timestamp: number; codeVerifier: string };
     try {
       stateData = verifySignedState<typeof stateData>(String(state));
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'invalid_state';
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'invalid_state';
       res.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMsg)}`);
       return;
     }
