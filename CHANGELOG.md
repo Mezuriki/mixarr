@@ -40,14 +40,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Add theme system README with design principles and color palette reference 
 
-## [v1.2.0] - Unreleased
+#### Docker Slim Image
+- New `mixarr:slim` Docker image containing only API + Web (~700MB vs ~1.5GB unified)
+- `docker-compose.slim.yml` for production deployments with external MariaDB and Redis
+- `docker-compose.byo.yml` for users with existing database/Redis infrastructure
+- Health check endpoint at `GET /api/health` (returns 503 if DB or Redis down)
+- Liveness endpoint at `GET /api/health/live` (always returns 200)
+- Comprehensive deployment guide (`docs/DEPLOYMENT.md`)
+- CI/CD pipeline builds both `latest` and `slim` images on release
+- Slim image uses `tini` for proper PID 1 signal handling
+- Slim image runs as non-root user (`mixarr:1000`)
+- Slim image properly exits when child processes crash (enables orchestrator restarts)
 
-### Added
+## [v1.2.1] - 2026-01-27
 
-#### Lidarr Monitor New Items
-- Add "Monitor New Albums" dropdown to Lidarr connection settings
-- Support for None, All, New, and Existing monitor options
-- Automatically apply monitor setting when adding artists via subscriptions
+### Hotfixes
+
+- Issue #30 - HTTP Access Shows Blank Dashboard
+
+
+## [v1.2.0] - 2026-01-27
 
 ### Fixed
 - Issue #24: Lidarr import settings are not respected

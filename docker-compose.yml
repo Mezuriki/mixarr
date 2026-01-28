@@ -1,5 +1,24 @@
+# =============================================================================
+# Mixarr Production Stack
+# Full stack deployment with MySQL, Redis, API, Web, and Caddy reverse proxy
+#
+# Usage:
+#   docker compose up -d
+#
+# Requirements:
+#   - Set SESSION_SECRET in environment or .env file for production
+#
+# Ports:
+#   - 3443: HTTPS (Caddy reverse proxy)
+#   - 3080: HTTP redirect
+#   - 3010: Direct web access (bypasses Caddy)
+#
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
   # MySQL Database
+  # ---------------------------------------------------------------------------
   db:
     image: mysql:8.0
     container_name: mixarr-db
@@ -19,7 +38,9 @@ services:
       retries: 30
       start_period: 300s
 
-  # Redis for sessions and job queue
+  # ---------------------------------------------------------------------------
+  # Redis (sessions and job queue)
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: mixarr-redis
@@ -32,7 +53,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
   # API Server
+  # ---------------------------------------------------------------------------
   api:
     build:
       context: .
@@ -55,7 +78,9 @@ services:
       BASE_URL: ${BASE_URL:-https://localhost:3443}
     command: sh -c "npx prisma db push --accept-data-loss && node dist/index.js"
 
+  # ---------------------------------------------------------------------------
   # Web Frontend
+  # ---------------------------------------------------------------------------
   web:
     build:
       context: .
@@ -71,7 +96,9 @@ services:
     ports:
       - "3010:3000"
 
-  # Caddy reverse proxy for HTTPS (required for Spotify OAuth)
+  # ---------------------------------------------------------------------------
+  # Caddy Reverse Proxy (HTTPS)
+  # ---------------------------------------------------------------------------
   caddy:
     build:
       context: ./caddy
