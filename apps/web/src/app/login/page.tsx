@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Loader2, AlertTriangle } from 'lucide-react';
 
 function LoginPageContent() {
   const [username, setUsername] = useState('');
@@ -18,6 +18,37 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/';
+
+  // Check for insecure HTTP access in production
+  const isInsecureAccess = typeof window !== 'undefined' &&
+    window.location.protocol === 'http:' &&
+    process.env.NODE_ENV === 'production';
+
+  // Show warning if accessing over plain HTTP in production
+  if (isInsecureAccess) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl">HTTP Access Not Supported</CardTitle>
+            <CardDescription>
+              Mixarr requires HTTPS to work properly. You&apos;re accessing over plain HTTP.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm font-medium">To fix this:</p>
+            <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+              <li>Use the built-in HTTPS port (3443), or</li>
+              <li>Access through your reverse proxy with HTTPS enabled</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Check if setup is required (independent of auth context for robustness)
   useEffect(() => {
