@@ -198,14 +198,14 @@ export default function LibraryPage() {
       <Card className="mb-4">
         <CardContent className="pt-4">
           <div className="flex items-center gap-4">
-            <div className={`text-2xl font-bold ${healthScore >= 80 ? 'text-green-500' : healthScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>
+            <div className={`text-2xl font-bold ${healthScore >= 80 ? 'text-status-success' : healthScore >= 50 ? 'text-status-warning' : 'text-status-error'}`}>
               {healthScore}%
             </div>
             <div className="flex-1">
               <div className="text-sm text-muted-foreground mb-1">Library Health</div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all ${healthScore >= 80 ? 'bg-green-500' : healthScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                  className={`h-full transition-all ${healthScore >= 80 ? 'bg-status-success' : healthScore >= 50 ? 'bg-status-warning' : 'bg-status-error'}`}
                   style={{ width: `${healthScore}%` }} 
                 />
               </div>
@@ -253,33 +253,33 @@ export default function LibraryPage() {
                 <p className="text-xs text-muted-foreground">Total Artists</p>
               </CardContent>
             </Card>
-        <Card className={issueStats?.noAlbums ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noAlbums ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noAlbums ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noAlbums ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noAlbums || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Albums</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noPoster ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noPoster ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noPoster ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noPoster ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noPoster || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Poster</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noOverview ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noOverview ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noOverview ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noOverview ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noOverview || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Bio</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noGenres ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noGenres ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noGenres ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noGenres ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noGenres || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Genres</p>
@@ -374,31 +374,31 @@ export default function LibraryPage() {
                         </div>
                       </td>
                       <td className="text-center py-3 px-2">
-                        <span className={artist.albumCount === 0 ? 'text-yellow-500 font-medium' : ''}>
+                        <span className={artist.albumCount === 0 ? 'text-status-warning font-medium' : ''}>
                           {artist.albumCount}
                         </span>
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center justify-center gap-1">
                           <span title={artist.hasPoster ? 'Has poster' : 'No poster'}>
-                            <Image className={`h-4 w-4 ${artist.hasPoster ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <Image className={`h-4 w-4 ${artist.hasPoster ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                           <span title={artist.hasOverview ? 'Has bio' : 'No bio'}>
-                            <FileText className={`h-4 w-4 ${artist.hasOverview ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <FileText className={`h-4 w-4 ${artist.hasOverview ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                           <span title={artist.hasGenres ? 'Has genres' : 'No genres'}>
-                            <Music className={`h-4 w-4 ${artist.hasGenres ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <Music className={`h-4 w-4 ${artist.hasGenres ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                         </div>
                       </td>
                       <td className="text-center py-3 px-2">
                         {artist.issues.length === 0 ? (
-                          <Badge variant="default" className="bg-green-600">
+                          <Badge variant="default" className="bg-status-success">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             OK
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-yellow-600/20 text-yellow-500">
+                          <Badge variant="secondary" className="bg-status-warning/20 text-status-warning">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             {artist.issues.length}
                           </Badge>

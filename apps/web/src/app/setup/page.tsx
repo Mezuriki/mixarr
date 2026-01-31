@@ -346,8 +346,8 @@ function SetupPageContent() {
         {step === 'success' && (
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-                <Check className="h-8 w-8 text-green-500" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-status-success/10">
+                <Check className="h-8 w-8 text-status-success" />
               </div>
               <CardTitle className="text-2xl">Setup Complete!</CardTitle>
               <CardDescription>

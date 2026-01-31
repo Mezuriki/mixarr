@@ -250,7 +250,7 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
       ) : !result || result.duplicatesFound === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
+            <CheckCircle className="w-12 h-12 text-status-success mb-4" />
             <h3 className="text-lg font-medium mb-2">No Duplicates Found</h3>
             <p className="text-muted-foreground mb-4">
               {result?.scannedAt 
@@ -343,7 +343,7 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                         <div className="space-y-4">
                           {/* Recommendation */}
                           <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                            <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                            <AlertTriangle className="w-5 h-5 text-status-warning mt-0.5" />
                             <div>
                               <div className="font-medium">Recommendation</div>
                               <div className="text-sm text-muted-foreground">
@@ -378,13 +378,13 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                                       <Disc className="w-4 h-4" /> Albums
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist1.albumCount >= candidateGuidance.comparison.artist2.albumCount && candidateGuidance.comparison.artist1.albumCount > 0 ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist1.albumCount >= candidateGuidance.comparison.artist2.albumCount && candidateGuidance.comparison.artist1.albumCount > 0 ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist1.albumCount}
                                         {candidateGuidance.comparison.artist1.albumCount > candidateGuidance.comparison.artist2.albumCount && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist2.albumCount > candidateGuidance.comparison.artist1.albumCount ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist2.albumCount > candidateGuidance.comparison.artist1.albumCount ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist2.albumCount}
                                         {candidateGuidance.comparison.artist2.albumCount > candidateGuidance.comparison.artist1.albumCount && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
@@ -396,13 +396,13 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                                       <Music2 className="w-4 h-4" /> Downloaded
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist1.percentComplete >= candidateGuidance.comparison.artist2.percentComplete && candidateGuidance.comparison.artist1.trackFileCount > 0 ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist1.percentComplete >= candidateGuidance.comparison.artist2.percentComplete && candidateGuidance.comparison.artist1.trackFileCount > 0 ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist1.trackFileCount}/{candidateGuidance.comparison.artist1.trackCount} ({candidateGuidance.comparison.artist1.percentComplete}%)
                                         {candidateGuidance.comparison.artist1.percentComplete > candidateGuidance.comparison.artist2.percentComplete && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist2.percentComplete > candidateGuidance.comparison.artist1.percentComplete ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist2.percentComplete > candidateGuidance.comparison.artist1.percentComplete ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist2.trackFileCount}/{candidateGuidance.comparison.artist2.trackCount} ({candidateGuidance.comparison.artist2.percentComplete}%)
                                         {candidateGuidance.comparison.artist2.percentComplete > candidateGuidance.comparison.artist1.percentComplete && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
@@ -414,13 +414,13 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                                       <HardDrive className="w-4 h-4" /> Size
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist1.sizeOnDisk >= candidateGuidance.comparison.artist2.sizeOnDisk && candidateGuidance.comparison.artist1.sizeOnDisk > 0 ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist1.sizeOnDisk >= candidateGuidance.comparison.artist2.sizeOnDisk && candidateGuidance.comparison.artist1.sizeOnDisk > 0 ? 'text-status-success font-medium' : ''}>
                                         {formatBytes(candidateGuidance.comparison.artist1.sizeOnDisk)}
                                         {candidateGuidance.comparison.artist1.sizeOnDisk > candidateGuidance.comparison.artist2.sizeOnDisk && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist2.sizeOnDisk > candidateGuidance.comparison.artist1.sizeOnDisk ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist2.sizeOnDisk > candidateGuidance.comparison.artist1.sizeOnDisk ? 'text-status-success font-medium' : ''}>
                                         {formatBytes(candidateGuidance.comparison.artist2.sizeOnDisk)}
                                         {candidateGuidance.comparison.artist2.sizeOnDisk > candidateGuidance.comparison.artist1.sizeOnDisk && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
@@ -430,13 +430,13 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                                   <tr className="border-b border-muted/50">
                                     <td className="py-2 px-3 text-muted-foreground">Avg Bitrate</td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist1.avgBitrate && (!candidateGuidance.comparison.artist2.avgBitrate || candidateGuidance.comparison.artist1.avgBitrate >= candidateGuidance.comparison.artist2.avgBitrate) ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist1.avgBitrate && (!candidateGuidance.comparison.artist2.avgBitrate || candidateGuidance.comparison.artist1.avgBitrate >= candidateGuidance.comparison.artist2.avgBitrate) ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist1.avgBitrate ? `${candidateGuidance.comparison.artist1.avgBitrate} kbps` : '—'}
                                         {candidateGuidance.comparison.artist1.avgBitrate && candidateGuidance.comparison.artist2.avgBitrate && candidateGuidance.comparison.artist1.avgBitrate > candidateGuidance.comparison.artist2.avgBitrate && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
                                     </td>
                                     <td className="py-2 px-3">
-                                      <span className={candidateGuidance.comparison.artist2.avgBitrate && candidateGuidance.comparison.artist1.avgBitrate && candidateGuidance.comparison.artist2.avgBitrate > candidateGuidance.comparison.artist1.avgBitrate ? 'text-green-500 font-medium' : ''}>
+                                      <span className={candidateGuidance.comparison.artist2.avgBitrate && candidateGuidance.comparison.artist1.avgBitrate && candidateGuidance.comparison.artist2.avgBitrate > candidateGuidance.comparison.artist1.avgBitrate ? 'text-status-success font-medium' : ''}>
                                         {candidateGuidance.comparison.artist2.avgBitrate ? `${candidateGuidance.comparison.artist2.avgBitrate} kbps` : '—'}
                                         {candidateGuidance.comparison.artist2.avgBitrate && candidateGuidance.comparison.artist1.avgBitrate && candidateGuidance.comparison.artist2.avgBitrate > candidateGuidance.comparison.artist1.avgBitrate && <Check className="w-4 h-4 inline ml-1" />}
                                       </span>
@@ -461,14 +461,14 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                                     <td className="py-2 px-3 text-muted-foreground">Monitored</td>
                                     <td className="py-2 px-3">
                                       {candidateGuidance.comparison.artist1.monitored ? (
-                                        <span className="text-green-500 flex items-center gap-1"><Eye className="w-4 h-4" /> Yes</span>
+                                        <span className="text-status-success flex items-center gap-1"><Eye className="w-4 h-4" /> Yes</span>
                                       ) : (
                                         <span className="text-muted-foreground flex items-center gap-1"><EyeOff className="w-4 h-4" /> No</span>
                                       )}
                                     </td>
                                     <td className="py-2 px-3">
                                       {candidateGuidance.comparison.artist2.monitored ? (
-                                        <span className="text-green-500 flex items-center gap-1"><Eye className="w-4 h-4" /> Yes</span>
+                                        <span className="text-status-success flex items-center gap-1"><Eye className="w-4 h-4" /> Yes</span>
                                       ) : (
                                         <span className="text-muted-foreground flex items-center gap-1"><EyeOff className="w-4 h-4" /> No</span>
                                       )}

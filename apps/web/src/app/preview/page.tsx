@@ -224,11 +224,11 @@ export default function PreviewPage() {
                   {importResults.map((result, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm">
                       {result.success ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-status-success" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
+                        <XCircle className="h-4 w-4 text-status-error" />
                       )}
-                      <span className={result.success ? 'text-green-600' : 'text-red-600'}>
+                      <span className={result.success ? 'text-status-success' : 'text-status-error'}>
                         {result.name}: {result.message}
                       </span>
                     </div>

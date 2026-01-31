@@ -144,7 +144,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5 text-blue-500" />
+              <PlayCircle className="h-5 w-5 text-status-info" />
               <span className="text-2xl font-bold">{activeJobs.length}</span>
             </div>
           </CardContent>
@@ -155,7 +155,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-status-success" />
               <span className="text-2xl font-bold">{completedJobs.length}</span>
             </div>
           </CardContent>
@@ -166,7 +166,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
+              <XCircle className="h-5 w-5 text-status-error" />
               <span className="text-2xl font-bold">{failedJobs.length}</span>
             </div>
           </CardContent>
@@ -225,7 +225,7 @@ export default function JobsPage() {
                         </div>
                       )}
                       {status === 'failed' && job.failedReason && (
-                        <p className="text-sm text-red-500 mt-1">
+                        <p className="text-sm text-status-error mt-1">
                           {job.failedReason}
                         </p>
                       )}

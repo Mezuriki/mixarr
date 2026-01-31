@@ -62,6 +62,7 @@
   --success: 120 20% 51%; /* #6b9b6b */
   --warning: 36 45% 54%; /* #bf9a56 */
   --error: 8 45% 55%; /* #bf6b5a */
+  --info: 210 40% 55%; /* desaturated blue */
 }
 
 /* ==========================================================================
@@ -121,6 +122,7 @@
   --success: 120 25% 42%; /* darker green */
   --warning: 36 55% 45%; /* darker amber */
   --error: 8 55% 48%; /* darker red */
+  --info: 210 50% 45%; /* darker blue for contrast */
 }
 
 /* ==========================================================================
@@ -182,6 +184,7 @@
     --success: 120 25% 42%; /* darker green */
     --warning: 36 55% 45%; /* darker amber */
     --error: 8 55% 48%; /* darker red */
+    --info: 210 50% 45%; /* darker blue for contrast */
   }
 }
 
