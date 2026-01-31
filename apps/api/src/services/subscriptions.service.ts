@@ -9,6 +9,7 @@ import prisma from '../lib/db.js';
 import { createLogger } from '../lib/logger.js';
 import { addScheduledJob, removeScheduledJob } from '../jobs/scheduler.js';
 import { scheduleSubscriptionJob } from '../jobs/queue.js';
+import { fetchDeezerArtistImages } from './deezer.js';
 import type { Subscription, SubscriptionType, ResultHandling, ConnectionType, Prisma } from '@prisma/client';
 
 const logger = createLogger('SubscriptionService');
@@ -198,6 +199,68 @@ export class SubscriptionService {
     logger.info('Scheduled subscription execution', { subscriptionId: id, jobId: job.id });
 
     return { jobId: job.id as string };
+  }
+
+  /**
+   * Get run history for a subscription with pagination
+   */
+  async getRunHistory(
+    subscriptionId: number,
+    userId: number,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<{ runs: any[]; total: number }> {
+    // Verify access
+    await this.findById(subscriptionId, userId);
+
+    const [runs, total] = await Promise.all([
+      prisma.subscriptionRun.findMany({
+        where: { subscriptionId },
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.subscriptionRun.count({ where: { subscriptionId } }),
+    ]);
+
+    return { runs, total };
+  }
+
+  /**
+   * Get run details with results
+   */
+  async getRunDetails(
+    subscriptionId: number,
+    runId: number,
+    userId: number
+  ): Promise<{ run: any; results: any[] } | null> {
+    // Verify access
+    await this.findById(subscriptionId, userId);
+
+    const run = await prisma.subscriptionRun.findFirst({
+      where: { id: runId, subscriptionId },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    const results = await prisma.subscriptionResult.findMany({
+      where: { runId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Fetch artist images from Deezer
+    const artistNames = results.map(r => r.name);
+    const imageMap = await fetchDeezerArtistImages(artistNames);
+
+    // Add images to results
+    const resultsWithImages = results.map(r => ({
+      ...r,
+      imageUrl: imageMap.get(r.name),
+    }));
+
+    return { run, results: resultsWithImages };
   }
 
   /**

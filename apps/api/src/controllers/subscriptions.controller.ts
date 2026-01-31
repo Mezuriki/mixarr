@@ -137,6 +137,66 @@ export class SubscriptionController {
       next(error);
     }
   }
+
+  /**
+   * GET /subscriptions/:id/runs
+   * Get run history for a subscription
+   */
+  async getRunHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseId(req.params.id);
+      if (id === null) {
+        res.status(400).json({ error: 'Invalid subscription ID' });
+        return;
+      }
+
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const result = await subscriptionService.getRunHistory(id, req.user!.id, limit, offset);
+      res.json({ ...result, limit, offset });
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * GET /subscriptions/:id/runs/:runId
+   * Get run details with results
+   */
+  async getRunDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseId(req.params.id);
+      const runId = parseId(req.params.runId);
+
+      if (id === null) {
+        res.status(400).json({ error: 'Invalid subscription ID' });
+        return;
+      }
+      if (runId === null) {
+        res.status(400).json({ error: 'Invalid run ID' });
+        return;
+      }
+
+      const result = await subscriptionService.getRunDetails(id, runId, req.user!.id);
+      if (!result) {
+        res.status(404).json({ error: 'Run not found' });
+        return;
+      }
+
+      res.json(result);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
 }
 
 // Export a singleton instance for convenience

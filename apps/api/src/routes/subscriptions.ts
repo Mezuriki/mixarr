@@ -35,94 +35,9 @@ subscriptionsRouter.put('/:id', validateBody(updateSubscriptionSchema), subscrip
 subscriptionsRouter.delete('/:id', subscriptionController.delete);
 subscriptionsRouter.post('/:id/execute', subscriptionController.execute);
 
-// Get subscription run history
-subscriptionsRouter.get('/:id/runs', async (req, res) => {
-  try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid subscription ID' });
-      return;
-    }
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = parseInt(req.query.offset as string) || 0;
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { id },
-    });
-
-    if (!subscription || !canAccessSubscription(req, subscription)) {
-      res.status(404).json({ error: 'Subscription not found' });
-      return;
-    }
-
-    const [runs, total] = await Promise.all([
-      prisma.subscriptionRun.findMany({
-        where: { subscriptionId: id },
-        orderBy: { startedAt: 'desc' },
-        take: limit,
-        skip: offset,
-      }),
-      prisma.subscriptionRun.count({ where: { subscriptionId: id } }),
-    ]);
-
-    res.json({ runs, total, limit, offset });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch run history' });
-  }
-});
-
-// Get run details with results
-subscriptionsRouter.get('/:id/runs/:runId', async (req, res) => {
-  try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid subscription ID' });
-      return;
-    }
-    const runId = parseIntParam(req.params.runId);
-    if (runId === null) {
-      res.status(400).json({ error: 'Invalid run ID' });
-      return;
-    }
-
-    const subscription = await prisma.subscription.findUnique({
-      where: { id },
-    });
-
-    if (!subscription || !canAccessSubscription(req, subscription)) {
-      res.status(404).json({ error: 'Subscription not found' });
-      return;
-    }
-
-    const run = await prisma.subscriptionRun.findFirst({
-      where: { id: runId, subscriptionId: id },
-    });
-
-    if (!run) {
-      res.status(404).json({ error: 'Run not found' });
-      return;
-    }
-
-    const results = await prisma.subscriptionResult.findMany({
-      where: { runId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Fetch artist images from Deezer
-    const artistNames = results.map(r => r.name);
-    const imageMap = await fetchDeezerArtistImages(artistNames);
-
-    // Add images to results
-    const resultsWithImages = results.map(r => ({
-      ...r,
-      imageUrl: imageMap.get(r.name),
-    }));
-
-    res.json({ run, results: resultsWithImages });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch run details' });
-  }
-});
+// Run history endpoints - delegated to controller
+subscriptionsRouter.get('/:id/runs', subscriptionController.getRunHistory);
+subscriptionsRouter.get('/:id/runs/:runId', subscriptionController.getRunDetails);
 
 // Get all results for a subscription (paginated)
 subscriptionsRouter.get('/:id/results', async (req, res) => {
