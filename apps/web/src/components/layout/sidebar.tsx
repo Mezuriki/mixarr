@@ -26,7 +26,20 @@ import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { ThemePicker } from '@/components/ui/theme-picker';
 
-const navGroups = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  adminOnly?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  adminOnly?: boolean;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
   {
     label: 'Discovery',
     items: [
