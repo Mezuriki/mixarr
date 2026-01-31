@@ -117,7 +117,7 @@ export default function Home() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {quickLinks.map((link) => (
           <Link key={link.href} href={link.href}>
-            <Card className="h-full transition-all hover:border-primary hover:shadow-md">
+            <Card interactive className="h-full">
               <CardContent className="flex items-center gap-4 p-6">
                 <div className="rounded-full bg-primary/10 p-3 text-primary">
                   <link.icon className="h-5 w-5" />
