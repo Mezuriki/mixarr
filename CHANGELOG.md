@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Slim image runs as non-root user (`mixarr:1000`)
 - Slim image properly exits when child processes crash (enables orchestrator restarts)
 
+#### Ollama & Custom OpenAI Support
+- Use local LLMs or OpenAI-compatible providers (Ollama, LiteLLM, OpenRouter) for AI recommendations
+- Configure custom base URL and model name in AI Settings
+- Works without API key for local Ollama instances
+- Security: Reject URLs with embedded credentials
+
+#### Lidarr Monitor New Items
+- Add "Monitor New Albums" dropdown to Lidarr connection settings
+- Support for None, All, New, and Existing monitor options
+- Automatically apply monitor setting when adding artists via subscriptions
+
 ## [v1.2.1] - 2026-01-27
 
 ### Hotfixes

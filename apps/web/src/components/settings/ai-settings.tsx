@@ -15,6 +15,8 @@ interface AISettingsData {
   openaiEnabled: boolean;
   openaiConfigured: boolean;
   openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  openaiModel?: string;
   anthropicEnabled: boolean;
   anthropicConfigured: boolean;
   anthropicApiKey?: string;
@@ -28,6 +30,8 @@ export function AISettings() {
     anthropicConfigured: false,
   });
   const [openaiKey, setOpenaiKey] = useState('');
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useState('');
+  const [openaiModel, setOpenaiModel] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
@@ -43,6 +47,12 @@ export function AISettings() {
         setSettings(data.settings);
         if (data.settings.openaiApiKey) {
           setOpenaiKey(data.settings.openaiApiKey);
+        }
+        if (data.settings.openaiBaseUrl) {
+          setOpenaiBaseUrl(data.settings.openaiBaseUrl);
+        }
+        if (data.settings.openaiModel) {
+          setOpenaiModel(data.settings.openaiModel);
         }
         if (data.settings.anthropicApiKey) {
           setAnthropicKey(data.settings.anthropicApiKey);
@@ -65,6 +75,8 @@ export function AISettings() {
       const { error } = await api.put('/api/ai/settings', {
         openaiEnabled: settings.openaiEnabled,
         openaiApiKey: openaiKey || undefined,
+        openaiBaseUrl: openaiBaseUrl || undefined,
+        openaiModel: openaiModel || undefined,
         anthropicEnabled: settings.anthropicEnabled,
         anthropicApiKey: anthropicKey || undefined,
       });
@@ -128,9 +140,9 @@ export function AISettings() {
         <div className="rounded-lg border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold">OpenAI (GPT-4)</h3>
+              <h3 className="font-semibold">OpenAI-Compatible</h3>
               <p className="text-sm text-muted-foreground">
-                Use OpenAI&apos;s GPT models for recommendations
+                Use OpenAI, Ollama, LiteLLM, OpenRouter, or other compatible providers
               </p>
             </div>
             <button
@@ -167,10 +179,40 @@ export function AISettings() {
                     {showOpenaiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {settings.openaiConfigured && (
-                  <p className="text-xs text-green-600">✓ API key configured</p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Required for OpenAI. Optional when using a custom base URL (e.g., Ollama).
+                </p>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Base URL (Optional)</label>
+                <Input
+                  type="text"
+                  value={openaiBaseUrl}
+                  onChange={(e) => setOpenaiBaseUrl(e.target.value)}
+                  placeholder="https://api.openai.com/v1 (default)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty for OpenAI. For Ollama use http://localhost:11434/v1
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Model (Optional)</label>
+                <Input
+                  type="text"
+                  value={openaiModel}
+                  onChange={(e) => setOpenaiModel(e.target.value)}
+                  placeholder="gpt-3.5-turbo (default)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Model name varies by provider (e.g., llama3.2, mistral, gpt-4o)
+                </p>
+              </div>
+
+              {settings.openaiConfigured && (
+                <p className="text-xs text-green-600">✓ OpenAI-compatible provider configured</p>
+              )}
             </>
           )}
         </div>
