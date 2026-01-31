@@ -43,6 +43,12 @@ const config: Config = {
           foreground: 'hsl(var(--sidebar-foreground))',
           border: 'hsl(var(--sidebar-border))',
         },
+        status: {
+          success: 'hsl(var(--success))',
+          warning: 'hsl(var(--warning))',
+          error: 'hsl(var(--error))',
+          info: 'hsl(var(--info, 210 60% 50%))',
+        },
       },
       width: {
         sidebar: '250px',
