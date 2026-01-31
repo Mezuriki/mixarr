@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui';
+import { buttonVariants, Skeleton } from '@/components/ui';
 import { useDashboardStats, useDashboardActivity, useDashboardConnections } from '@/lib/hooks';
 
 const quickLinks = [
@@ -145,6 +145,10 @@ export default function Home() {
               <p className="text-sm text-muted-foreground mt-1">
                 Set up connections to get started with music discovery
               </p>
+              <Link href="/connections" className={buttonVariants({ className: 'mt-4' })}>
+                <Plug className="h-4 w-4 mr-2" />
+                Configure Connections
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">
