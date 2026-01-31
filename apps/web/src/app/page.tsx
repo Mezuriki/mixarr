@@ -30,10 +30,10 @@ export default function Home() {
   const isLoading = statsLoading || activitiesLoading;
 
   const statCards = [
-    { label: 'Active Subscriptions', value: stats?.activeSubscriptions ?? '—', icon: TrendingUp, color: 'text-blue-500' },
-    { label: 'Artists Added (30d)', value: stats?.artistsAdded ?? '—', icon: CheckCircle2, color: 'text-green-500' },
-    { label: 'Pending Reviews', value: stats?.pendingReviews ?? '—', icon: Clock, color: 'text-yellow-500' },
-    { label: 'Jobs Running', value: stats?.runningJobs ?? '—', icon: Activity, color: 'text-purple-500' },
+    { label: 'Active Subscriptions', value: stats?.activeSubscriptions ?? '—', icon: TrendingUp, color: 'text-status-info' },
+    { label: 'Artists Added (30d)', value: stats?.artistsAdded ?? '—', icon: CheckCircle2, color: 'text-status-success' },
+    { label: 'Pending Reviews', value: stats?.pendingReviews ?? '—', icon: Clock, color: 'text-status-warning' },
+    { label: 'Jobs Running', value: stats?.runningJobs ?? '—', icon: Activity, color: 'text-primary' },
   ];
 
   return (
@@ -112,9 +112,9 @@ export default function Home() {
               {activities.map((activity) => (
                 <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
                   <div className={`rounded-full p-2 ${
-                    activity.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                    activity.status === 'failed' ? 'bg-red-500/10 text-red-500' :
-                    'bg-blue-500/10 text-blue-500'
+                    activity.status === 'completed' ? 'bg-status-success/10 text-status-success' :
+                    activity.status === 'failed' ? 'bg-status-error/10 text-status-error' :
+                    'bg-status-info/10 text-status-info'
                   }`}>
                     {activity.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> :
                      activity.status === 'failed' ? <Activity className="h-4 w-4" /> :

@@ -446,7 +446,7 @@ export default function UsersPage() {
                   onChange={() => setEditForm({ ...editForm, isActive: true })}
                   disabled={editingUser?.id === user?.id}
                 />
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-status-success" />
                 Active
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -457,7 +457,7 @@ export default function UsersPage() {
                   onChange={() => setEditForm({ ...editForm, isActive: false })}
                   disabled={editingUser?.id === user?.id}
                 />
-                <XCircle className="h-4 w-4 text-red-500" />
+                <XCircle className="h-4 w-4 text-status-error" />
                 Inactive
               </label>
             </div>

@@ -252,25 +252,25 @@ export default function DownloadsPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-500">{stats.pending}</div>
+            <div className="text-2xl font-bold text-status-warning">{stats.pending}</div>
             <div className="text-sm text-muted-foreground">Pending</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-500">{stats.downloading}</div>
+            <div className="text-2xl font-bold text-status-info">{stats.downloading}</div>
             <div className="text-sm text-muted-foreground">Downloading</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-500">{stats.completed}</div>
+            <div className="text-2xl font-bold text-status-success">{stats.completed}</div>
             <div className="text-sm text-muted-foreground">Completed</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-red-500">{stats.failed}</div>
+            <div className="text-2xl font-bold text-status-error">{stats.failed}</div>
             <div className="text-sm text-muted-foreground">Failed</div>
           </CardContent>
         </Card>

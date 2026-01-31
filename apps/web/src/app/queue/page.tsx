@@ -294,7 +294,7 @@ export default function QueuePage() {
                         }}
                         title="Search on Soulseek"
                       >
-                        <Search className="h-4 w-4 text-blue-500" />
+                        <Search className="h-4 w-4 text-status-info" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -304,9 +304,9 @@ export default function QueuePage() {
                         title="Approve"
                       >
                         {processingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                          <Loader2 className="h-4 w-4 animate-spin text-status-success" />
                         ) : (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-4 w-4 text-status-success" />
                         )}
                       </Button>
                       <Button
