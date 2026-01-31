@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui';
 import { useDashboardStats, useDashboardActivity, useDashboardConnections } from '@/lib/hooks';
 
 const quickLinks = [
@@ -20,6 +21,37 @@ const quickLinks = [
   { href: '/subscriptions', title: 'Subscriptions', description: 'Automated music discovery', icon: TrendingUp },
   { href: '/logs', title: 'Logs', description: 'View activity and errors', icon: FileText },
 ];
+
+function StatCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 p-6">
+        <Skeleton className="h-11 w-11 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-12" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActivitySkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <Skeleton className="h-3 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Home() {
   // Use React Query hooks - data is cached and shared across navigations
@@ -42,19 +74,28 @@ export default function Home() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {statCards.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className={`rounded-full bg-muted p-3 ${stat.color}`}>
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {isLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          statCards.map((stat) => (
+            <Card key={stat.label}>
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className={`rounded-full bg-muted p-3 ${stat.color}`}>
+                  <stat.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Connection Status */}
@@ -96,9 +137,7 @@ export default function Home() {
       <Card>
         <CardContent className="py-6">
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <ActivitySkeleton />
           ) : activities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Activity className="h-12 w-12 text-muted-foreground/50 mb-4" />
