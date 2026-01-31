@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Ollama & Custom OpenAI Support
+- Use local LLMs or OpenAI-compatible providers (Ollama, LiteLLM, OpenRouter) for AI recommendations
+- Configure custom base URL and model name in AI Settings
+- Works without API key for local Ollama instances
+- Security: Reject URLs with embedded credentials
+
 #### Lidarr Monitor New Items
 - Add "Monitor New Albums" dropdown to Lidarr connection settings
 - Support for None, All, New, and Existing monitor options

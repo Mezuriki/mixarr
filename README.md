@@ -87,6 +87,25 @@ docker run -d \
 
 ---
 
+## AI Configuration
+
+### Using Ollama or Custom OpenAI Providers
+
+Mixarr supports any OpenAI-compatible API endpoint:
+
+| Provider | Base URL | Model Example |
+|----------|----------|---------------|
+| OpenAI (default) | _(leave empty)_ | `gpt-3.5-turbo` |
+| Ollama | `http://localhost:11434/v1` | `llama3.2` |
+| LiteLLM | `http://localhost:4000/v1` | `gpt-4` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `meta-llama/llama-3-8b` |
+
+**Note**: For local Ollama, no API key is required. For cloud providers, enter your API key.
+
+Configure these in **Settings → AI**.
+
+---
+
 ## Configuration
 
 ### Environment Variables

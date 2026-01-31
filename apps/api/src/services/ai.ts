@@ -34,9 +34,10 @@ interface AISettings {
 const DEFAULT_OPENAI_MODEL = 'gpt-3.5-turbo';
 
 /**
- * Placeholder API key used when connecting to OpenAI-compatible endpoints
- * that don't require authentication (e.g., local Ollama instances).
- * The OpenAI SDK requires a non-empty API key, so we provide this placeholder.
+ * Placeholder API key for OpenAI-compatible endpoints that don't require auth.
+ * The OpenAI SDK requires a non-empty apiKey parameter. This placeholder is used
+ * when connecting to local services like Ollama. See ISSUES.md TD-006 for potential
+ * future cleanup.
  */
 const PLACEHOLDER_API_KEY = 'ollama-local-no-key-required';
 

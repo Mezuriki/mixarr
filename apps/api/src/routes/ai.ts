@@ -108,6 +108,12 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
             res.status(400).json({ error: 'Base URL must use http or https protocol' });
             return;
           }
+          // Security: Reject URLs with embedded credentials
+          if (parsed.username || parsed.password) {
+            logger.warn('Rejected base URL: contains credentials');
+            res.status(400).json({ error: 'Base URL should not contain credentials. Use API key field for authentication.' });
+            return;
+          }
           data.openaiBaseUrl = openaiBaseUrl;
         } catch {
           logger.warn('Rejected base URL: invalid format', { url: openaiBaseUrl.slice(0, 100) });

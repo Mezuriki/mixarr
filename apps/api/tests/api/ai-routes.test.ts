@@ -472,6 +472,42 @@ describe('AI Routes', () => {
         }),
       });
     });
+
+    // Security: URL credential validation
+    it('should reject URLs with embedded username', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: 'http://user@localhost:11434/v1',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('credentials');
+    });
+
+    it('should reject URLs with embedded username and password', async () => {
+      const res = await request(app)
+        .put('/api/ai/settings')
+        .send({
+          openaiBaseUrl: 'http://user:pass@localhost:11434/v1',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('credentials');
+    });
+  });
+
+  describe('GET /api/ai/settings error handling', () => {
+    it('should handle Prisma errors gracefully', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockRejectedValue(
+        new Error('Database connection failed')
+      );
+
+      const res = await request(app).get('/api/ai/settings');
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBeDefined();
+    });
   });
 
   describe('POST /api/ai/test', () => {
