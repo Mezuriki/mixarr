@@ -10,6 +10,7 @@ import { LidarrService } from '../services/lidarr.js';
 import { MusicBrainzService } from '../services/musicbrainz.js';
 import { notificationService } from '../services/notifications.js';
 import { SUBSCRIPTION_PRESETS } from '../data/subscription-presets.js';
+import { SUBSCRIPTION_TYPES } from '../data/subscription-types.js';
 import type { Subscription } from '@prisma/client';
 import type { Request } from 'express';
 import { createLogger } from '../lib/logger.js';
@@ -26,9 +27,19 @@ function canAccessSubscription(req: Request, subscription: Subscription): boolea
   return req.user!.role === 'admin' || subscription.userId === req.user!.id;
 }
 
-// CRUD endpoints - delegated to controller
+// Static endpoints - must be defined BEFORE :id routes
 subscriptionsRouter.get('/', subscriptionController.list);
 
+/**
+ * GET /api/subscriptions/types
+ * Returns subscription type metadata for frontend consumption
+ * SOC-003: Single source of truth for subscription type configuration
+ */
+subscriptionsRouter.get('/types', (_req, res) => {
+  res.json(SUBSCRIPTION_TYPES);
+});
+
+// CRUD endpoints - delegated to controller
 subscriptionsRouter.get('/:id', subscriptionController.getById);
 
 subscriptionsRouter.post('/', validateBody(createSubscriptionSchema), subscriptionController.create);
