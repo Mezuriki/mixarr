@@ -6,6 +6,7 @@
 
 import { rateLimit } from './rate-limiter.js';
 import { createLogger } from '../lib/logger.js';
+import { skyhookWarmer } from './skyhook-cache-warmer.js';
 
 const log = createLogger('Lidarr');
 
@@ -432,6 +433,57 @@ export class LidarrService {
 
     // No longer triggering refresh - Lidarr's addArtist already fetches metadata
     return { artist };
+  }
+
+  /**
+   * Add an artist to Lidarr with SkyHook cache warming.
+   * 
+   * Warms the SkyHook cache before adding the artist to ensure Lidarr's
+   * metadata lookup succeeds. If cache warming fails, we still attempt
+   * the add (cache may already be warm or issue may be transient).
+   */
+  async addArtistWithCacheWarm(
+    foreignArtistId: string,
+    qualityProfileId: number,
+    metadataProfileId: number,
+    rootFolderPath: string,
+    monitored: boolean = true,
+    searchForMissingAlbums: boolean = true,
+    _waitForRefresh: boolean = false,
+    monitorOption: string = 'all',
+    monitorNewItems: string = 'all'
+  ): Promise<{ artist: LidarrArtist; refreshCommand?: LidarrCommand; cacheWarmed?: boolean; wasAlreadyCached?: boolean }> {
+    // Warm SkyHook cache before adding
+    let cacheWarmed = false;
+    let wasAlreadyCached: boolean | undefined;
+    try {
+      const warmResult = await skyhookWarmer.warmArtist(foreignArtistId);
+      cacheWarmed = warmResult.success;
+      wasAlreadyCached = warmResult.cached;
+      if (warmResult.success) {
+        log.debug(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${foreignArtistId}`);
+      } else {
+        log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${warmResult.error}`);
+      }
+    } catch (error) {
+      // Log but don't fail - cache may already be warm or issue may be transient
+      log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${error instanceof Error ? error.message : error}`);
+    }
+
+    // Proceed with add using existing method
+    const result = await this.addArtistWithRefresh(
+      foreignArtistId,
+      qualityProfileId,
+      metadataProfileId,
+      rootFolderPath,
+      monitored,
+      searchForMissingAlbums,
+      _waitForRefresh,
+      monitorOption,
+      monitorNewItems
+    );
+
+    return { ...result, cacheWarmed, wasAlreadyCached };
   }
 
   async addAlbum(
