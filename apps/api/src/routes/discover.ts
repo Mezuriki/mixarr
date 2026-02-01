@@ -3,12 +3,16 @@ import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
-import { LastfmService } from '../services/lastfm.js';
-import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
+import { LidarrConnectionConfig } from '../types/connections.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
+import { 
+  getLidarrService, 
+  getLidarrServiceWithConfig, 
+  getLastfmService 
+} from '../lib/connection-resolver.js';
 
 const logger = createLogger('DiscoverRoute');
 
@@ -23,51 +27,6 @@ interface CachedLibrary {
 }
 const libraryCache = new Map<string, CachedLibrary>();
 const LIBRARY_CACHE_TTL = 60 * 1000; // 1 minute TTL
-
-// Helper to get Last.fm service if configured
-async function getLastfmService(userId: number): Promise<LastfmService | null> {
-  const connection = await prisma.connection.findFirst({
-    where: { userId, type: 'lastfm', isActive: true },
-  });
-  if (!connection) return null;
-  const config = connection.config as { apiKey: string };
-  return new LastfmService(config);
-}
-
-// Helper to get Lidarr service (user-owned or global)
-async function getLidarrService(userId: number): Promise<LidarrService | null> {
-  // First try user's own connection, then fall back to global
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true }, // Global Lidarr
-      ],
-    },
-    orderBy: { userId: 'desc' }, // Prefer user's own connection (non-null userId first)
-  });
-  if (!connection) return null;
-  const config = connection.config as { url: string; apiKey: string };
-  return new LidarrService(config);
-}
-
-// Helper to get Lidarr service with full config (for add operations)
-async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true },
-      ],
-    },
-    orderBy: { userId: 'desc' },
-  });
-  if (!connection) return null;
-  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
-  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
-  const config = normalizeLidarrConfig(rawConfig);
-  return { service: new LidarrService(config), config };
-}
 
 /**
  * GET /api/discover/library

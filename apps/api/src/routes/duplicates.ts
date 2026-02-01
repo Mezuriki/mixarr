@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { LidarrService } from '../services/lidarr.js';
 import { 
   detectDuplicates, 
   ArtistInfo,
   DuplicateScanResult 
 } from '../services/duplicate-detection.js';
 import { createLogger } from '../lib/logger.js';
+import { getLidarrService } from '../lib/connection-resolver.js';
 
 const logger = createLogger('DuplicatesRoute');
 
@@ -22,22 +21,6 @@ let scanCache: {
 } = { result: null, timestamp: null };
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-// Helper to get Lidarr connection
-async function getLidarrService(userId: number): Promise<LidarrService | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      type: 'lidarr',
-      isActive: true,
-      OR: [{ userId }, { userId: null }],
-    },
-  });
-
-  if (!connection) return null;
-
-  const config = connection.config as { url: string; apiKey: string };
-  return new LidarrService(config);
-}
 
 // Trigger duplicate scan
 duplicatesRouter.post('/scan', async (req, res) => {

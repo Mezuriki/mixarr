@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v1.3.0] - Unreleased
 
+### UI/UX Polish
+- Add skeleton loading states for dashboard and data tables
+- Group sidebar navigation into logical sections (Home, Library, Discover, Settings)
+- Add interactive card variant with enhanced hover states
+- Add actionable CTA to empty dashboard state
+- Migrate to semantic status color tokens (success, warning, error, info)
+- Badge component uses semantic status tokens for consistency
+
+### slskd Quality Scoring
+- Add audio format classification system (lossless, high-quality, lossy, low-quality, unknown)
+- Intelligent file extension parsing with comprehensive format support
+- Add slskd peer quality scoring algorithm with weighted factors
+- Peer scoring considers: file format, bitrate, lossless detection, filename patterns
+
+### API Architecture Improvements
+- Extract subscription presets to dedicated data module (1,021 lines)
+- Extract run history endpoints to controller pattern
+- Standardize error logging across subscription controller
+- Reduce subscriptions.ts route file by 76% (1,452 → 347 lines)
+
 ### Theme Consolidation
 - Replace 6-theme system with single "Listening Room" theme (light/dark modes)
 - Remove legacy themes: dark-luxe, editorial-clean, neo-brutalist, soft-gradient, vinyl-retro, midnight-modern
@@ -38,7 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configure remote image patterns for cover art (coverartarchive.org, musicbrainz.org)
 
 ### Documentation
-- Add theme system README with design principles and color palette reference 
+- Add theme system README with design principles and color palette reference
+
+### Fixed
+- Fix 40 failing tests (SSO, slskd, controller, jellyfin mocks)
+- Move integration tests to separate directory for cleaner test runs
 
 #### Docker Slim Image
 - New `mixarr:slim` Docker image containing only API + Web (~700MB vs ~1.5GB unified)
