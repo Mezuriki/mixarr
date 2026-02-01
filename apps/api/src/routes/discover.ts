@@ -321,9 +321,9 @@ discoverRouter.post('/add', async (req, res) => {
       return;
     }
 
-    // Add to Lidarr with metadata refresh to ensure complete MusicBrainz data
+    // Add to Lidarr with SkyHook cache warming for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist: result, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist: result, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       foreignArtistId,
       qpId,
       mpId,

@@ -389,9 +389,9 @@ searchRouter.post('/discover/add', async (req, res) => {
       return;
     }
 
-    // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
+    // Use addArtistWithCacheWarm to warm SkyHook cache for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       resolvedMbid, qpId, mpId, rfPath,
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
@@ -472,9 +472,9 @@ searchRouter.post('/artists/add', async (req, res) => {
       return;
     }
 
-    // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
+    // Use addArtistWithCacheWarm to warm SkyHook cache for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       foreignArtistId, qpId, mpId, rfPath,
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
@@ -1165,9 +1165,9 @@ searchRouter.post('/batch', async (req, res) => {
           continue;
         }
 
-        // Use addArtistWithRefresh but don't wait (batch mode - avoid blocking)
+        // Use addArtistWithCacheWarm to warm SkyHook cache (batch mode)
         // Use monitorOption from connection config (defaults to 'all' if not set)
-        await lidarr.addArtistWithRefresh(
+        await lidarr.addArtistWithCacheWarm(
           artistId, qpId, mpId, rfPath,
           true,  // monitored
           lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config

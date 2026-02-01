@@ -256,9 +256,9 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
           },
         });
       } else {
-        // Artist approval - add with metadata refresh for complete MusicBrainz data
+        // Artist approval - warm SkyHook cache for reliable metadata lookup
         // Use monitorOption from connection config (defaults to 'all' if not set)
-        await lidarr.addArtistWithRefresh(
+        await lidarr.addArtistWithCacheWarm(
           mbid,
           qualityProfiles[0].id,
           metadataProfiles[0].id,

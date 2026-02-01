@@ -371,9 +371,9 @@ importsRouter.put('/review/:id', async (req, res) => {
 
       res.json({ success: true, added: true, itemType: 'album' });
     } else {
-      // Artist approval (default behavior) - trigger metadata refresh for complete data
+      // Artist approval (default behavior) - warm SkyHook cache for reliable lookup
       // Use monitorOption from connection config (defaults to 'all' if not set)
-      await lidarr.addArtistWithRefresh(
+      await lidarr.addArtistWithCacheWarm(
         foreignArtistId,
         qualityProfiles[0].id,
         metadataProfiles[0].id,
@@ -593,10 +593,10 @@ importsRouter.post('/review/bulk', async (req, res) => {
             albumMbid: albumMbid,
           });
         } else {
-          // For artist items: add with metadata refresh for complete data
+          // For artist items: warm SkyHook cache for reliable metadata lookup
           // Use monitorOption from connection config (defaults to 'all' if not set)
           log.debug(`Adding ${item.artistName} (${foreignArtistId}) to Lidarr...`);
-          await lidarr.addArtistWithRefresh(
+          await lidarr.addArtistWithCacheWarm(
             foreignArtistId,
             qualityProfiles[0].id,
             metadataProfiles[0].id,
@@ -1203,10 +1203,10 @@ importsRouter.post('/preview/import', async (req, res) => {
           continue;
         }
 
-        // Add the first matching artist with metadata refresh
+        // Add the first matching artist with SkyHook cache warming
         // Use monitorOption from connection config (defaults to 'all' if not set)
         const artist = searchResults[0];
-        await lidarr.addArtistWithRefresh(
+        await lidarr.addArtistWithCacheWarm(
           artist.foreignArtistId,
           config.qualityProfileId || 1,
           config.metadataProfileId || 1,
