@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
+import { formatEvents, type NotificationEvent } from '@/lib/notification-events';
 import Bell from 'lucide-react/dist/esm/icons/bell';
 import Check from 'lucide-react/dist/esm/icons/check';
 import Edit2 from 'lucide-react/dist/esm/icons/edit-2';
@@ -30,12 +31,6 @@ interface NotificationChannel {
   events: string[];
   isActive: boolean;
   createdAt: string;
-}
-
-interface NotificationEvent {
-  value: string;
-  label: string;
-  description: string;
 }
 
 const channelTypeIcons: Record<string, React.ElementType> = {
@@ -93,8 +88,8 @@ export default function NotificationsSettingsPage() {
   };
 
   const fetchEvents = async () => {
-    const { data } = await api.get<NotificationEvent[]>('/api/notifications/events');
-    if (data) setEvents(data);
+    const { data } = await api.get<string[]>('/api/notifications/events');
+    if (data) setEvents(formatEvents(data));
   };
 
   const openAddModal = () => {

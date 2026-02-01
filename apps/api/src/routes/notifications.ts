@@ -72,13 +72,10 @@ router.get('/channels', requireAuth, async (req: Request, res: Response) => {
 /**
  * GET /api/notifications/events
  * List available notification events
+ * Returns raw event strings - frontend handles formatting
  */
 router.get('/events', requireAuth, async (_req: Request, res: Response) => {
-  res.json(VALID_EVENTS.map(event => ({
-    value: event,
-    label: formatEventLabel(event),
-    description: getEventDescription(event),
-  })));
+  res.json(VALID_EVENTS);
 });
 
 /**
@@ -370,36 +367,6 @@ function validateConfig(type: string, config: Record<string, any>): string | nul
   }
   
   return null;
-}
-
-/**
- * Format event name for display
- */
-function formatEventLabel(event: string): string {
-  const labels: Record<string, string> = {
-    'subscription.completed': 'Subscription Completed',
-    'subscription.failed': 'Subscription Failed',
-    'review.pending': 'Review Queue Has Pending Items',
-    'artist.added': 'Artist Added to Lidarr',
-    'artist.failed': 'Artist Add Failed',
-    'enrichment.completed': 'Metadata Enrichment Completed',
-  };
-  return labels[event] || event;
-}
-
-/**
- * Get event description
- */
-function getEventDescription(event: string): string {
-  const descriptions: Record<string, string> = {
-    'subscription.completed': 'When a subscription run finishes successfully',
-    'subscription.failed': 'When a subscription run encounters an error',
-    'review.pending': 'When new items are added to the review queue',
-    'artist.added': 'When an artist is successfully added to Lidarr',
-    'artist.failed': 'When adding an artist to Lidarr fails',
-    'enrichment.completed': 'When metadata enrichment completes for artists',
-  };
-  return descriptions[event] || '';
 }
 
 export default router;
