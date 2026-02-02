@@ -144,20 +144,25 @@ export default function LibraryPage() {
     if (!confirmed) return;
 
     setIsStartingFix(true);
-    const { data, error } = await api.post<{ jobId: string; total: number }>('/api/search/lidarr/artists/fix-all');
+    const { data, error } = await api.post<{ jobId: string | null; total: number; message?: string }>('/api/search/lidarr/artists/fix-all');
     
     if (error) {
       addToast({ type: 'error', title: 'Failed to start fix', message: error });
     } else if (data) {
-      setFixJob({
-        jobId: data.jobId,
-        status: 'running',
-        total: data.total,
-        processed: 0,
-        fixed: 0,
-        failed: 0
-      });
-      addToast({ type: 'success', title: 'Fix All Started', message: `Processing ${data.total} artists...` });
+      // API returns jobId: null if no artists need fixing
+      if (!data.jobId || data.total === 0) {
+        addToast({ type: 'info', title: 'No artists to fix', message: data.message || 'All artists already have complete metadata' });
+      } else {
+        setFixJob({
+          jobId: data.jobId,
+          status: 'running',
+          total: data.total,
+          processed: 0,
+          fixed: 0,
+          failed: 0
+        });
+        addToast({ type: 'success', title: 'Fix All Started', message: `Processing ${data.total} artists...` });
+      }
     }
     setIsStartingFix(false);
   };
