@@ -381,7 +381,7 @@ export class FeedService {
       where: {
         subscriptionId: { in: subscriptionIds },
         status: 'added',
-        updatedAt: { gte: today },
+        processedAt: { gte: today },
       },
     });
 
@@ -442,7 +442,7 @@ export class FeedService {
       // Update all linked results
       await tx.subscriptionResult.updateMany({
         where: { id: { in: resultIds } },
-        data: { status: 'added' },
+        data: { status: 'added', processedAt: new Date() },
       });
 
       // Delete matching ReviewItems (by MBID or name)
@@ -521,7 +521,7 @@ export class FeedService {
       // Update all linked results
       await tx.subscriptionResult.updateMany({
         where: { id: { in: resultIds } },
-        data: { status: 'rejected' },
+        data: { status: 'rejected', processedAt: new Date() },
       });
 
       // Delete matching ReviewItems (by MBID or name)

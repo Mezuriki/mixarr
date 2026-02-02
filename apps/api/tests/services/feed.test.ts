@@ -569,7 +569,7 @@ describe('FeedService', () => {
 
       expect(updateMany).toHaveBeenCalledWith({
         where: { id: { in: [1, 2, 3] } },
-        data: { status: 'added' },
+        data: { status: 'added', processedAt: expect.any(Date) },
       });
     });
 
@@ -853,7 +853,7 @@ describe('FeedService', () => {
 
       expect(updateMany).toHaveBeenCalledWith({
         where: { id: { in: [1, 2] } },
-        data: { status: 'rejected' },
+        data: { status: 'rejected', processedAt: expect.any(Date) },
       });
     });
 
