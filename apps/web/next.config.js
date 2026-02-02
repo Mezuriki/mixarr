@@ -6,11 +6,12 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.scdn.co' },           // Spotify CDN
-      { protocol: 'https', hostname: '**.dzcdn.net' },        // Deezer CDN (all subdomains)
+      { protocol: 'https', hostname: 'cdn-images.dzcdn.net' }, // Deezer CDN
+      { protocol: 'https', hostname: 'e-cdns-images.dzcdn.net' }, // Deezer CDN alt
       { protocol: 'https', hostname: 'coverartarchive.org' },  // MusicBrainz
       { protocol: 'https', hostname: 'archive.org' },          // Archive.org (fallback)
       { protocol: 'https', hostname: 'lastfm.freetls.fastly.net' }, // Last.fm
-      { protocol: 'https', hostname: '**.last.fm' },           // Last.fm alternative
+      { protocol: 'https', hostname: '*.last.fm' },           // Last.fm alternative
     ],
   },
   // Disable build-time font optimization to prevent timeouts in slow CI builds (ARM64 emulation)

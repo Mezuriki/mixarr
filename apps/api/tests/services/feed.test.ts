@@ -592,7 +592,7 @@ describe('FeedService', () => {
       expect(deleteMany).toHaveBeenCalledWith({
         where: {
           OR: [
-            { artistMbid: 'abc-123' },
+            { mbid: 'abc-123' },
             { artistName: 'Test Artist' },
           ],
         },
@@ -871,7 +871,7 @@ describe('FeedService', () => {
       expect(deleteMany).toHaveBeenCalledWith({
         where: {
           OR: [
-            { artistMbid: 'abc-123' },
+            { mbid: 'abc-123' },
             { artistName: 'Test Artist' },
           ],
         },

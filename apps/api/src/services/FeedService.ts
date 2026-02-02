@@ -446,9 +446,9 @@ export class FeedService {
       });
 
       // Delete matching ReviewItems (by MBID or name)
-      const orConditions: { artistMbid?: string; artistName?: string }[] = [];
+      const orConditions: { mbid?: string; artistName?: string }[] = [];
       if (artistMbid) {
-        orConditions.push({ artistMbid });
+        orConditions.push({ mbid: artistMbid });
       }
       orConditions.push({ artistName });
 
@@ -521,9 +521,9 @@ export class FeedService {
       });
 
       // Delete matching ReviewItems (by MBID or name)
-      const orConditions: { artistMbid?: string; artistName?: string }[] = [];
+      const orConditions: { mbid?: string; artistName?: string }[] = [];
       if (artistMbid) {
-        orConditions.push({ artistMbid });
+        orConditions.push({ mbid: artistMbid });
       }
       orConditions.push({ artistName });
 
