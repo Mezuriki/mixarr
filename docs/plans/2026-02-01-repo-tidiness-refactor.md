@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Reduce root directory clutter from 27 items to ~15 items for a cleaner first impression.
+**Goal:** Reduce root directory clutter from 27 items to ~17 items for a cleaner first impression.
 
-**Architecture:** Move configuration files into logical subdirectories while maintaining all functionality. Update references in README and scripts.
+**Architecture:** Move configuration files into logical subdirectories while maintaining all functionality. Update references in README and scripts. **Docker-compose files stay in root to avoid breaking changes for existing users.**
 
 **Tech Stack:** Git, Docker Compose, shell scripts
 
@@ -100,16 +100,15 @@
 
 ### Task 4: Move Dockerfiles to docker folder
 
-**Goal:** Group all Docker build files together.
+**Goal:** Group Docker build files together. Dockerfiles are not user-facing (referenced by compose files).
 
 **Files:**
 - Move: `Dockerfile.unified` → `docker/Dockerfile.unified`
 - Move: `Dockerfile.slim` → `docker/Dockerfile.slim`
-- Modify: `docker-compose.yml` - update build context
-- Modify: `docker-compose.dev.yml` - update build context
-- Modify: `docker-compose.slim.yml` - update build context
-- Modify: `docker-compose.byo.yml` - update build context
-- Modify: `README.md` - update build commands
+- Modify: `docker-compose.yml` - update dockerfile path
+- Modify: `docker-compose.dev.yml` - update dockerfile path
+- Modify: `docker-compose.slim.yml` - update dockerfile path
+- Modify: `docker-compose.byo.yml` - update dockerfile path
 - Modify: `.github/workflows/` - update CI build paths (if applicable)
 
 **Steps:**
@@ -134,56 +133,13 @@
 - `docker compose build` succeeds
 - `docker compose -f docker-compose.slim.yml build` succeeds
 
----
-
-### Task 5: Move docker-compose files to docker folder
-
-**Goal:** All Docker configuration in one folder.
-
-**Files:**
-- Move: `docker-compose.yml` → `docker/docker-compose.yml`
-- Move: `docker-compose.dev.yml` → `docker/docker-compose.dev.yml`
-- Move: `docker-compose.slim.yml` → `docker/docker-compose.slim.yml`
-- Move: `docker-compose.byo.yml` → `docker/docker-compose.byo.yml`
-- Create: `docker-compose.yml` (symlink or wrapper in root for convenience)
-- Modify: `scripts/start-dev.sh` - update compose file path
-- Modify: `README.md` - update all docker compose commands
-- Modify: `.github/instructions/CLAUDE.instructions.md` - update commands
-
-**Steps:**
-1. Move all compose files:
-   ```bash
-   git mv docker-compose.yml docker/docker-compose.yml
-   git mv docker-compose.dev.yml docker/docker-compose.dev.yml
-   git mv docker-compose.slim.yml docker/docker-compose.slim.yml
-   git mv docker-compose.byo.yml docker/docker-compose.byo.yml
-   ```
-2. Create convenience symlink in root:
-   ```bash
-   ln -s docker/docker-compose.yml docker-compose.yml
-   git add docker-compose.yml
-   ```
-3. Update scripts/start-dev.sh:
-   ```bash
-   # Before
-   docker compose -f docker-compose.dev.yml up
-   # After  
-   docker compose -f docker/docker-compose.dev.yml up
-   ```
-4. Update README with new paths
-5. Validate: `docker compose config --quiet`
-6. `git add -A && git commit -m "refactor: move docker-compose files to docker/ folder"`
-
-**Verification:**
-- `docker compose up -d` works (via symlink)
-- `./scripts/start-dev.sh` works
-- README instructions accurate
+**Note:** docker-compose files remain in root to preserve existing user commands (`docker compose up -d`).
 
 ---
 
 ## Phase 3: Documentation Updates
 
-### Task 6: Update all documentation references
+### Task 5: Update all documentation references
 
 **Goal:** Ensure all docs reflect new file locations.
 
@@ -214,7 +170,10 @@ mixarr/
 ├── CHANGELOG.md
 ├── LICENSE
 ├── README.md
-├── docker-compose.yml          # Symlink → docker/docker-compose.yml
+├── docker-compose.yml          # Stays in root (no breaking change)
+├── docker-compose.dev.yml      # Stays in root
+├── docker-compose.slim.yml     # Stays in root
+├── docker-compose.byo.yml      # Stays in root
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.base.json
@@ -230,10 +189,6 @@ mixarr/
 ├── docker/
 │   ├── Dockerfile.unified     # Moved from root
 │   ├── Dockerfile.slim        # Moved from root
-│   ├── docker-compose.yml     # Moved from root
-│   ├── docker-compose.dev.yml
-│   ├── docker-compose.slim.yml
-│   ├── docker-compose.byo.yml
 │   └── entrypoint-slim.sh
 ├── docs/
 ├── packages/
@@ -245,7 +200,7 @@ mixarr/
 └── website/
 ```
 
-**Root items: 13** (down from 27)
+**Root items: 17** (down from 27) - No breaking changes for existing users
 
 ---
 
