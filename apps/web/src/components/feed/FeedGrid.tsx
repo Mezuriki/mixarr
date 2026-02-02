@@ -85,6 +85,9 @@ export function FeedGrid({
             isLoading={loadingIds.has(item.id)}
             onApprove={onApprove}
             onDismiss={onDismiss}
+            tags={item.tags}
+            listeners={item.listeners}
+            subscriptionName={item.subscriptionName}
           />
         ))}
       </div>

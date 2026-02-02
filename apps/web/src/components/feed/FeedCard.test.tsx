@@ -17,6 +17,9 @@ describe('FeedCard', () => {
     imageUrl: 'https://example.com/image.jpg',
     onApprove: vi.fn(),
     onDismiss: vi.fn(),
+    tags: null as string[] | null,
+    listeners: null as number | null,
+    subscriptionName: null as string | null,
   };
 
   beforeEach(() => {
@@ -88,5 +91,89 @@ describe('FeedCard', () => {
     render(<FeedCard {...defaultProps} />);
     expect(screen.getByLabelText('Add to Lidarr')).toBeInTheDocument();
     expect(screen.getByLabelText('Dismiss')).toBeInTheDocument();
+  });
+
+  describe('metadata display', () => {
+    it('displays genre tags when available', () => {
+      render(<FeedCard {...defaultProps} tags={['rock', 'alternative', 'british']} />);
+      expect(screen.getByText('rock')).toBeInTheDocument();
+      expect(screen.getByText('alternative')).toBeInTheDocument();
+      expect(screen.getByText('british')).toBeInTheDocument();
+    });
+
+    it('does not show tags section when tags is null', () => {
+      render(<FeedCard {...defaultProps} tags={null} />);
+      expect(screen.queryByTestId('metadata-tags')).not.toBeInTheDocument();
+    });
+
+    it('does not show tags section when tags is empty array', () => {
+      render(<FeedCard {...defaultProps} tags={[]} />);
+      expect(screen.queryByTestId('metadata-tags')).not.toBeInTheDocument();
+    });
+
+    it('displays listener count when available', () => {
+      render(<FeedCard {...defaultProps} listeners={5000000} />);
+      expect(screen.getByText('5M listeners')).toBeInTheDocument();
+    });
+
+    it('formats listener count correctly for thousands', () => {
+      render(<FeedCard {...defaultProps} listeners={123456} />);
+      expect(screen.getByText('123K listeners')).toBeInTheDocument();
+    });
+
+    it('formats listener count correctly for small numbers', () => {
+      render(<FeedCard {...defaultProps} listeners={999} />);
+      expect(screen.getByText('999 listeners')).toBeInTheDocument();
+    });
+
+    it('does not show listeners when null', () => {
+      render(<FeedCard {...defaultProps} listeners={null} />);
+      expect(screen.queryByText('listeners')).not.toBeInTheDocument();
+    });
+
+    it('displays subscription name when available', () => {
+      render(<FeedCard {...defaultProps} subscriptionName="New Releases" />);
+      expect(screen.getByText('New Releases')).toBeInTheDocument();
+    });
+
+    it('displays "Found in X subs" when multiple subscriptions', () => {
+      render(<FeedCard {...defaultProps} subscriptionName="Found in 3 subs" />);
+      expect(screen.getByText('Found in 3 subs')).toBeInTheDocument();
+    });
+
+    it('does not show subscription name when null', () => {
+      render(<FeedCard {...defaultProps} subscriptionName={null} />);
+      expect(screen.queryByTestId('metadata-source')).not.toBeInTheDocument();
+    });
+
+    it('displays all metadata on single line', () => {
+      render(
+        <FeedCard
+          {...defaultProps}
+          tags={['rock', 'alternative']}
+          listeners={5000000}
+          subscriptionName="New Releases"
+        />
+      );
+      const metadataLine = screen.getByTestId('metadata-line');
+      expect(metadataLine).toBeInTheDocument();
+      expect(metadataLine).toHaveTextContent('rock');
+      expect(metadataLine).toHaveTextContent('5M listeners');
+      expect(metadataLine).toHaveTextContent('New Releases');
+    });
+
+    it('renders metadata with separator dots between sections', () => {
+      render(
+        <FeedCard
+          {...defaultProps}
+          tags={['rock']}
+          listeners={1000000}
+          subscriptionName="New Releases"
+        />
+      );
+      // Check for dot separators (using · character or similar)
+      const metadataLine = screen.getByTestId('metadata-line');
+      expect(metadataLine.textContent).toMatch(/·|•/);
+    });
   });
 });

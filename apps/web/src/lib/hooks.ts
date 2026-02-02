@@ -67,6 +67,10 @@ export interface FeedItem {
   sources: string[];
   createdAt: string;
   status?: 'pending' | 'added' | 'dismissed';
+  // Metadata for display
+  tags: string[] | null;
+  listeners: number | null;
+  subscriptionName: string | null;
 }
 
 export interface FeedStats {

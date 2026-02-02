@@ -46,20 +46,44 @@ export default function Home() {
   }, [approveMutation.isPending, approveMutation.variables, dismissMutation.isPending, dismissMutation.variables]);
 
   const handleApprove = async (id: string) => {
+    // Find the item to get artist name for error message
+    const item = items.find((i) => i.id === id);
+    const artistName = item?.artistName || 'Artist';
+    
     try {
       const result = await approveMutation.mutateAsync(id);
-      addToast({ type: 'success', title: 'Added', message: `${result.artistName} added to Lidarr` });
+      addToast({ 
+        type: 'success', 
+        title: 'Added to Lidarr', 
+        message: `${result.artistName} added successfully` 
+      });
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to add artist' });
+      addToast({ 
+        type: 'error', 
+        title: 'Failed to Add', 
+        message: `Could not add ${artistName}` 
+      });
     }
   };
 
   const handleDismiss = async (id: string) => {
+    // Find the item to get artist name for error message
+    const item = items.find((i) => i.id === id);
+    const artistName = item?.artistName || 'Artist';
+    
     try {
       const result = await dismissMutation.mutateAsync(id);
-      addToast({ type: 'info', title: 'Dismissed', message: `${result.artistName} dismissed` });
+      addToast({ 
+        type: 'info', 
+        title: 'Dismissed', 
+        message: `${result.artistName} removed from feed` 
+      });
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to dismiss artist' });
+      addToast({ 
+        type: 'error', 
+        title: 'Failed to Dismiss', 
+        message: `Could not dismiss ${artistName}` 
+      });
     }
   };
 

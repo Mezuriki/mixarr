@@ -48,6 +48,10 @@ export interface AggregatedFeedItem {
   linkedResultIds: number[];
   earliestFound: Date;
   score: number;
+  // Metadata fields for display
+  tags: string[] | null;
+  listeners: number | null;
+  subscriptionName: string | null;
 }
 
 export interface SubscriptionResultInput {
@@ -59,6 +63,10 @@ export interface SubscriptionResultInput {
   sources: string[] | string | null | unknown;
   createdAt: Date;
   status: string;
+  // Optional metadata from SubscriptionResult
+  tags?: string | null;
+  listeners?: number | null;
+  subscriptionName?: string;
 }
 
 export interface ScoreInput {
@@ -128,6 +136,33 @@ export class FeedService {
       }
     }
     return [];
+  }
+
+  /**
+   * Parse tags from various formats (JSON array, string[], null).
+   * Returns null for invalid/missing data, limits to first 3 tags.
+   */
+  private parseTags(tags: unknown): string[] | null {
+    if (tags === null || tags === undefined) {
+      return null;
+    }
+    if (Array.isArray(tags)) {
+      const validTags = tags.filter((t): t is string => typeof t === 'string');
+      return validTags.length > 0 ? validTags.slice(0, 3) : null;
+    }
+    if (typeof tags === 'string') {
+      try {
+        const parsed = JSON.parse(tags);
+        if (Array.isArray(parsed)) {
+          const validTags = parsed.filter((t): t is string => typeof t === 'string');
+          return validTags.length > 0 ? validTags.slice(0, 3) : null;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 
   /**
@@ -234,6 +269,51 @@ export class FeedService {
       // Prefer result with MBID for display data (better quality)
       const primary = groupResults.find((r) => r.artistMbid) || groupResults[0];
 
+      // Aggregate tags: merge unique tags from all results, limit to 3
+      // Prioritize tags from results with MBID
+      const allTags = new Set<string>();
+      const sortedResults = [...groupResults].sort((a, b) => {
+        // Results with MBID come first
+        if (a.artistMbid && !b.artistMbid) return -1;
+        if (!a.artistMbid && b.artistMbid) return 1;
+        return 0;
+      });
+      for (const r of sortedResults) {
+        const tags = this.parseTags(r.tags);
+        if (tags) {
+          tags.forEach((t) => allTags.add(t));
+        }
+      }
+      const aggregatedTags = allTags.size > 0 ? Array.from(allTags).slice(0, 3) : null;
+
+      // Aggregate listeners: take max value across all results
+      let maxListeners: number | null = null;
+      for (const r of groupResults) {
+        if (r.listeners !== null && r.listeners !== undefined) {
+          maxListeners = maxListeners === null ? r.listeners : Math.max(maxListeners, r.listeners);
+        }
+      }
+
+      // Resolve subscription name:
+      // - Single subscription: use the subscription name
+      // - Multiple subscriptions: show "Found in X subs"
+      // - No names provided: null
+      let resolvedSubscriptionName: string | null = null;
+      const uniqueSubNames = new Set<string>();
+      for (const r of groupResults) {
+        if (r.subscriptionName) {
+          uniqueSubNames.add(r.subscriptionName);
+        }
+      }
+      if (subscriptionIds.size === 1 && uniqueSubNames.size === 1) {
+        // Single subscription with name
+        resolvedSubscriptionName = Array.from(uniqueSubNames)[0];
+      } else if (subscriptionIds.size > 1) {
+        // Multiple subscriptions
+        resolvedSubscriptionName = `Found in ${subscriptionIds.size} subs`;
+      }
+      // If no subscriptionName was provided, leave as null
+
       aggregated.push({
         id: this.generateFeedId(linkedResultIds),
         artistName: primary.artistName,
@@ -245,6 +325,9 @@ export class FeedService {
         linkedResultIds,
         earliestFound,
         score: 0, // Calculated in aggregateAndScore
+        tags: aggregatedTags,
+        listeners: maxListeners,
+        subscriptionName: resolvedSubscriptionName,
       });
     }
 
@@ -311,10 +394,10 @@ export class FeedService {
   async getFeedForUser(userId: number, options: FeedOptions): Promise<FeedResponse> {
     const { limit, offset, includeActedOn = false } = options;
 
-    // Get user's subscription IDs
+    // Get user's subscriptions with names for display
     const subscriptions = await this.prismaClient.subscription.findMany({
       where: { userId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
 
     if (subscriptions.length === 0) {
@@ -322,6 +405,7 @@ export class FeedService {
     }
 
     const subscriptionIds = subscriptions.map((s) => s.id);
+    const subscriptionNameMap = new Map(subscriptions.map((s) => [s.id, s.name]));
 
     // Filter statuses
     const statusFilter = includeActedOn
@@ -346,6 +430,8 @@ export class FeedService {
         createdAt: true,
         status: true,
         itemType: true,
+        tags: true,
+        listeners: true,
       },
     });
 
@@ -360,6 +446,9 @@ export class FeedService {
       sources: r.sources,
       createdAt: r.createdAt,
       status: r.status,
+      tags: r.tags,
+      listeners: r.listeners,
+      subscriptionName: subscriptionNameMap.get(r.subscriptionId) || undefined,
     }));
 
     // Aggregate and score

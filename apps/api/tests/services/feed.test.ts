@@ -332,12 +332,12 @@ describe('FeedService', () => {
       expect(result.total).toBe(0);
       expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith({
         where: { userId: 123 },
-        select: { id: true },
+        select: { id: true, name: true },
       });
     });
 
     it('returns empty feed when no pending results exist', async () => {
-      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1, name: 'Sub 1' }, { id: 2, name: 'Sub 2' }]);
       mockPrisma.subscriptionResult.findMany.mockResolvedValue([]);
       mockPrisma.subscriptionResult.count.mockResolvedValue(0);
 
@@ -899,6 +899,350 @@ describe('FeedService', () => {
       const result = await service.dismiss('feed-1', 1);
 
       expect(result).toEqual({ artistName: 'Coldplay' });
+    });
+  });
+
+  describe('metadata aggregation (tags, listeners)', () => {
+    describe('parseTags', () => {
+      it('parses JSON string tags into array', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          tags: '["rock", "alternative", "british"]',
+          listeners: 1000000,
+        }]);
+        expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      });
+
+      it('handles tags already as array', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          tags: ['rock', 'alternative'],
+          listeners: 1000000,
+        }] as any);
+        expect(result[0].tags).toEqual(['rock', 'alternative']);
+      });
+
+      it('returns null for null/undefined tags', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          tags: null,
+          listeners: null,
+        }]);
+        expect(result[0].tags).toBeNull();
+      });
+
+      it('returns null for invalid JSON tags', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          tags: 'not valid json',
+          listeners: null,
+        }]);
+        expect(result[0].tags).toBeNull();
+      });
+
+      it('limits tags to first 3', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          tags: '["rock", "alternative", "british", "indie", "experimental"]',
+          listeners: null,
+        }]);
+        expect(result[0].tags).toHaveLength(3);
+        expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      });
+    });
+
+    describe('listener aggregation', () => {
+      it('uses listeners value from primary result', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          listeners: 5000000,
+        }]);
+        expect(result[0].listeners).toBe(5000000);
+      });
+
+      it('returns null when no listeners data', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([{
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+        }]);
+        expect(result[0].listeners).toBeNull();
+      });
+
+      it('takes max listeners when merging duplicates', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([
+          {
+            id: 1,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 1,
+            sources: ['lastfm'],
+            createdAt: new Date(),
+            status: 'pending',
+            listeners: 3000000,
+          },
+          {
+            id: 2,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 2,
+            sources: ['spotify'],
+            createdAt: new Date(),
+            status: 'pending',
+            listeners: 5000000,
+          },
+        ]);
+        expect(result[0].listeners).toBe(5000000);
+      });
+    });
+
+    describe('metadata merging across duplicates', () => {
+      it('merges tags from multiple results (unique only)', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([
+          {
+            id: 1,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 1,
+            sources: ['lastfm'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: '["rock", "alternative"]',
+          },
+          {
+            id: 2,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 2,
+            sources: ['spotify'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: '["alternative", "british"]',
+          },
+        ]);
+        expect(result[0].tags).toContain('rock');
+        expect(result[0].tags).toContain('alternative');
+        expect(result[0].tags).toContain('british');
+        // No duplicates
+        expect(result[0].tags?.filter(t => t === 'alternative')).toHaveLength(1);
+      });
+
+      it('prefers tags from result with MBID', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([
+          {
+            id: 1,
+            artistName: 'beatles',
+            artistMbid: null,
+            subscriptionId: 1,
+            sources: ['lastfm'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: '["oldies"]',
+          },
+          {
+            id: 2,
+            artistName: 'The Beatles',
+            artistMbid: 'beatles-mbid',
+            subscriptionId: 2,
+            sources: ['spotify'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: '["rock", "british invasion", "pop"]',
+          },
+        ]);
+        // Should use tags from the MBID result as primary source
+        expect(result[0].tags).toContain('rock');
+      });
+
+      it('handles mixed null/non-null tags across results', () => {
+        const service = new FeedService();
+        const result = service.aggregateResults([
+          {
+            id: 1,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 1,
+            sources: ['lastfm'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: null,
+          },
+          {
+            id: 2,
+            artistName: 'Radiohead',
+            artistMbid: 'abc-123',
+            subscriptionId: 2,
+            sources: ['spotify'],
+            createdAt: new Date(),
+            status: 'pending',
+            tags: '["rock", "alternative"]',
+          },
+        ]);
+        expect(result[0].tags).toEqual(['rock', 'alternative']);
+      });
+    });
+  });
+
+  describe('subscription name resolution', () => {
+    it('uses subscriptionName when provided in single result', () => {
+      const service = new FeedService();
+      const result = service.aggregateResults([{
+        id: 1,
+        artistName: 'Radiohead',
+        artistMbid: 'abc-123',
+        subscriptionId: 1,
+        sources: ['lastfm'],
+        createdAt: new Date(),
+        status: 'pending',
+        subscriptionName: 'New Releases',
+      }]);
+      expect(result[0].subscriptionName).toBe('New Releases');
+    });
+
+    it('shows subscription name when all results from same subscription', () => {
+      const service = new FeedService();
+      const result = service.aggregateResults([
+        {
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          subscriptionName: 'New Releases',
+        },
+        {
+          id: 2,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['spotify'],
+          createdAt: new Date(),
+          status: 'pending',
+          subscriptionName: 'New Releases',
+        },
+      ]);
+      expect(result[0].subscriptionName).toBe('New Releases');
+    });
+
+    it('shows "Found in X subs" when results from multiple subscriptions', () => {
+      const service = new FeedService();
+      const result = service.aggregateResults([
+        {
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          subscriptionName: 'New Releases',
+        },
+        {
+          id: 2,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 2,
+          sources: ['spotify'],
+          createdAt: new Date(),
+          status: 'pending',
+          subscriptionName: 'Similar Artists',
+        },
+      ]);
+      expect(result[0].subscriptionName).toBe('Found in 2 subs');
+    });
+
+    it('returns null when no subscriptionName provided', () => {
+      const service = new FeedService();
+      const result = service.aggregateResults([{
+        id: 1,
+        artistName: 'Radiohead',
+        artistMbid: 'abc-123',
+        subscriptionId: 1,
+        sources: ['lastfm'],
+        createdAt: new Date(),
+        status: 'pending',
+      }]);
+      expect(result[0].subscriptionName).toBeNull();
+    });
+
+    it('handles mix of provided and missing subscriptionNames', () => {
+      const service = new FeedService();
+      const result = service.aggregateResults([
+        {
+          id: 1,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 1,
+          sources: ['lastfm'],
+          createdAt: new Date(),
+          status: 'pending',
+          subscriptionName: 'New Releases',
+        },
+        {
+          id: 2,
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          subscriptionId: 2,
+          sources: ['spotify'],
+          createdAt: new Date(),
+          status: 'pending',
+          // No subscriptionName provided for this one
+        },
+      ]);
+      // Should still show "Found in 2 subs" because different subscriptionIds
+      expect(result[0].subscriptionName).toBe('Found in 2 subs');
     });
   });
 });

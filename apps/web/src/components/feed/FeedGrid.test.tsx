@@ -45,6 +45,9 @@ describe('FeedGrid', () => {
       sourceCount: 1,
       sources: ['spotify'],
       createdAt: '2026-01-01T00:00:00Z',
+      tags: ['rock', 'alternative'],
+      listeners: 5000000,
+      subscriptionName: 'New Releases',
     },
     {
       id: 'feed-2',
@@ -56,6 +59,9 @@ describe('FeedGrid', () => {
       sourceCount: 1,
       sources: ['lastfm'],
       createdAt: '2026-01-01T00:00:00Z',
+      tags: null,
+      listeners: null,
+      subscriptionName: null,
     },
   ];
 
