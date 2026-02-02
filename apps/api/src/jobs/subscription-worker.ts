@@ -35,6 +35,7 @@ interface ArtistToAdd {
   name: string;
   mbid?: string;
   source: string;
+  imageUrl?: string;
 }
 
 interface AlbumToAdd {

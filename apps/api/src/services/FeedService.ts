@@ -13,6 +13,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { LidarrService } from './lidarr.js';
 import type { LidarrConnectionConfig } from '../types/connections.js';
 import { createLogger } from '../lib/logger.js';
+import { fetchDeezerArtistImage } from './deezer.js';
 
 const log = createLogger('FeedService');
 
@@ -127,6 +128,38 @@ export class FeedService {
       }
     }
     return [];
+  }
+
+  /**
+   * Enrich feed items with images from Deezer for items missing imageUrl.
+   * Fetches images in parallel for efficiency.
+   */
+  private async enrichWithImages(items: AggregatedFeedItem[]): Promise<AggregatedFeedItem[]> {
+    const itemsNeedingImages = items.filter((item) => !item.imageUrl);
+    if (itemsNeedingImages.length === 0) {
+      return items;
+    }
+
+    // Fetch images in parallel
+    const imagePromises = itemsNeedingImages.map(async (item) => {
+      try {
+        const imageUrl = await fetchDeezerArtistImage(item.artistName);
+        return { id: item.id, imageUrl: imageUrl || null };
+      } catch {
+        return { id: item.id, imageUrl: null };
+      }
+    });
+
+    const results = await Promise.all(imagePromises);
+    const imageMap = new Map(results.map((r) => [r.id, r.imageUrl]));
+
+    // Update items with fetched images
+    return items.map((item) => {
+      if (!item.imageUrl && imageMap.has(item.id)) {
+        return { ...item, imageUrl: imageMap.get(item.id) || null };
+      }
+      return item;
+    });
   }
 
   /**
@@ -337,6 +370,9 @@ export class FeedService {
     // Paginate
     const paginated = aggregated.slice(offset, offset + limit);
 
+    // Enrich items missing images from Deezer
+    const enrichedItems = await this.enrichWithImages(paginated);
+
     // Calculate stats
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -357,7 +393,7 @@ export class FeedService {
     });
 
     return {
-      items: paginated,
+      items: enrichedItems,
       total,
       stats: { pending, addedToday },
     };

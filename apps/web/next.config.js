@@ -6,7 +6,7 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.scdn.co' },           // Spotify CDN
-      { protocol: 'https', hostname: 'e-cdns-images.dzcdn.net' }, // Deezer CDN
+      { protocol: 'https', hostname: '**.dzcdn.net' },        // Deezer CDN (all subdomains)
       { protocol: 'https', hostname: 'coverartarchive.org' },  // MusicBrainz
       { protocol: 'https', hostname: 'archive.org' },          // Archive.org (fallback)
       { protocol: 'https', hostname: 'lastfm.freetls.fastly.net' }, // Last.fm
