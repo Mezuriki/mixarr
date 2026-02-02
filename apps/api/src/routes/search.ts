@@ -700,6 +700,132 @@ searchRouter.post('/lidarr/artists/:id/refresh', async (req, res) => {
   }
 });
 
+// =====================================================
+// BATCH FIX ENDPOINTS
+// These static routes MUST be placed BEFORE the /:id routes
+// to avoid Express matching "fix-all" as an artist ID
+// =====================================================
+
+// Start batch fix job for all artists with metadata issues
+searchRouter.post('/lidarr/artists/fix-all', async (req, res) => {
+  try {
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    // Get optional issue type filter from request body
+    const { issueType } = req.body as { issueType?: 'no_poster' | 'no_overview' | 'no_genres' | 'any' };
+
+    // Get all artists from Lidarr
+    const artists = await lidarr.getArtists();
+
+    // Filter to artists with metadata issues
+    const artistsWithIssues = artists.filter(artist => {
+      // Must have foreignArtistId (MBID) to be fixable
+      if (!artist.foreignArtistId) return false;
+
+      const issues = getMetadataIssues(artist);
+      if (issues.length === 0) return false;
+
+      // If specific issue type requested, filter by it
+      if (issueType && issueType !== 'any') {
+        return issues.includes(issueType);
+      }
+
+      // Filter to only metadata issues (not structural issues like no_albums)
+      const metadataIssues = issues.filter(i => 
+        i === 'no_poster' || i === 'no_overview' || i === 'no_genres'
+      );
+      return metadataIssues.length > 0;
+    });
+
+    // If no artists need fixing, return early
+    if (artistsWithIssues.length === 0) {
+      res.json({
+        jobId: null,
+        total: 0,
+        estimatedMinutes: 0,
+        message: 'No artists need fixing',
+      });
+      return;
+    }
+
+    // Prepare artists for batch fix
+    const artistsToFix = artistsWithIssues.map(a => ({
+      id: a.id,
+      foreignArtistId: a.foreignArtistId,
+      artistName: a.artistName,
+    }));
+
+    // Start batch fix job
+    try {
+      const jobInfo = await metadataFixService.startBatchFix(req.user!.id, artistsToFix);
+
+      // Execute batch fix asynchronously (non-blocking)
+      setImmediate(async () => {
+        try {
+          await metadataFixService.executeBatchFix(req.user!.id, lidarr, artistsToFix);
+        } catch (error) {
+          log.error('Batch fix execution failed:', error);
+        }
+      });
+
+      res.json(jobInfo);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Job already in progress') {
+        res.status(409).json({ error: 'Job already in progress' });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) {
+    log.error('Failed to start batch fix:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to start batch fix' 
+    });
+  }
+});
+
+// Get batch fix job status
+searchRouter.get('/lidarr/artists/fix-all/status', async (req, res) => {
+  try {
+    const status = await metadataFixService.getJobStatus(req.user!.id);
+
+    if (!status) {
+      res.json({ status: null });
+      return;
+    }
+
+    res.json(status);
+  } catch (error) {
+    log.error('Failed to get job status:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to get job status' 
+    });
+  }
+});
+
+// Cancel running batch fix job
+searchRouter.post('/lidarr/artists/fix-all/cancel', async (req, res) => {
+  try {
+    const cancelled = await metadataFixService.cancelJob(req.user!.id);
+
+    if (!cancelled) {
+      res.status(404).json({ error: 'No running job to cancel' });
+      return;
+    }
+
+    res.json({ cancelled: true });
+  } catch (error) {
+    log.error('Failed to cancel job:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to cancel job' 
+    });
+  }
+});
+
 // Fix missing metadata for a specific artist
 searchRouter.post('/lidarr/artists/:id/fix', async (req, res) => {
   try {
