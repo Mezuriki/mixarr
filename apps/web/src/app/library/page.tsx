@@ -22,6 +22,19 @@ import Image from 'lucide-react/dist/esm/icons/image';
 import Music from 'lucide-react/dist/esm/icons/music';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Search from 'lucide-react/dist/esm/icons/search';
+import Wrench from 'lucide-react/dist/esm/icons/wrench';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+
+interface FixJobStatus {
+  jobId: string | null;
+  status: 'running' | 'completed' | 'cancelled' | null;
+  total: number;
+  processed: number;
+  fixed: number;
+  failed: number;
+  currentArtist?: string;
+  startedAt?: string;
+}
 
 interface LidarrArtist {
   id: number;
@@ -68,10 +81,117 @@ export default function LibraryPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [activeTab, setActiveTab] = useState<TabType>('health');
   const [duplicateCount, setDuplicateCount] = useState<number>(0);
+  const [fixJob, setFixJob] = useState<FixJobStatus | null>(null);
+  const [isStartingFix, setIsStartingFix] = useState(false);
 
   const handleDuplicateCountChange = useCallback((count: number) => {
     setDuplicateCount(count);
   }, []);
+
+  // Check for existing fix job on mount and poll when running
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const checkJobStatus = async () => {
+      const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
+      if (data) {
+        setFixJob(data);
+        if (data.status === 'completed' || data.status === 'cancelled') {
+          // Job finished, refresh artist list
+          fetchArtists();
+          addToast({
+            type: data.status === 'completed' ? 'success' : 'info',
+            title: data.status === 'completed' ? 'Fix All Completed' : 'Fix All Cancelled',
+            message: `Processed ${data.processed}/${data.total} artists. Fixed: ${data.fixed}, Failed: ${data.failed}`
+          });
+          // Clear the job state after a moment
+          setTimeout(() => setFixJob(null), 3000);
+        }
+      }
+    };
+
+    // Check immediately on mount
+    checkJobStatus();
+
+    // Poll every 2 seconds when job is running
+    const interval = setInterval(() => {
+      if (fixJob?.status === 'running') {
+        checkJobStatus();
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isAdmin, fixJob?.status]);
+
+  // Separate effect to start polling when job starts
+  useEffect(() => {
+    if (!fixJob?.status || fixJob.status !== 'running') return;
+
+    const pollStatus = async () => {
+      const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
+      if (data) {
+        setFixJob(data);
+        if (data.status === 'completed' || data.status === 'cancelled') {
+          fetchArtists();
+          addToast({
+            type: data.status === 'completed' ? 'success' : 'info',
+            title: data.status === 'completed' ? 'Fix All Completed' : 'Fix All Cancelled',
+            message: `Processed ${data.processed}/${data.total} artists. Fixed: ${data.fixed}, Failed: ${data.failed}`
+          });
+          setTimeout(() => setFixJob(null), 3000);
+        }
+      }
+    };
+
+    const interval = setInterval(pollStatus, 2000);
+    return () => clearInterval(interval);
+  }, [fixJob?.jobId]);
+
+  const handleFixAll = async () => {
+    const artistsWithIssues = artists.filter(a => a.needsRefresh).length;
+    if (artistsWithIssues === 0) return;
+
+    const confirmed = window.confirm(
+      `This will attempt to fix metadata for ${artistsWithIssues} artists with issues.\n\n` +
+      `This may take several minutes and will make requests to Lidarr.\n\n` +
+      `Continue?`
+    );
+    if (!confirmed) return;
+
+    setIsStartingFix(true);
+    const { data, error } = await api.post<{ jobId: string; total: number }>('/api/search/lidarr/artists/fix-all');
+    
+    if (error) {
+      addToast({ type: 'error', title: 'Failed to start fix', message: error });
+    } else if (data) {
+      setFixJob({
+        jobId: data.jobId,
+        status: 'running',
+        total: data.total,
+        processed: 0,
+        fixed: 0,
+        failed: 0
+      });
+      addToast({ type: 'success', title: 'Fix All Started', message: `Processing ${data.total} artists...` });
+    }
+    setIsStartingFix(false);
+  };
+
+  const handleCancelFix = async () => {
+    if (!fixJob?.jobId) return;
+    
+    const { error } = await api.post('/api/search/lidarr/artists/fix-all/cancel');
+    if (error) {
+      addToast({ type: 'error', title: 'Failed to cancel', message: error });
+    } else {
+      addToast({ type: 'info', title: 'Cancelling...', message: 'Fix operation will stop after current artist' });
+    }
+  };
+
+  // Calculate artists needing fix
+  const artistsNeedingFix = useMemo(() => {
+    return artists.filter(a => a.needsRefresh).length;
+  }, [artists]);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -187,6 +307,21 @@ export default function LibraryPage() {
         description="View the health of your Lidarr library"
       >
         <div className="flex gap-2">
+          {fixJob?.status === 'running' ? (
+            <Button variant="outline" onClick={handleCancelFix} className="text-status-error border-status-error hover:bg-status-error/10">
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Fix
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={handleFixAll} 
+              disabled={artistsNeedingFix === 0 || isStartingFix || isLoading}
+            >
+              <Wrench className={`h-4 w-4 mr-2 ${isStartingFix ? 'animate-spin' : ''}`} />
+              Fix All{artistsNeedingFix > 0 ? ` (${artistsNeedingFix})` : ''}
+            </Button>
+          )}
           <Button variant="outline" onClick={fetchArtists} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -213,6 +348,56 @@ export default function LibraryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Fix Progress Bar */}
+      {fixJob?.status === 'running' && (
+        <Card className="mb-4 border-primary/50">
+          <CardContent className="pt-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 animate-spin text-primary" />
+                  <span className="font-medium">Fixing Library Metadata</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleCancelFix}
+                  className="text-status-error hover:text-status-error hover:bg-status-error/10"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+              
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${fixJob.total > 0 ? (fixJob.processed / fixJob.total) * 100 : 0}%` }} 
+                />
+              </div>
+              
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>{fixJob.processed} / {fixJob.total} artists</span>
+                  <span className="text-status-success">✓ {fixJob.fixed} fixed</span>
+                  {fixJob.failed > 0 && (
+                    <span className="text-status-error">✗ {fixJob.failed} failed</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  {fixJob.currentArtist && (
+                    <span className="truncate max-w-48">Current: {fixJob.currentArtist}</span>
+                  )}
+                  <span className="font-medium">
+                    {fixJob.total > 0 ? Math.round((fixJob.processed / fixJob.total) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b">
