@@ -154,6 +154,52 @@ export function useApproveFeedItem() {
   });
 }
 
+export function useDismissFeedItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await api.post<{ artistName: string }>(
+        `/api/feed/${id}/dismiss`
+      );
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.feed });
+      const previousData = queryClient.getQueryData(queryKeys.feed);
+
+      queryClient.setQueryData(queryKeys.feed, (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: FeedResponse) => ({
+            ...page,
+            items: page.items.map((item: FeedItem) =>
+              item.id === id ? { ...item, status: 'dismissed' as const } : item
+            ),
+            stats: {
+              ...page.stats,
+              pending: Math.max(0, page.stats.pending - 1),
+            },
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feed, context.previousData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    },
+  });
+}
+
 // Dashboard Hooks
 
 interface DashboardStats {
