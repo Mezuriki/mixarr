@@ -128,14 +128,31 @@ You have superpowers. Superpowers are mandatory skills that govern your developm
               │NO                                │
               │◀─────────────────────────────────┘
               ▼
+    ┌───────────────────┐    Issues?    ┌─────────────────┐
+    │ 6. BEST PRACTICES REVIEW│────YES─▶│ Fix & re-review │
+    │    Explain code   │               └────────┬────────┘
+    │    like teaching  │                        │
+    └─────────┬─────────┘                        │
+              │NO                                │
+              │◀─────────────────────────────────┘
+              ▼
+              ▼
+    ┌───────────────────┐    Issues?    ┌─────────────────┐
+    │ 6. BE A SHITHEAD  │──────YES─────▶│ Fix & re-review │
+    │    Explain code   │               └────────┬────────┘
+    │    like teaching  │                        │
+    └─────────┬─────────┘                        │
+              │NO                                │
+              │◀─────────────────────────────────┘
+              ▼              
     ┌───────────────────┐
     │ 7. Next Task      │
     └───────────────────┘
-
+```
 ## Skill Execution Patterns
 
 ### Brainstorming (Before Any Creative Work)
-```
+
 1. Read: .github/skills/superpowers/skills/brainstorming/SKILL.md
 2. Announce: "I'm using the brainstorming skill to refine this design."
 3. Check project context (files, docs, commits)

@@ -83,12 +83,16 @@ export default function LibraryPage() {
   const [duplicateCount, setDuplicateCount] = useState<number>(0);
   const [fixJob, setFixJob] = useState<FixJobStatus | null>(null);
   const [isStartingFix, setIsStartingFix] = useState(false);
+  const [isCancellingFix, setIsCancellingFix] = useState(false);
 
   const handleDuplicateCountChange = useCallback((count: number) => {
     setDuplicateCount(count);
   }, []);
 
-  // Check for existing fix job on mount and poll when running
+  const JOB_COMPLETE_DISPLAY_MS = 3000;
+  const POLL_INTERVAL_MS = 2000;
+
+  // Check for existing fix job on mount
   useEffect(() => {
     if (!isAdmin) return;
 
@@ -96,36 +100,15 @@ export default function LibraryPage() {
       const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
       if (data) {
         setFixJob(data);
-        if (data.status === 'completed' || data.status === 'cancelled') {
-          // Job finished, refresh artist list
-          fetchArtists();
-          addToast({
-            type: data.status === 'completed' ? 'success' : 'info',
-            title: data.status === 'completed' ? 'Fix All Completed' : 'Fix All Cancelled',
-            message: `Processed ${data.processed}/${data.total} artists. Fixed: ${data.fixed}, Failed: ${data.failed}`
-          });
-          // Clear the job state after a moment
-          setTimeout(() => setFixJob(null), 3000);
-        }
       }
     };
 
-    // Check immediately on mount
     checkJobStatus();
+  }, [isAdmin]);
 
-    // Poll every 2 seconds when job is running
-    const interval = setInterval(() => {
-      if (fixJob?.status === 'running') {
-        checkJobStatus();
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isAdmin, fixJob?.status]);
-
-  // Separate effect to start polling when job starts
+  // Poll when job is running, handle completion
   useEffect(() => {
-    if (!fixJob?.status || fixJob.status !== 'running') return;
+    if (!fixJob || fixJob.status !== 'running') return;
 
     const pollStatus = async () => {
       const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
@@ -138,14 +121,15 @@ export default function LibraryPage() {
             title: data.status === 'completed' ? 'Fix All Completed' : 'Fix All Cancelled',
             message: `Processed ${data.processed}/${data.total} artists. Fixed: ${data.fixed}, Failed: ${data.failed}`
           });
-          setTimeout(() => setFixJob(null), 3000);
+          setTimeout(() => setFixJob(null), JOB_COMPLETE_DISPLAY_MS);
         }
       }
     };
 
-    const interval = setInterval(pollStatus, 2000);
+    const interval = setInterval(pollStatus, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fixJob?.jobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixJob?.status, fixJob?.jobId]);
 
   const handleFixAll = async () => {
     const artistsWithIssues = artists.filter(a => a.needsRefresh).length;
@@ -178,9 +162,12 @@ export default function LibraryPage() {
   };
 
   const handleCancelFix = async () => {
-    if (!fixJob?.jobId) return;
+    if (!fixJob?.jobId || isCancellingFix) return;
     
+    setIsCancellingFix(true);
     const { error } = await api.post('/api/search/lidarr/artists/fix-all/cancel');
+    setIsCancellingFix(false);
+    
     if (error) {
       addToast({ type: 'error', title: 'Failed to cancel', message: error });
     } else {
@@ -308,9 +295,14 @@ export default function LibraryPage() {
       >
         <div className="flex gap-2">
           {fixJob?.status === 'running' ? (
-            <Button variant="outline" onClick={handleCancelFix} className="text-status-error border-status-error hover:bg-status-error/10">
-              <XCircle className="h-4 w-4 mr-2" />
-              Cancel Fix
+            <Button 
+              variant="outline" 
+              onClick={handleCancelFix} 
+              disabled={isCancellingFix}
+              className="text-status-error border-status-error hover:bg-status-error/10"
+            >
+              <XCircle className={`h-4 w-4 mr-2 ${isCancellingFix ? 'animate-spin' : ''}`} />
+              {isCancellingFix ? 'Cancelling...' : 'Cancel Fix'}
             </Button>
           ) : (
             <Button 
@@ -363,10 +355,11 @@ export default function LibraryPage() {
                   variant="ghost" 
                   size="sm" 
                   onClick={handleCancelFix}
+                  disabled={isCancellingFix}
                   className="text-status-error hover:text-status-error hover:bg-status-error/10"
                 >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Cancel
+                  <XCircle className={`h-4 w-4 mr-1 ${isCancellingFix ? 'animate-spin' : ''}`} />
+                  {isCancellingFix ? 'Cancelling...' : 'Cancel'}
                 </Button>
               </div>
               

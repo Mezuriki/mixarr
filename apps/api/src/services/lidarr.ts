@@ -457,11 +457,12 @@ export class LidarrService {
     let cacheWarmed = false;
     let wasAlreadyCached: boolean | undefined;
     try {
+      log.info(`Warming SkyHook cache for artist ${foreignArtistId}...`);
       const warmResult = await skyhookWarmer.warmArtist(foreignArtistId);
       cacheWarmed = warmResult.success;
       wasAlreadyCached = warmResult.cached;
       if (warmResult.success) {
-        log.debug(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${foreignArtistId}`);
+        log.info(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${foreignArtistId} (${warmResult.attempts} attempts)`);
       } else {
         log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${warmResult.error}`);
       }

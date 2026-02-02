@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { LidarrService, LidarrCache } from '../services/lidarr.js';
 import { LidarrConnectionConfig } from '../types/connections.js';
+import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
@@ -268,7 +269,15 @@ discoverRouter.post('/add', async (req, res) => {
 
     // Try MBID first if available - this is more reliable with Lidarr
     if (mbid) {
-      const mbidResults = await lidarr.searchArtist(mbid);
+      // Warm SkyHook cache BEFORE searching - this dramatically improves success rate
+      try {
+        const warmResult = await skyhookWarmer.warmArtist(mbid);
+        logger.info(`SkyHook cache ${warmResult.cached ? 'already warm' : warmResult.success ? 'warmed' : 'warm failed'} for MBID ${mbid}`);
+      } catch (error) {
+        logger.warn(`Failed to warm SkyHook cache for MBID ${mbid}: ${error instanceof Error ? error.message : error}`);
+      }
+      
+      const mbidResults = await lidarr.searchArtist(`lidarr:${mbid}`);
       const mbidMatch = mbidResults.find(a => a.foreignArtistId === mbid);
       if (mbidMatch) {
         foreignArtistId = mbidMatch.foreignArtistId;
