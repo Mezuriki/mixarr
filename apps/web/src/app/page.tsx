@@ -1,37 +1,85 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { StatsBar } from '@/components/feed/StatsBar';
 import { FeedGrid } from '@/components/feed/FeedGrid';
-import { useFeed } from '@/hooks/useFeed';
+import { Loading } from '@/components/ui/loading';
+import { useToast } from '@/components/ui/toast';
+import { useFeed, useApproveFeedItem, useDismissFeedItem } from '@/lib/hooks';
 
 export default function Home() {
+  const { addToast } = useToast();
+  
   const {
-    items,
-    stats,
+    data,
     isLoading,
-    loadingIds,
-    hasMore,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     error,
-    fetchFeed,
-    loadMore,
-    approve,
-    dismiss,
+    refetch,
   } = useFeed();
 
-  useEffect(() => {
-    fetchFeed();
-  }, [fetchFeed]);
+  const approveMutation = useApproveFeedItem();
+  const dismissMutation = useDismissFeedItem();
 
-  // Refresh on window focus
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchFeed();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchFeed]);
+  // Flatten pages into single items array
+  const items = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap((page) => page.items);
+  }, [data]);
+
+  // Get stats from first page (they're the same across pages)
+  const stats = data?.pages[0]?.stats ?? { pending: 0, addedToday: 0 };
+
+  // Track which items have pending mutations
+  const loadingIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (approveMutation.isPending && approveMutation.variables) {
+      ids.add(approveMutation.variables);
+    }
+    if (dismissMutation.isPending && dismissMutation.variables) {
+      ids.add(dismissMutation.variables);
+    }
+    return ids;
+  }, [approveMutation.isPending, approveMutation.variables, dismissMutation.isPending, dismissMutation.variables]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      const result = await approveMutation.mutateAsync(id);
+      addToast({ type: 'success', title: 'Added', message: `${result.artistName} added to Lidarr` });
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to add artist' });
+    }
+  };
+
+  const handleDismiss = async (id: string) => {
+    try {
+      const result = await dismissMutation.mutateAsync(id);
+      addToast({ type: 'info', title: 'Dismissed', message: `${result.artistName} dismissed` });
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to dismiss artist' });
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!isFetchingNextPage && hasNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  // Initial loading state (fixes DF-007)
+  if (isLoading && items.length === 0) {
+    return (
+      <>
+        <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
+        <div className="flex justify-center py-20">
+          <Loading size="lg" />
+        </div>
+      </>
+    );
+  }
 
   if (error) {
     return (
@@ -40,7 +88,7 @@ export default function Home() {
         <div className="text-center py-16">
           <p className="text-red-400 mb-4">Failed to load feed. Please try again.</p>
           <button
-            onClick={fetchFeed}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
           >
             Retry
@@ -56,11 +104,11 @@ export default function Home() {
       <StatsBar pending={stats.pending} addedToday={stats.addedToday} />
       <FeedGrid
         items={items}
-        onApprove={approve}
-        onDismiss={dismiss}
-        onLoadMore={loadMore}
-        hasMore={hasMore}
-        isLoading={isLoading}
+        onApprove={handleApprove}
+        onDismiss={handleDismiss}
+        onLoadMore={handleLoadMore}
+        hasMore={hasNextPage ?? false}
+        isLoading={isFetchingNextPage}
         loadingIds={loadingIds}
       />
     </>
