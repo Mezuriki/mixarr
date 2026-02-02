@@ -8,9 +8,16 @@
  * 
  * This service is useful for artists that were added before the cache
  * warmer was implemented, or where the initial add failed to get metadata.
+ * 
+ * Batch Operations:
+ * - startBatchFix: Creates job state in Redis, returns immediately
+ * - getJobStatus: Returns current job state from Redis
+ * - cancelJob: Sets cancel flag in Redis
+ * - executeBatchFix: The actual loop that processes artists
  */
 
 import { createLogger } from '../lib/logger.js';
+import { redis } from '../lib/redis.js';
 import type { SkyHookCacheWarmer } from './skyhook-cache-warmer.js';
 import type { LidarrService, LidarrArtist, LidarrCommand } from './lidarr.js';
 
@@ -29,6 +36,28 @@ export interface FixResult {
   };
   fixed: string[];
   stillMissing: string[];
+}
+
+export interface JobInfo {
+  jobId: string;
+  total: number;
+  estimatedMinutes: number;
+}
+
+export interface JobStatus {
+  jobId: string;
+  status: 'running' | 'completed' | 'cancelled';
+  total: number;
+  processed: number;
+  fixed: number;
+  failed: number;
+  currentArtist?: string;
+}
+
+export interface ArtistToFix {
+  id: number;
+  foreignArtistId: string;
+  artistName?: string;
 }
 
 interface MetadataState {
@@ -222,5 +251,203 @@ export class MetadataFixService {
     }
     
     return missing;
+  }
+
+  // ===========================================
+  // Batch Operations
+  // ===========================================
+
+  private getJobKey(userId: number): string {
+    return `metadata-fix:job:${userId}`;
+  }
+
+  private getCancelKey(userId: number): string {
+    return `metadata-fix:cancel:${userId}`;
+  }
+
+  /**
+   * Start a batch fix operation for multiple artists.
+   * Creates job state in Redis and returns immediately.
+   * 
+   * @param userId - User ID for job isolation
+   * @param artists - Array of artists to fix
+   * @returns Job info with ID, total, and estimated time
+   * @throws Error if a job is already in progress for this user
+   */
+  async startBatchFix(userId: number, artists: ArtistToFix[]): Promise<JobInfo> {
+    const jobKey = this.getJobKey(userId);
+    
+    // Check for existing running job
+    const existingJob = await redis.get(jobKey);
+    if (existingJob) {
+      const parsed = JSON.parse(existingJob) as JobStatus;
+      if (parsed.status === 'running') {
+        throw new Error('Job already in progress');
+      }
+    }
+
+    const jobId = `job-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const total = artists.length;
+    // Estimate: 1 second per artist, convert to minutes
+    const estimatedMinutes = Math.ceil(total / 60);
+
+    const initialStatus: JobStatus = {
+      jobId,
+      status: 'running',
+      total,
+      processed: 0,
+      fixed: 0,
+      failed: 0,
+    };
+
+    // Store initial state with 1 hour expiry
+    await redis.set(jobKey, JSON.stringify(initialStatus), 'EX', 3600);
+
+    log.info(`Started batch fix job ${jobId} for user ${userId} with ${total} artists`);
+
+    return {
+      jobId,
+      total,
+      estimatedMinutes,
+    };
+  }
+
+  /**
+   * Get the current job status for a user.
+   * 
+   * @param userId - User ID to get job status for
+   * @returns Job status or null if no job exists
+   */
+  async getJobStatus(userId: number): Promise<JobStatus | null> {
+    const jobKey = this.getJobKey(userId);
+    const data = await redis.get(jobKey);
+    
+    if (!data) {
+      return null;
+    }
+
+    return JSON.parse(data) as JobStatus;
+  }
+
+  /**
+   * Request cancellation of a running job.
+   * Sets a cancel flag in Redis that executeBatchFix will check.
+   * 
+   * @param userId - User ID whose job to cancel
+   * @returns true if cancel flag was set, false if no job running
+   */
+  async cancelJob(userId: number): Promise<boolean> {
+    const status = await this.getJobStatus(userId);
+    
+    if (!status || status.status !== 'running') {
+      return false;
+    }
+
+    // Set cancel flag with 5 minute expiry
+    const cancelKey = this.getCancelKey(userId);
+    await redis.set(cancelKey, '1', 'EX', 300);
+
+    log.info(`Cancel requested for job ${status.jobId} (user ${userId})`);
+
+    return true;
+  }
+
+  /**
+   * Execute the batch fix operation.
+   * Loops through artists, fixing each one with rate limiting.
+   * Checks for cancellation before each artist.
+   * 
+   * @param userId - User ID for job tracking
+   * @param lidarr - LidarrService instance to use
+   * @param artists - Array of artists to fix
+   */
+  async executeBatchFix(
+    userId: number,
+    lidarr: LidarrService,
+    artists: ArtistToFix[]
+  ): Promise<void> {
+    const jobKey = this.getJobKey(userId);
+    const cancelKey = this.getCancelKey(userId);
+
+    let processed = 0;
+    let fixed = 0;
+    let failed = 0;
+
+    log.info(`Executing batch fix for user ${userId}: ${artists.length} artists`);
+
+    for (const artist of artists) {
+      // Check for cancellation
+      const cancelFlag = await redis.get(cancelKey);
+      if (cancelFlag === '1') {
+        log.info(`Batch fix cancelled at ${processed}/${artists.length} for user ${userId}`);
+        
+        const cancelledStatus: JobStatus = {
+          jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
+          status: 'cancelled',
+          total: artists.length,
+          processed,
+          fixed,
+          failed,
+        };
+        
+        await redis.set(jobKey, JSON.stringify(cancelledStatus), 'EX', 3600);
+        await redis.del(cancelKey);
+        return;
+      }
+
+      // Update current artist in status
+      const currentStatus: JobStatus = {
+        jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
+        status: 'running',
+        total: artists.length,
+        processed,
+        fixed,
+        failed,
+        currentArtist: artist.artistName || `Artist ${artist.id}`,
+      };
+      await redis.set(jobKey, JSON.stringify(currentStatus), 'EX', 3600);
+
+      // Process artist
+      try {
+        const result = await this.fixArtist(lidarr, artist.id, artist.foreignArtistId);
+        if (result.success) {
+          fixed++;
+        }
+      } catch (error) {
+        log.warn(`Failed to fix artist ${artist.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        failed++;
+      }
+
+      processed++;
+
+      // Update progress
+      const progressStatus: JobStatus = {
+        jobId: currentStatus.jobId,
+        status: 'running',
+        total: artists.length,
+        processed,
+        fixed,
+        failed,
+      };
+      await redis.set(jobKey, JSON.stringify(progressStatus), 'EX', 3600);
+
+      // Rate limit: wait 1 second between artists (unless this is the last one)
+      if (processed < artists.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Mark as completed
+    const completedStatus: JobStatus = {
+      jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
+      status: 'completed',
+      total: artists.length,
+      processed,
+      fixed,
+      failed,
+    };
+    await redis.set(jobKey, JSON.stringify(completedStatus), 'EX', 3600);
+    
+    log.info(`Batch fix completed for user ${userId}: ${fixed} fixed, ${failed} failed`);
   }
 }

@@ -9,13 +9,25 @@
  * - Cache warming before refresh
  * - Fix result reporting
  * - Error handling (cache failures, timeouts)
+ * - Batch operations (start, status, cancel)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MetadataFixService, type FixResult } from '../../src/services/metadata-fix.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MetadataFixService, type FixResult, type JobInfo, type JobStatus, type ArtistToFix } from '../../src/services/metadata-fix.js';
 import { createMockLidarrService } from '../utils/fixtures.js';
 import type { SkyHookCacheWarmer, WarmResult } from '../../src/services/skyhook-cache-warmer.js';
 import type { LidarrArtist, LidarrCommand, LidarrService } from '../../src/services/lidarr.js';
+
+// Mock Redis
+vi.mock('../../src/lib/redis.js', () => ({
+  redis: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+  },
+}));
+
+import { redis } from '../../src/lib/redis.js';
 
 // Factory for mock SkyHookCacheWarmer
 function createMockWarmer(): {
@@ -75,6 +87,11 @@ describe('MetadataFixService', () => {
     mockWarmer = createMockWarmer();
     mockLidarr = createMockLidarrService();
     service = new MetadataFixService(mockWarmer as unknown as SkyHookCacheWarmer);
+    
+    // Reset Redis mocks
+    vi.mocked(redis.get).mockReset();
+    vi.mocked(redis.set).mockReset();
+    vi.mocked(redis.del).mockReset();
   });
 
   describe('input validation', () => {
@@ -286,6 +303,137 @@ describe('MetadataFixService', () => {
       await expect(
         service.fixArtist(mockLidarr as unknown as LidarrService, 1, mbid)
       ).rejects.toThrow('Lidarr refresh command failed: Artist metadata fetch failed');
+    });
+  });
+
+  describe('batch operations', () => {
+    describe('startBatchFix', () => {
+      it('should reject if job already running', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+        ];
+
+        // Simulate existing running job
+        vi.mocked(redis.get).mockResolvedValue(JSON.stringify({
+          jobId: 'existing-job',
+          status: 'running',
+          total: 5,
+          processed: 2,
+          fixed: 1,
+          failed: 0,
+        }));
+
+        await expect(service.startBatchFix(userId, artists)).rejects.toThrow('Job already in progress');
+      });
+
+      it('should return job info with total and estimate', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+          { id: 2, foreignArtistId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', artistName: 'Artist 2' },
+          { id: 3, foreignArtistId: 'c3d4e5f6-a7b8-9012-cdef-123456789012', artistName: 'Artist 3' },
+        ];
+
+        // No existing job
+        vi.mocked(redis.get).mockResolvedValue(null);
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        const result = await service.startBatchFix(userId, artists);
+
+        expect(result).toHaveProperty('jobId');
+        expect(result.total).toBe(3);
+        // Estimate: 1 second per artist = 3 seconds = ~0.05 minutes, rounded to nearest minute
+        expect(result.estimatedMinutes).toBeGreaterThanOrEqual(0);
+      });
+
+      it('should store initial job state in Redis', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+        ];
+
+        vi.mocked(redis.get).mockResolvedValue(null);
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        await service.startBatchFix(userId, artists);
+
+        expect(redis.set).toHaveBeenCalledWith(
+          `metadata-fix:job:${userId}`,
+          expect.stringContaining('"status":"running"'),
+          'EX',
+          3600 // 1 hour expiry
+        );
+      });
+    });
+
+    describe('getJobStatus', () => {
+      it('should return null when no job exists', async () => {
+        const userId = 1;
+        vi.mocked(redis.get).mockResolvedValue(null);
+
+        const result = await service.getJobStatus(userId);
+
+        expect(result).toBeNull();
+        expect(redis.get).toHaveBeenCalledWith(`metadata-fix:job:${userId}`);
+      });
+
+      it('should return current job state', async () => {
+        const userId = 1;
+        const jobState: JobStatus = {
+          jobId: 'test-job-123',
+          status: 'running',
+          total: 10,
+          processed: 5,
+          fixed: 3,
+          failed: 1,
+          currentArtist: 'Current Artist',
+        };
+
+        vi.mocked(redis.get).mockResolvedValue(JSON.stringify(jobState));
+
+        const result = await service.getJobStatus(userId);
+
+        expect(result).toEqual(jobState);
+        expect(redis.get).toHaveBeenCalledWith(`metadata-fix:job:${userId}`);
+      });
+    });
+
+    describe('cancelJob', () => {
+      it('should set cancel flag in Redis', async () => {
+        const userId = 1;
+        
+        // Simulate running job exists
+        vi.mocked(redis.get).mockResolvedValue(JSON.stringify({
+          jobId: 'test-job',
+          status: 'running',
+          total: 5,
+          processed: 2,
+          fixed: 1,
+          failed: 0,
+        }));
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        const result = await service.cancelJob(userId);
+
+        expect(result).toBe(true);
+        expect(redis.set).toHaveBeenCalledWith(
+          `metadata-fix:cancel:${userId}`,
+          '1',
+          'EX',
+          300 // 5 min expiry
+        );
+      });
+
+      it('should return false when no job running', async () => {
+        const userId = 1;
+        vi.mocked(redis.get).mockResolvedValue(null);
+
+        const result = await service.cancelJob(userId);
+
+        expect(result).toBe(false);
+        expect(redis.set).not.toHaveBeenCalled();
+      });
     });
   });
 });
