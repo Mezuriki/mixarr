@@ -10,6 +10,11 @@
 
 import prisma from '../lib/db.js';
 import type { PrismaClient } from '@prisma/client';
+import type { LidarrService } from './lidarr.js';
+import type { LidarrConnectionConfig } from '../types/connections.js';
+import { createLogger } from '../lib/logger.js';
+
+const log = createLogger('FeedService');
 
 /**
  * Error thrown when a feed item is not found
@@ -79,9 +84,17 @@ export interface FeedOptions {
 
 export class FeedService {
   private prismaClient: PrismaClient;
+  private lidarrService?: LidarrService;
+  private lidarrConfig?: LidarrConnectionConfig;
 
-  constructor(prismaInstance?: PrismaClient) {
+  constructor(
+    prismaInstance?: PrismaClient,
+    lidarrService?: LidarrService,
+    lidarrConfig?: LidarrConnectionConfig
+  ) {
     this.prismaClient = (prismaInstance || prisma) as PrismaClient;
+    this.lidarrService = lidarrService;
+    this.lidarrConfig = lidarrConfig;
   }
 
   /**
@@ -407,6 +420,30 @@ export class FeedService {
         where: { OR: orConditions },
       });
     });
+
+    // Add to Lidarr (non-blocking) - happens after transaction completes
+    if (
+      artistMbid &&
+      this.lidarrService &&
+      this.lidarrConfig?.qualityProfileId &&
+      this.lidarrConfig?.metadataProfileId &&
+      this.lidarrConfig?.rootFolderPath
+    ) {
+      try {
+        await this.lidarrService.addArtist(
+          artistMbid,
+          this.lidarrConfig.qualityProfileId,
+          this.lidarrConfig.metadataProfileId,
+          this.lidarrConfig.rootFolderPath,
+          true,  // monitored
+          true   // searchForMissingAlbums
+        );
+        log.info(`Added artist to Lidarr: ${artistName} (${artistMbid})`);
+      } catch (error) {
+        // Non-blocking - Lidarr failure shouldn't fail the approve action
+        log.warn(`Failed to add artist to Lidarr: ${artistMbid}`, error);
+      }
+    }
 
     return { artistName };
   }

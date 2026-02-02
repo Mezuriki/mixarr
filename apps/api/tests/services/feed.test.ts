@@ -643,6 +643,167 @@ describe('FeedService', () => {
     });
   });
 
+  /**
+   * Task 10: Lidarr Integration on Approve
+   *
+   * After updating status to 'added', call Lidarr to add the artist.
+   * This is non-blocking - Lidarr failures should not fail the approve action.
+   */
+  describe('approve with Lidarr integration', () => {
+    it('calls Lidarr to add artist after updating status', async () => {
+      const addArtist = vi.fn().mockResolvedValue({ id: 123 });
+      const mockLidarrService = { addArtist };
+      const mockLidarrConfig = {
+        url: 'http://localhost:8686',
+        apiKey: 'test-key',
+        qualityProfileId: 1,
+        metadataProfileId: 1,
+        rootFolderPath: '/music',
+      };
+      const mockPrismaClient = {
+        subscriptionResult: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Test Artist', mbid: 'abc-123', subscription: { userId: 1 } },
+          ]),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        reviewItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        $transaction: vi.fn((fn: any) => fn(mockPrismaClient)),
+      };
+
+      const service = new FeedService(
+        mockPrismaClient as any,
+        mockLidarrService as any,
+        mockLidarrConfig as any
+      );
+      await service.approve('feed-1', 1);
+
+      expect(addArtist).toHaveBeenCalledWith(
+        'abc-123',
+        1,  // qualityProfileId
+        1,  // metadataProfileId
+        '/music',  // rootFolderPath
+        true,  // monitored
+        true   // searchForMissingAlbums
+      );
+    });
+
+    it('still succeeds if Lidarr call fails (logs warning)', async () => {
+      const addArtist = vi.fn().mockRejectedValue(new Error('Lidarr unavailable'));
+      const mockLidarrService = { addArtist };
+      const mockLidarrConfig = {
+        url: 'http://localhost:8686',
+        apiKey: 'test-key',
+        qualityProfileId: 1,
+        metadataProfileId: 1,
+        rootFolderPath: '/music',
+      };
+      const mockPrismaClient = {
+        subscriptionResult: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Test Artist', mbid: 'abc-123', subscription: { userId: 1 } },
+          ]),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        reviewItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        $transaction: vi.fn((fn: any) => fn(mockPrismaClient)),
+      };
+
+      const service = new FeedService(
+        mockPrismaClient as any,
+        mockLidarrService as any,
+        mockLidarrConfig as any
+      );
+
+      // Should not throw - Lidarr failure is non-blocking
+      await expect(service.approve('feed-1', 1)).resolves.toEqual({ artistName: 'Test Artist' });
+      expect(addArtist).toHaveBeenCalled();
+    });
+
+    it('skips Lidarr if no MBID available', async () => {
+      const addArtist = vi.fn();
+      const mockLidarrService = { addArtist };
+      const mockLidarrConfig = {
+        url: 'http://localhost:8686',
+        apiKey: 'test-key',
+        qualityProfileId: 1,
+        metadataProfileId: 1,
+        rootFolderPath: '/music',
+      };
+      const mockPrismaClient = {
+        subscriptionResult: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Test Artist', mbid: null, subscription: { userId: 1 } },
+          ]),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        reviewItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        $transaction: vi.fn((fn: any) => fn(mockPrismaClient)),
+      };
+
+      const service = new FeedService(
+        mockPrismaClient as any,
+        mockLidarrService as any,
+        mockLidarrConfig as any
+      );
+      await service.approve('feed-1', 1);
+
+      expect(addArtist).not.toHaveBeenCalled();
+    });
+
+    it('skips Lidarr if no LidarrService provided', async () => {
+      const mockPrismaClient = {
+        subscriptionResult: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Test Artist', mbid: 'abc-123', subscription: { userId: 1 } },
+          ]),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        reviewItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        $transaction: vi.fn((fn: any) => fn(mockPrismaClient)),
+      };
+
+      // No LidarrService provided
+      const service = new FeedService(mockPrismaClient as any);
+      
+      // Should complete without error
+      await expect(service.approve('feed-1', 1)).resolves.toEqual({ artistName: 'Test Artist' });
+    });
+
+    it('skips Lidarr if config is incomplete (missing profile IDs)', async () => {
+      const addArtist = vi.fn();
+      const mockLidarrService = { addArtist };
+      // Config missing qualityProfileId
+      const incompleteConfig = {
+        url: 'http://localhost:8686',
+        apiKey: 'test-key',
+        rootFolderPath: '/music',
+        // qualityProfileId is missing!
+        metadataProfileId: 1,
+      };
+      const mockPrismaClient = {
+        subscriptionResult: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, name: 'Test Artist', mbid: 'abc-123', subscription: { userId: 1 } },
+          ]),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+        reviewItem: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        $transaction: vi.fn((fn: any) => fn(mockPrismaClient)),
+      };
+
+      const service = new FeedService(
+        mockPrismaClient as any,
+        mockLidarrService as any,
+        incompleteConfig as any
+      );
+      await service.approve('feed-1', 1);
+
+      // Should not call Lidarr due to incomplete config
+      expect(addArtist).not.toHaveBeenCalled();
+    });
+  });
+
   describe('dismiss', () => {
     it('throws NotFoundError when feed item does not exist', async () => {
       const mockPrismaClient = {
