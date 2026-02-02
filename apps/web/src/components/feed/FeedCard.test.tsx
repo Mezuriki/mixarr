@@ -81,10 +81,13 @@ describe('FeedCard', () => {
     expect(screen.queryByLabelText('Dismiss')).not.toBeInTheDocument();
   });
 
-  it('disables buttons when loading', () => {
+  it('shows spinner and hides buttons when loading', () => {
     render(<FeedCard {...defaultProps} isLoading />);
-    expect(screen.getByLabelText('Add to Lidarr')).toBeDisabled();
-    expect(screen.getByLabelText('Dismiss')).toBeDisabled();
+    // Spinner should be visible
+    expect(screen.getByTestId('card-loading-spinner')).toBeInTheDocument();
+    // Buttons should be hidden during loading
+    expect(screen.queryByLabelText('Add to Lidarr')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Dismiss')).not.toBeInTheDocument();
   });
 
   it('has accessible button labels', () => {

@@ -103,24 +103,33 @@ export function FeedCard({
               isHovered || isTouched || isLoading ? 'opacity-100' : 'opacity-0'
             )}
           >
-            <button
-              type="button"
-              aria-label="Add to Lidarr"
-              disabled={isLoading}
-              onClick={() => onApprove(id)}
-              className="p-3 rounded-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Check className="w-6 h-6 text-white" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              disabled={isLoading}
-              onClick={() => onDismiss(id)}
-              className="p-3 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <X className="w-6 h-6 text-white" aria-hidden="true" />
-            </button>
+            {isLoading ? (
+              <div 
+                data-testid="card-loading-spinner"
+                className="animate-spin rounded-full h-10 w-10 border-b-2 border-white" 
+              />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  aria-label="Add to Lidarr"
+                  disabled={isLoading}
+                  onClick={() => onApprove(id)}
+                  className="p-3 rounded-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Check className="w-6 h-6 text-white" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Dismiss"
+                  disabled={isLoading}
+                  onClick={() => onDismiss(id)}
+                  className="p-3 rounded-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <X className="w-6 h-6 text-white" aria-hidden="true" />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
