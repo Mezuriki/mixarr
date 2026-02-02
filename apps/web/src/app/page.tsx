@@ -1,181 +1,68 @@
 'use client';
 
-import Activity from 'lucide-react/dist/esm/icons/activity';
-import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
-import Clock from 'lucide-react/dist/esm/icons/clock';
-import FileText from 'lucide-react/dist/esm/icons/file-text';
-import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import Plug from 'lucide-react/dist/esm/icons/plug';
-import Search from 'lucide-react/dist/esm/icons/search';
-import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
-import Link from 'next/link';
+import { useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { buttonVariants, Skeleton } from '@/components/ui';
-import { useDashboardStats, useDashboardActivity, useDashboardConnections } from '@/lib/hooks';
-
-const quickLinks = [
-  { href: '/connections', title: 'Connections', description: 'Configure music services', icon: Plug },
-  { href: '/search', title: 'Search', description: 'Find new artists', icon: Search },
-  { href: '/subscriptions', title: 'Subscriptions', description: 'Automated music discovery', icon: TrendingUp },
-  { href: '/logs', title: 'Logs', description: 'View activity and errors', icon: FileText },
-];
-
-function StatCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-6">
-        <Skeleton className="h-11 w-11 rounded-full" />
-        <div className="space-y-2">
-          <Skeleton className="h-7 w-12" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActivitySkeleton() {
-  return (
-    <div className="space-y-4">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-          <Skeleton className="h-3 w-20" />
-        </div>
-      ))}
-    </div>
-  );
-}
+import { StatsBar } from '@/components/feed/StatsBar';
+import { FeedGrid } from '@/components/feed/FeedGrid';
+import { useFeed } from '@/hooks/useFeed';
 
 export default function Home() {
-  // Use React Query hooks - data is cached and shared across navigations
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: activities = [], isLoading: activitiesLoading } = useDashboardActivity();
-  const { data: connections } = useDashboardConnections();
-  
-  const isLoading = statsLoading || activitiesLoading;
+  const {
+    items,
+    stats,
+    isLoading,
+    loadingIds,
+    hasMore,
+    error,
+    fetchFeed,
+    loadMore,
+    approve,
+    dismiss,
+  } = useFeed();
 
-  const statCards = [
-    { label: 'Active Subscriptions', value: stats?.activeSubscriptions ?? '—', icon: TrendingUp, color: 'text-status-info' },
-    { label: 'Artists Added (30d)', value: stats?.artistsAdded ?? '—', icon: CheckCircle2, color: 'text-status-success' },
-    { label: 'Pending Reviews', value: stats?.pendingReviews ?? '—', icon: Clock, color: 'text-status-warning' },
-    { label: 'Jobs Running', value: stats?.runningJobs ?? '—', icon: Activity, color: 'text-primary' },
-  ];
+  useEffect(() => {
+    fetchFeed();
+  }, [fetchFeed]);
+
+  // Refresh on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchFeed();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchFeed]);
+
+  if (error) {
+    return (
+      <>
+        <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
+        <div className="text-center py-16">
+          <p className="text-red-400 mb-4">Failed to load feed. Please try again.</p>
+          <button
+            onClick={fetchFeed}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Welcome to Mixarr" />
-
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {isLoading ? (
-          <>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </>
-        ) : (
-          statCards.map((stat) => (
-            <Card key={stat.label}>
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className={`rounded-full bg-muted p-3 ${stat.color}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Connection Status */}
-      {connections && connections.total > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Connections</h2>
-          <div className="flex gap-2 flex-wrap">
-            {connections.connections.map((conn, i) => (
-              <Badge key={i} variant={conn.isActive ? 'success' : 'secondary'}>
-                {conn.type}: {conn.name}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Quick Links */}
-      <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {quickLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Card interactive className="h-full">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="rounded-full bg-primary/10 p-3 text-primary">
-                  <link.icon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold truncate">{link.title}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{link.description}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
-
-      {/* Recent Activity */}
-      <h2 className="text-xl font-semibold mt-8 mb-4">Recent Activity</h2>
-      <Card>
-        <CardContent className="py-6">
-          {isLoading ? (
-            <ActivitySkeleton />
-          ) : activities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Activity className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">No recent activity</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Set up connections to get started with music discovery
-              </p>
-              <Link href="/connections" className={buttonVariants({ className: 'mt-4' })}>
-                <Plug className="h-4 w-4 mr-2" />
-                Configure Connections
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className={`rounded-full p-2 ${
-                    activity.status === 'completed' ? 'bg-status-success/10 text-status-success' :
-                    activity.status === 'failed' ? 'bg-status-error/10 text-status-error' :
-                    'bg-status-info/10 text-status-info'
-                  }`}>
-                    {activity.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> :
-                     activity.status === 'failed' ? <Activity className="h-4 w-4" /> :
-                     <Loader2 className="h-4 w-4 animate-spin" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{activity.title}</p>
-                    <p className="text-sm text-muted-foreground truncate">{activity.description}</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(activity.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
+      <StatsBar pending={stats.pending} addedToday={stats.addedToday} />
+      <FeedGrid
+        items={items}
+        onApprove={approve}
+        onDismiss={dismiss}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+        isLoading={isLoading}
+        loadingIds={loadingIds}
+      />
     </>
   );
 }
