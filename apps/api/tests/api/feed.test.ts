@@ -13,6 +13,11 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { feedRouter } from '../../src/routes/feed.js';
 import { NotFoundError, ForbiddenError } from '../../src/services/FeedService.js';
 
+// Mock connection-resolver to prevent real Lidarr lookup
+vi.mock('../../src/lib/connection-resolver.js', () => ({
+  getLidarrServiceWithConfig: vi.fn().mockResolvedValue(null),
+}));
+
 describe('Feed Routes', () => {
   let app: Express;
   let mockFeedService: {

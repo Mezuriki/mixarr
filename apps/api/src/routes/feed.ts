@@ -11,6 +11,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { FeedService, NotFoundError, ForbiddenError } from '../services/FeedService.js';
 import { createLogger } from '../lib/logger.js';
+import { getLidarrServiceWithConfig } from '../lib/connection-resolver.js';
 
 const logger = createLogger('FeedRoute');
 
@@ -75,13 +76,22 @@ export function feedRouter(feedService?: FeedService): Router {
   /**
    * POST /api/feed/:id/approve
    * Approves a feed item, updating status to 'added' and removing from review.
+   * Also adds to Lidarr if configured.
    */
   router.post('/:id/approve', requireAuth, async (req: Request, res: Response): Promise<void> => {
     try {
       const feedId = req.params.id;
       const userId = req.user!.id;
 
-      const result = await service.approve(feedId, userId);
+      // Get user's Lidarr connection for adding artist
+      const lidarrResult = await getLidarrServiceWithConfig(userId);
+      
+      // Create FeedService with Lidarr integration if available
+      const approveService = lidarrResult 
+        ? new FeedService(undefined, lidarrResult.service, lidarrResult.config)
+        : service;
+
+      const result = await approveService.approve(feedId, userId);
       res.json({ success: true, artistName: result.artistName });
     } catch (error) {
       if (error instanceof NotFoundError) {
