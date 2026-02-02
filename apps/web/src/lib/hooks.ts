@@ -102,6 +102,58 @@ export function useFeed(limit = 50) {
   });
 }
 
+export function useApproveFeedItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await api.post<{ artistName: string }>(
+        `/api/feed/${id}/approve`
+      );
+      if (error) throw new Error(error);
+      return data!;
+    },
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches to prevent race condition
+      await queryClient.cancelQueries({ queryKey: queryKeys.feed });
+
+      // Snapshot current cache for rollback
+      const previousData = queryClient.getQueryData(queryKeys.feed);
+
+      // Optimistic update - mark item as 'added'
+      queryClient.setQueryData(queryKeys.feed, (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: FeedResponse) => ({
+            ...page,
+            items: page.items.map((item: FeedItem) =>
+              item.id === id ? { ...item, status: 'added' as const } : item
+            ),
+            stats: {
+              pending: Math.max(0, page.stats.pending - 1),
+              addedToday: page.stats.addedToday + 1,
+            },
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _id, context) => {
+      // Rollback to snapshot on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feed, context.previousData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.feed });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
+    },
+  });
+}
+
 // Dashboard Hooks
 
 interface DashboardStats {
