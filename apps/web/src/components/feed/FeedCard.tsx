@@ -35,7 +35,7 @@ export function FeedCard({
     <div
       className={cn(
         'relative group rounded-lg overflow-hidden bg-gray-800 transition-all duration-300',
-        showOverlay && 'opacity-50'
+        showOverlay && 'opacity-50 scale-95'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
