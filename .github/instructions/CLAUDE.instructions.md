@@ -4,7 +4,7 @@ applyTo: '**'
 
 # CLAUDE.md - Superpowers-Enabled AI Assistant
 
-**Starting the Docker stack** - always use ./start-dev.sh to start the full stack in DEV.  DO NOT run Prod stack (docker-compose.yml) in dev unless requested.  Ensure Dev and Prod parity.
+**Starting the Docker stack** - always use ./scripts/start-dev.sh to start the full stack in DEV.  DO NOT run Prod stack (docker-compose.yml) in dev unless requested.  Ensure Dev and Prod parity.
 
 <EXTREMELY_IMPORTANT>
 You have superpowers. Superpowers are mandatory skills that govern your development workflow.
