@@ -84,6 +84,7 @@ export default function LibraryPage() {
   const [fixJob, setFixJob] = useState<FixJobStatus | null>(null);
   const [isStartingFix, setIsStartingFix] = useState(false);
   const [isCancellingFix, setIsCancellingFix] = useState(false);
+  const [fixingArtistId, setFixingArtistId] = useState<number | null>(null);
 
   const handleDuplicateCountChange = useCallback((count: number) => {
     setDuplicateCount(count);
@@ -173,6 +174,41 @@ export default function LibraryPage() {
     } else {
       addToast({ type: 'info', title: 'Cancelling...', message: 'Fix operation will stop after current artist' });
     }
+  };
+
+  const handleFixArtist = async (artistId: number) => {
+    if (fixingArtistId !== null || fixJob?.status === 'running') return;
+    
+    setFixingArtistId(artistId);
+    const { data, error } = await api.post<{
+      artistId: number;
+      artistName: string;
+      success: boolean;
+      warmedMbid: boolean;
+      refreshTriggered: boolean;
+      error?: string;
+    }>(`/api/search/lidarr/artists/${artistId}/fix`);
+    
+    if (error) {
+      addToast({ type: 'error', title: 'Fix Failed', message: error });
+    } else if (data) {
+      if (data.success) {
+        addToast({ 
+          type: 'success', 
+          title: 'Artist Fixed', 
+          message: `${data.artistName}: ${data.refreshTriggered ? 'Refresh triggered' : 'Cache warmed'}` 
+        });
+        // Refresh the artist list to show updated status
+        fetchArtists();
+      } else {
+        addToast({ 
+          type: 'error', 
+          title: 'Fix Failed', 
+          message: data.error || `Failed to fix ${data.artistName}` 
+        });
+      }
+    }
+    setFixingArtistId(null);
   };
 
   // Calculate artists needing fix
@@ -540,6 +576,7 @@ export default function LibraryPage() {
                     >
                       Issues <SortIcon field="issues" />
                     </th>
+                    <th className="text-center py-3 px-2 w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -580,6 +617,19 @@ export default function LibraryPage() {
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             {artist.issues.length}
                           </Badge>
+                        )}
+                      </td>
+                      <td className="text-center py-3 px-2">
+                        {artist.needsRefresh && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleFixArtist(artist.id)}
+                            disabled={fixingArtistId !== null || fixJob?.status === 'running' || isLoading}
+                            title="Fix artist metadata"
+                          >
+                            <Wrench className={`h-4 w-4 ${fixingArtistId === artist.id ? 'animate-spin' : ''}`} />
+                          </Button>
                         )}
                       </td>
                     </tr>
