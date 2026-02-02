@@ -21,13 +21,13 @@ export interface AggregatedFeedItem {
   score: number;
 }
 
-interface SubscriptionResultInput {
+export interface SubscriptionResultInput {
   id: number;
   artistName: string;
   artistMbid: string | null;
   subscriptionId: number;
   imageUrl?: string | null;
-  sources: string[] | string | null | unknown;
+  sources: string[] | string | null;
   createdAt: Date;
   status: string;
 }
@@ -40,7 +40,7 @@ export class FeedService {
   private normalizeName(name: string): string {
     return name
       .toLowerCase()
-      .replace(/^the\s+/i, '')
+      .replace(/^the\s+/, '')
       .replace(/[^a-z0-9]/g, '');
   }
 
