@@ -32,6 +32,13 @@ export interface SubscriptionResultInput {
   status: string;
 }
 
+export interface ScoreInput {
+  subscriptionCount: number;
+  sourceCount: number;
+  librarySimilarity: number;
+  earliestFound: Date;
+}
+
 export class FeedService {
   /**
    * Normalize artist name for deduplication.
@@ -147,10 +154,61 @@ export class FeedService {
         sourceCount: allSources.size,
         linkedResultIds,
         earliestFound,
-        score: 0, // Calculated in scoring task
+        score: 0, // Calculated in aggregateAndScore
       });
     }
 
     return aggregated;
+  }
+
+  /**
+   * Calculate value score for a feed item.
+   * Formula: (subscriptionCount × 40) + (sourceCount × 30) + (librarySimilarity × 20) + (recencyBonus × 10)
+   * Caps: subscriptionCount at 10, sourceCount at 5, librarySimilarity at 20
+   */
+  calculateScore(input: ScoreInput): number {
+    const SUB_WEIGHT = 40;
+    const SOURCE_WEIGHT = 30;
+    const LIBRARY_WEIGHT = 20;
+    const RECENCY_WEIGHT = 10;
+
+    const subScore = Math.min(input.subscriptionCount, 10) * (SUB_WEIGHT / 10);
+    const sourceScore = Math.min(input.sourceCount, 5) * (SOURCE_WEIGHT / 5);
+    const libraryScore = Math.min(input.librarySimilarity, 20) * (LIBRARY_WEIGHT / 20);
+
+    // Recency bonus
+    const now = Date.now();
+    const age = now - input.earliestFound.getTime();
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    const ONE_WEEK = 7 * ONE_DAY;
+
+    let recencyBonus = 0;
+    if (age < ONE_DAY) {
+      recencyBonus = RECENCY_WEIGHT;
+    } else if (age < ONE_WEEK) {
+      recencyBonus = RECENCY_WEIGHT * 0.5;
+    }
+
+    return Math.round(subScore + sourceScore + libraryScore + recencyBonus);
+  }
+
+  /**
+   * Aggregate results and calculate scores, sorted by score descending.
+   */
+  aggregateAndScore(results: SubscriptionResultInput[]): AggregatedFeedItem[] {
+    const aggregated = this.aggregateResults(results);
+
+    // Calculate scores
+    for (const item of aggregated) {
+      item.score = this.calculateScore({
+        subscriptionCount: item.subscriptionCount,
+        sourceCount: item.sourceCount,
+        librarySimilarity: 0, // MVP: not implemented
+        earliestFound: item.earliestFound,
+      });
+    }
+
+    // Sort by score descending
+    return aggregated.sort((a, b) => b.score - a.score);
   }
 }

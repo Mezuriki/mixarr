@@ -156,4 +156,125 @@ describe('FeedService', () => {
       expect(aggregated).toHaveLength(2);
     });
   });
+
+  describe('calculateScore', () => {
+    it('weights subscription count at 40%', () => {
+      const service = new FeedService();
+      // 2 subscriptions × 40 = 80 (before normalization)
+      const score = service.calculateScore({
+        subscriptionCount: 2,
+        sourceCount: 0,
+        librarySimilarity: 0,
+        earliestFound: new Date(0), // old, no recency bonus
+      });
+      expect(score).toBeGreaterThan(0);
+    });
+
+    it('weights source count at 30%', () => {
+      const service = new FeedService();
+      const scoreWith1Source = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 1,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      const scoreWith3Sources = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 3,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      expect(scoreWith3Sources).toBeGreaterThan(scoreWith1Source);
+    });
+
+    it('caps subscription count at 10', () => {
+      const service = new FeedService();
+      const scoreAt10 = service.calculateScore({
+        subscriptionCount: 10,
+        sourceCount: 0,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      const scoreAt20 = service.calculateScore({
+        subscriptionCount: 20,
+        sourceCount: 0,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      expect(scoreAt20).toBe(scoreAt10);
+    });
+
+    it('caps source count at 5', () => {
+      const service = new FeedService();
+      const scoreAt5 = service.calculateScore({
+        subscriptionCount: 0,
+        sourceCount: 5,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      const scoreAt10 = service.calculateScore({
+        subscriptionCount: 0,
+        sourceCount: 10,
+        librarySimilarity: 0,
+        earliestFound: new Date(0),
+      });
+      expect(scoreAt10).toBe(scoreAt5);
+    });
+
+    it('gives recency bonus for items under 24 hours old', () => {
+      const service = new FeedService();
+      const now = new Date();
+      const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const recentScore = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 1,
+        librarySimilarity: 0,
+        earliestFound: hourAgo,
+      });
+      const oldScore = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 1,
+        librarySimilarity: 0,
+        earliestFound: weekAgo,
+      });
+      expect(recentScore).toBeGreaterThan(oldScore);
+    });
+
+    it('gives partial recency bonus for items under 7 days old', () => {
+      const service = new FeedService();
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const recentishScore = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 1,
+        librarySimilarity: 0,
+        earliestFound: threeDaysAgo,
+      });
+      const oldScore = service.calculateScore({
+        subscriptionCount: 1,
+        sourceCount: 1,
+        librarySimilarity: 0,
+        earliestFound: monthAgo,
+      });
+      expect(recentishScore).toBeGreaterThan(oldScore);
+    });
+  });
+
+  describe('aggregateAndScore', () => {
+    it('sorts results by score descending', () => {
+      const service = new FeedService();
+      const results = [
+        { id: 1, artistName: 'LowScore', artistMbid: 'a', subscriptionId: 1, sources: ['lastfm'], createdAt: new Date('2020-01-01'), status: 'pending' },
+        { id: 2, artistName: 'HighScore', artistMbid: 'b', subscriptionId: 1, sources: ['lastfm'], createdAt: new Date(), status: 'pending' },
+        { id: 3, artistName: 'HighScore', artistMbid: 'b', subscriptionId: 2, sources: ['spotify'], createdAt: new Date(), status: 'pending' },
+      ];
+      const feed = service.aggregateAndScore(results);
+      expect(feed[0].artistName).toBe('HighScore');
+      expect(feed[1].artistName).toBe('LowScore');
+    });
+  });
 });
