@@ -347,7 +347,7 @@ describe('MetadataFixService', () => {
         expect(result.estimatedMinutes).toBeGreaterThanOrEqual(0);
       });
 
-      it('should store initial job state in Redis', async () => {
+      it('should store initial job state in Redis with atomic NX flag', async () => {
         const userId = 1;
         const artists: ArtistToFix[] = [
           { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
@@ -358,11 +358,13 @@ describe('MetadataFixService', () => {
 
         await service.startBatchFix(userId, artists);
 
+        // Should use atomic SET with NX flag to prevent race conditions
         expect(redis.set).toHaveBeenCalledWith(
           `metadata-fix:job:${userId}`,
           expect.stringContaining('"status":"running"'),
           'EX',
-          3600 // 1 hour expiry
+          3600, // 1 hour expiry
+          'NX'  // Only set if not exists (atomic check-and-set)
         );
       });
     });
@@ -433,6 +435,248 @@ describe('MetadataFixService', () => {
 
         expect(result).toBe(false);
         expect(redis.set).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('executeBatchFix', () => {
+      // Create a testable subclass that exposes the sleep method for mocking
+      class TestableMetadataFixService extends MetadataFixService {
+        public sleepMock = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue(undefined);
+        
+        protected override async sleep(ms: number): Promise<void> {
+          return this.sleepMock(ms);
+        }
+      }
+
+      let testableService: TestableMetadataFixService;
+
+      beforeEach(() => {
+        testableService = new TestableMetadataFixService(mockWarmer as unknown as SkyHookCacheWarmer);
+      });
+
+      it('should update progress during execution', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+          { id: 2, foreignArtistId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', artistName: 'Artist 2' },
+        ];
+
+        // Initial job status
+        vi.mocked(redis.get).mockImplementation(async (key: string) => {
+          if (key === `metadata-fix:job:${userId}`) {
+            return JSON.stringify({
+              jobId: 'test-job-123',
+              status: 'running',
+              total: 2,
+              processed: 0,
+              fixed: 0,
+              failed: 0,
+            });
+          }
+          // Cancel key returns null (no cancellation)
+          return null;
+        });
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        // Mock fixArtist via Lidarr mocks
+        const artistWithMetadata = createMockArtistWithMetadata();
+        mockLidarr.getArtist.mockResolvedValue(artistWithMetadata);
+        mockLidarr.refreshArtist.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'queued' });
+        mockLidarr.waitForCommand.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'completed' });
+
+        await testableService.executeBatchFix(userId, mockLidarr as unknown as LidarrService, artists);
+
+        // Verify Redis set was called multiple times for progress updates
+        const setCalls = vi.mocked(redis.set).mock.calls;
+        
+        // Should have progress updates: currentArtist, progress, currentArtist, progress, completed
+        // At minimum, we should have a completed status at the end
+        const completedCall = setCalls.find(call => {
+          const data = call[1] as string;
+          return data.includes('"status":"completed"');
+        });
+        expect(completedCall).toBeDefined();
+        
+        const completedData = JSON.parse(completedCall![1] as string) as JobStatus;
+        expect(completedData.processed).toBe(2);
+        expect(completedData.total).toBe(2);
+      });
+
+      it('should handle cancellation during execution', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+          { id: 2, foreignArtistId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', artistName: 'Artist 2' },
+        ];
+
+        let callCount = 0;
+        vi.mocked(redis.get).mockImplementation(async (key: string) => {
+          if (key === `metadata-fix:job:${userId}`) {
+            return JSON.stringify({
+              jobId: 'test-job-cancel',
+              status: 'running',
+              total: 2,
+              processed: 0,
+              fixed: 0,
+              failed: 0,
+            });
+          }
+          if (key === `metadata-fix:cancel:${userId}`) {
+            // Return cancel flag on first check (before first artist)
+            callCount++;
+            return callCount === 1 ? '1' : null;
+          }
+          return null;
+        });
+        vi.mocked(redis.set).mockResolvedValue('OK');
+        vi.mocked(redis.del).mockResolvedValue(1);
+
+        await testableService.executeBatchFix(userId, mockLidarr as unknown as LidarrService, artists);
+
+        // Should have set cancelled status
+        const setCalls = vi.mocked(redis.set).mock.calls;
+        const cancelledCall = setCalls.find(call => {
+          const data = call[1] as string;
+          return data.includes('"status":"cancelled"');
+        });
+        expect(cancelledCall).toBeDefined();
+        
+        const cancelledData = JSON.parse(cancelledCall![1] as string) as JobStatus;
+        expect(cancelledData.status).toBe('cancelled');
+        expect(cancelledData.jobId).toBe('test-job-cancel');
+        
+        // Should have deleted the cancel flag
+        expect(redis.del).toHaveBeenCalledWith(`metadata-fix:cancel:${userId}`);
+        
+        // Should NOT have processed any artists (cancelled before first artist)
+        expect(mockLidarr.refreshArtist).not.toHaveBeenCalled();
+      });
+
+      it('should set status to completed when all artists processed', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+        ];
+
+        vi.mocked(redis.get).mockImplementation(async (key: string) => {
+          if (key === `metadata-fix:job:${userId}`) {
+            return JSON.stringify({
+              jobId: 'test-job-complete',
+              status: 'running',
+              total: 1,
+              processed: 0,
+              fixed: 0,
+              failed: 0,
+            });
+          }
+          return null;
+        });
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        // Mock successful fix
+        const artistWithMetadata = createMockArtistWithMetadata();
+        mockLidarr.getArtist.mockResolvedValue(artistWithMetadata);
+        mockLidarr.refreshArtist.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'queued' });
+        mockLidarr.waitForCommand.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'completed' });
+
+        await testableService.executeBatchFix(userId, mockLidarr as unknown as LidarrService, artists);
+
+        // Verify final status is completed
+        const setCalls = vi.mocked(redis.set).mock.calls;
+        const lastCall = setCalls[setCalls.length - 1];
+        const lastData = JSON.parse(lastCall[1] as string) as JobStatus;
+        
+        expect(lastData.status).toBe('completed');
+        expect(lastData.jobId).toBe('test-job-complete');
+        expect(lastData.processed).toBe(1);
+        expect(lastData.total).toBe(1);
+        expect(lastData.fixed).toBe(1); // Artist had all metadata, so fix succeeds
+      });
+
+      it('should continue processing even if Redis fails during progress update', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+        ];
+
+        vi.mocked(redis.get).mockImplementation(async (key: string) => {
+          if (key === `metadata-fix:job:${userId}`) {
+            return JSON.stringify({
+              jobId: 'test-job-redis-fail',
+              status: 'running',
+              total: 1,
+              processed: 0,
+              fixed: 0,
+              failed: 0,
+            });
+          }
+          if (key === `metadata-fix:cancel:${userId}`) {
+            // Simulate Redis failure when checking cancel flag
+            throw new Error('Redis connection lost');
+          }
+          return null;
+        });
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        // Mock successful fix
+        const artistWithMetadata = createMockArtistWithMetadata();
+        mockLidarr.getArtist.mockResolvedValue(artistWithMetadata);
+        mockLidarr.refreshArtist.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'queued' });
+        mockLidarr.waitForCommand.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'completed' });
+
+        // Should NOT throw - Redis failure is caught and logged
+        await expect(
+          testableService.executeBatchFix(userId, mockLidarr as unknown as LidarrService, artists)
+        ).resolves.not.toThrow();
+
+        // Should still have processed the artist
+        expect(mockLidarr.refreshArtist).toHaveBeenCalledWith(1);
+      });
+
+      it('should cache jobId locally instead of repeated Redis calls', async () => {
+        const userId = 1;
+        const artists: ArtistToFix[] = [
+          { id: 1, foreignArtistId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', artistName: 'Artist 1' },
+          { id: 2, foreignArtistId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', artistName: 'Artist 2' },
+        ];
+
+        let getJobStatusCalls = 0;
+        vi.mocked(redis.get).mockImplementation(async (key: string) => {
+          if (key === `metadata-fix:job:${userId}`) {
+            getJobStatusCalls++;
+            return JSON.stringify({
+              jobId: 'cached-job-id',
+              status: 'running',
+              total: 2,
+              processed: 0,
+              fixed: 0,
+              failed: 0,
+            });
+          }
+          return null;
+        });
+        vi.mocked(redis.set).mockResolvedValue('OK');
+
+        const artistWithMetadata = createMockArtistWithMetadata();
+        mockLidarr.getArtist.mockResolvedValue(artistWithMetadata);
+        mockLidarr.refreshArtist.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'queued' });
+        mockLidarr.waitForCommand.mockResolvedValue({ id: 100, name: 'RefreshArtist', status: 'completed' });
+
+        await testableService.executeBatchFix(userId, mockLidarr as unknown as LidarrService, artists);
+
+        // Should only call getJobStatus once at the start to cache the jobId
+        // (plus cancel key checks which are separate)
+        // Previously it would call getJobStatus 3 times per artist
+        expect(getJobStatusCalls).toBe(1);
+        
+        // Verify all status updates use the cached jobId
+        const setCalls = vi.mocked(redis.set).mock.calls.filter(call => 
+          (call[0] as string).includes('metadata-fix:job:')
+        );
+        for (const call of setCalls) {
+          const data = JSON.parse(call[1] as string) as JobStatus;
+          expect(data.jobId).toBe('cached-job-id');
+        }
       });
     });
   });

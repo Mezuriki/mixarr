@@ -268,6 +268,7 @@ export class MetadataFixService {
   /**
    * Start a batch fix operation for multiple artists.
    * Creates job state in Redis and returns immediately.
+   * Uses atomic SET NX to prevent race conditions.
    * 
    * @param userId - User ID for job isolation
    * @param artists - Array of artists to fix
@@ -277,15 +278,6 @@ export class MetadataFixService {
   async startBatchFix(userId: number, artists: ArtistToFix[]): Promise<JobInfo> {
     const jobKey = this.getJobKey(userId);
     
-    // Check for existing running job
-    const existingJob = await redis.get(jobKey);
-    if (existingJob) {
-      const parsed = JSON.parse(existingJob) as JobStatus;
-      if (parsed.status === 'running') {
-        throw new Error('Job already in progress');
-      }
-    }
-
     const jobId = `job-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const total = artists.length;
     // Estimate: 1 second per artist, convert to minutes
@@ -300,8 +292,21 @@ export class MetadataFixService {
       failed: 0,
     };
 
-    // Store initial state with 1 hour expiry
-    await redis.set(jobKey, JSON.stringify(initialStatus), 'EX', 3600);
+    // Atomic check-and-set: only set if key doesn't exist (NX)
+    // This prevents race conditions where two concurrent calls could both start jobs
+    const acquired = await redis.set(jobKey, JSON.stringify(initialStatus), 'EX', 3600, 'NX');
+    if (!acquired) {
+      // Key already exists - check if it's a running job or a stale completed one
+      const existingJob = await redis.get(jobKey);
+      if (existingJob) {
+        const parsed = JSON.parse(existingJob) as JobStatus;
+        if (parsed.status === 'running') {
+          throw new Error('Job already in progress');
+        }
+        // Job exists but is completed/cancelled - overwrite it
+        await redis.set(jobKey, JSON.stringify(initialStatus), 'EX', 3600);
+      }
+    }
 
     log.info(`Started batch fix job ${jobId} for user ${userId} with ${total} artists`);
 
@@ -369,35 +374,57 @@ export class MetadataFixService {
     const jobKey = this.getJobKey(userId);
     const cancelKey = this.getCancelKey(userId);
 
+    // Cache jobId locally to avoid repeated Redis calls
+    const initialJob = await this.getJobStatus(userId);
+    const jobId = initialJob?.jobId || 'unknown';
+
     let processed = 0;
     let fixed = 0;
     let failed = 0;
 
     log.info(`Executing batch fix for user ${userId}: ${artists.length} artists`);
 
+    // Helper to safely update Redis status
+    const updateStatus = async (status: JobStatus): Promise<void> => {
+      try {
+        await redis.set(jobKey, JSON.stringify(status), 'EX', 3600);
+      } catch (error) {
+        log.warn(`Failed to update job status in Redis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    };
+
     for (const artist of artists) {
-      // Check for cancellation
-      const cancelFlag = await redis.get(cancelKey);
-      if (cancelFlag === '1') {
-        log.info(`Batch fix cancelled at ${processed}/${artists.length} for user ${userId}`);
-        
-        const cancelledStatus: JobStatus = {
-          jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
-          status: 'cancelled',
-          total: artists.length,
-          processed,
-          fixed,
-          failed,
-        };
-        
-        await redis.set(jobKey, JSON.stringify(cancelledStatus), 'EX', 3600);
-        await redis.del(cancelKey);
-        return;
+      // Check for cancellation (with try/catch for Redis resiliency)
+      try {
+        const cancelFlag = await redis.get(cancelKey);
+        if (cancelFlag === '1') {
+          log.info(`Batch fix cancelled at ${processed}/${artists.length} for user ${userId}`);
+          
+          const cancelledStatus: JobStatus = {
+            jobId,
+            status: 'cancelled',
+            total: artists.length,
+            processed,
+            fixed,
+            failed,
+          };
+          
+          await updateStatus(cancelledStatus);
+          try {
+            await redis.del(cancelKey);
+          } catch {
+            // Ignore cleanup failure
+          }
+          return;
+        }
+      } catch (error) {
+        log.warn(`Failed to check cancel flag in Redis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Continue processing - don't let Redis issues stop the job
       }
 
       // Update current artist in status
       const currentStatus: JobStatus = {
-        jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
+        jobId,
         status: 'running',
         total: artists.length,
         processed,
@@ -405,7 +432,7 @@ export class MetadataFixService {
         failed,
         currentArtist: artist.artistName || `Artist ${artist.id}`,
       };
-      await redis.set(jobKey, JSON.stringify(currentStatus), 'EX', 3600);
+      await updateStatus(currentStatus);
 
       // Process artist
       try {
@@ -422,32 +449,40 @@ export class MetadataFixService {
 
       // Update progress
       const progressStatus: JobStatus = {
-        jobId: currentStatus.jobId,
+        jobId,
         status: 'running',
         total: artists.length,
         processed,
         fixed,
         failed,
       };
-      await redis.set(jobKey, JSON.stringify(progressStatus), 'EX', 3600);
+      await updateStatus(progressStatus);
 
       // Rate limit: wait 1 second between artists (unless this is the last one)
       if (processed < artists.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await this.sleep(1000);
       }
     }
 
     // Mark as completed
     const completedStatus: JobStatus = {
-      jobId: (await this.getJobStatus(userId))?.jobId || 'unknown',
+      jobId,
       status: 'completed',
       total: artists.length,
       processed,
       fixed,
       failed,
     };
-    await redis.set(jobKey, JSON.stringify(completedStatus), 'EX', 3600);
+    await updateStatus(completedStatus);
     
     log.info(`Batch fix completed for user ${userId}: ${fixed} fixed, ${failed} failed`);
+  }
+
+  /**
+   * Sleep for a given number of milliseconds.
+   * Extracted to allow mocking in tests.
+   */
+  protected async sleep(ms: number): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, ms));
   }
 }
