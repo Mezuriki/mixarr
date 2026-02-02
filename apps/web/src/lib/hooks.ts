@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from './api';
 
 // Query Keys - Centralized for cache invalidation
@@ -78,6 +78,28 @@ export interface FeedResponse {
   items: FeedItem[];
   stats: FeedStats;
   total: number;
+}
+
+// Feed Hooks
+
+export function useFeed(limit = 50) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.feed, limit],
+    queryFn: async ({ pageParam = 0 }) => {
+      const { data, error } = await api.get<FeedResponse>(
+        `/api/feed?limit=${limit}&offset=${pageParam}`
+      );
+      if (error) throw new Error(error);
+      return data!;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const totalFetched = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      return totalFetched < lastPage.total ? totalFetched : undefined;
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
 }
 
 // Dashboard Hooks
