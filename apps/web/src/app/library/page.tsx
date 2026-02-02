@@ -181,12 +181,16 @@ export default function LibraryPage() {
     
     setFixingArtistId(artistId);
     const { data, error } = await api.post<{
-      artistId: number;
-      artistName: string;
       success: boolean;
-      warmedMbid: boolean;
-      refreshTriggered: boolean;
-      error?: string;
+      artist: {
+        id: number;
+        name: string;
+        hasPoster: boolean;
+        hasOverview: boolean;
+        hasGenres: boolean;
+      };
+      fixed: string[];
+      stillMissing: string[];
     }>(`/api/search/lidarr/artists/${artistId}/fix`);
     
     if (error) {
@@ -196,16 +200,21 @@ export default function LibraryPage() {
         addToast({ 
           type: 'success', 
           title: 'Artist Fixed', 
-          message: `${data.artistName}: ${data.refreshTriggered ? 'Refresh triggered' : 'Cache warmed'}` 
+          message: `${data.artist.name}: Metadata refreshed successfully` 
         });
         // Refresh the artist list to show updated status
         fetchArtists();
       } else {
+        const missingInfo = data.stillMissing.length > 0 
+          ? `Still missing: ${data.stillMissing.join(', ')}`
+          : 'Metadata could not be retrieved';
         addToast({ 
-          type: 'error', 
-          title: 'Fix Failed', 
-          message: data.error || `Failed to fix ${data.artistName}` 
+          type: 'warning', 
+          title: 'Partial Fix', 
+          message: `${data.artist.name}: ${missingInfo}` 
         });
+        // Still refresh to show any partial updates
+        fetchArtists();
       }
     }
     setFixingArtistId(null);
