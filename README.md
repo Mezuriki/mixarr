@@ -114,6 +114,7 @@ See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions including K
 
 ## Features
 
+*   **🎯 No-Miss Lidarr Adds**: SkyHook cache warming ensures artist adds succeed the first time. No more 503 errors or missing metadata.
 *   **Review Queue**: Discovered artists sit in a queue for your approval. No more junk in your library.
 *   **Automated Subscriptions**: Sync standard playlists (Top 50), dynamic lists (Discover Weekly), or charts from Last.fm.
 *   **Multi-Service Support**: 
@@ -123,7 +124,7 @@ See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions including K
     *   **MusicBrainz & ListenBrainz**: Metadata and listening habits.
     *   **Discogs & Deezer**: Libraries, Playlists, and User Collections.
 *   **AI Recommendations**: OpenAI, Anthropic, or Ollama integration for "smart" suggestions based on your existing library.
-*   **Library Health**: Tools to analyze your Lidarr library for issues.
+*   **Library Health**: Tools to analyze and repair your Lidarr library. Fix missing metadata with one click.
 
 ---
 

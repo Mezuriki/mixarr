@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v1.3.0] - Unreleased
 
+### SkyHook Cache Warmer (No-Miss Lidarr Adds)
+- **New Feature**: Pre-flight cache warming eliminates failed artist adds
+- Automatically warms SkyHook (api.lidarr.audio) cache before adding artists to Lidarr
+- Retry with exponential backoff (1s, 2s, 4s, 8s) until cache is populated
+- Prevents 503 errors and empty artist data that plagued Lidarr adds
+- New `SkyHookCacheWarmer` service with `warmArtist()` and `warmAlbum()` methods
+- New `LidarrService.addArtistWithCacheWarm()` wraps standard add with cache warming
+
+### Library Health: Fix Metadata Tool
+- **New Feature**: "Fix" button on Library Health page to repair missing metadata
+- Single-artist fix: Click wrench icon to warm cache + refresh artist
+- Batch "Fix All": Process all artists with issues (1/second rate limit)
+- Progress bar with real-time status, artist count, and cancel button
+- Redis-backed job state persists across page refreshes
+- Reports what was fixed vs what's still missing (upstream data limitations)
+
 ### UI/UX Polish
 - Add skeleton loading states for dashboard and data tables
 - Group sidebar navigation into logical sections (Home, Library, Discover, Settings)
