@@ -2,22 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/toast';
+import type { FeedItem, FeedStats } from '@/lib/hooks';
 
-export interface FeedItem {
-  id: string;
-  artistName: string;
-  artistMbid: string | null;
-  imageUrl: string | null;
-  score: number;
-  subscriptionCount: number;
-  sourceCount: number;
-  status?: 'pending' | 'added' | 'dismissed';
-}
-
-export interface FeedStats {
-  pending: number;
-  addedToday: number;
-}
+// Re-export types for consumers
+export type { FeedItem, FeedStats } from '@/lib/hooks';
 
 export interface UseFeedResult {
   items: FeedItem[];

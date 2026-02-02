@@ -35,8 +35,28 @@ class MockIntersectionObserver {
 
 describe('FeedGrid', () => {
   const mockItems = [
-    { id: 'feed-1', artistName: 'Artist 1', imageUrl: null },
-    { id: 'feed-2', artistName: 'Artist 2', imageUrl: null },
+    {
+      id: 'feed-1',
+      artistName: 'Artist 1',
+      artistMbid: 'mbid-1',
+      imageUrl: null,
+      score: 100,
+      subscriptionCount: 2,
+      sourceCount: 1,
+      sources: ['spotify'],
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: 'feed-2',
+      artistName: 'Artist 2',
+      artistMbid: 'mbid-2',
+      imageUrl: null,
+      score: 80,
+      subscriptionCount: 1,
+      sourceCount: 1,
+      sources: ['lastfm'],
+      createdAt: '2026-01-01T00:00:00Z',
+    },
   ];
 
   beforeEach(() => {

@@ -3,13 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FeedCard } from './FeedCard';
-
-export interface FeedItem {
-  id: string;
-  artistName: string;
-  imageUrl: string | null;
-  status?: 'pending' | 'added' | 'dismissed';
-}
+import type { FeedItem } from '@/lib/hooks';
 
 export interface FeedGridProps {
   items: FeedItem[];
