@@ -9,6 +9,8 @@ import { multiSourceSearch, resolveMbid, SearchSource } from '../services/multi-
 import { MetadataEnrichmentService } from '../services/metadata-enrichment.js';
 import { notificationService } from '../services/notifications.js';
 import { aiService } from '../services/ai.js';
+import { MetadataFixService } from '../services/metadata-fix.js';
+import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
 import { LidarrConnectionConfig } from '../types/connections.js';
@@ -19,6 +21,9 @@ import {
 } from '../lib/connection-resolver.js';
 
 const log = createLogger('Search');
+
+// Singleton for metadata fix operations
+const metadataFixService = new MetadataFixService(skyhookWarmer);
 
 export const searchRouter = Router();
 
@@ -691,6 +696,46 @@ searchRouter.post('/lidarr/artists/:id/refresh', async (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to refresh artist' 
+    });
+  }
+});
+
+// Fix missing metadata for a specific artist
+searchRouter.post('/lidarr/artists/:id/fix', async (req, res) => {
+  try {
+    const artistId = parseIntParam(req.params.id);
+    if (artistId === null || artistId <= 0) {
+      res.status(400).json({ error: 'Invalid artist ID' });
+      return;
+    }
+
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    // Fetch artist from Lidarr to get MBID
+    const artist = await lidarr.getArtist(artistId);
+    if (!artist) {
+      res.status(404).json({ error: 'Artist not found' });
+      return;
+    }
+
+    // Check artist has foreignArtistId (MBID)
+    if (!artist.foreignArtistId) {
+      res.status(400).json({ error: 'Artist has no MusicBrainz ID' });
+      return;
+    }
+
+    // Call metadataFixService to fix the artist
+    const result = await metadataFixService.fixArtist(lidarr, artistId, artist.foreignArtistId);
+
+    res.json(result);
+  } catch (error) {
+    log.error('Failed to fix artist metadata:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Fix operation failed' 
     });
   }
 });
