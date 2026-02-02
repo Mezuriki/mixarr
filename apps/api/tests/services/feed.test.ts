@@ -1,5 +1,30 @@
-import { describe, it, expect } from 'vitest';
-import { FeedService } from '../../src/services/FeedService';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FeedService } from '../../src/services/FeedService.js';
+
+// Mock prisma before importing
+vi.mock('../../src/lib/db.js', () => ({
+  default: {
+    subscription: {
+      findMany: vi.fn(),
+    },
+    subscriptionResult: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+    },
+  },
+}));
+
+import prisma from '../../src/lib/db.js';
+
+const mockPrisma = prisma as unknown as {
+  subscription: {
+    findMany: ReturnType<typeof vi.fn>;
+  };
+  subscriptionResult: {
+    findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+  };
+};
 
 /**
  * FeedService Test Suite
@@ -15,6 +40,7 @@ import { FeedService } from '../../src/services/FeedService';
  * 1. Edge cases (empty, single)
  * 2. Aggregation logic (MBID dedup, name dedup)
  * 3. Scoring (future task)
+ * 4. Database integration (getFeedForUser)
  */
 
 describe('FeedService', () => {
@@ -276,5 +302,204 @@ describe('FeedService', () => {
       expect(feed[0].artistName).toBe('HighScore');
       expect(feed[1].artistName).toBe('LowScore');
     });
+  });
+
+  /**
+   * Task 3: getFeedForUser - Database Integration Tests
+   *
+   * Edge Cases:
+   * - User with no subscriptions -> empty feed
+   * - User with no pending results -> empty feed
+   * - User with pending results -> returns them
+   *
+   * Security:
+   * - User can only see own subscriptions' results (userId filter)
+   *
+   * Note: FeedItemAction table doesn't exist yet - exclusion tests skipped
+   */
+  describe('getFeedForUser', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('returns empty feed when user has no subscriptions', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith({
+        where: { userId: 123 },
+        select: { id: true },
+      });
+    });
+
+    it('returns empty feed when no pending results exist', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([]);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('returns only pending results for specified user', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }]);
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([
+        {
+          id: 1,
+          name: 'Radiohead',
+          artistName: null,
+          mbid: 'radiohead-mbid',
+          subscriptionId: 1,
+          imageUrl: 'http://example.com/img.jpg',
+          sources: '["lastfm"]',
+          createdAt: new Date('2026-01-30'),
+          status: 'pending',
+          itemType: 'artist',
+        },
+      ]);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].artistName).toBe('Radiohead');
+      expect(result.items[0].artistMbid).toBe('radiohead-mbid');
+      expect(mockPrisma.subscriptionResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            subscriptionId: { in: [1] },
+            itemType: 'artist',
+            status: { in: ['pending', 'queued'] },
+          },
+        })
+      );
+    });
+
+    it('maps Prisma result to SubscriptionResultInput format correctly', async () => {
+      const createdAt = new Date('2026-01-30');
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 5 }]);
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([
+        {
+          id: 42,
+          name: 'The Beatles',
+          artistName: null,
+          mbid: 'beatles-mbid',
+          subscriptionId: 5,
+          imageUrl: 'http://example.com/beatles.jpg',
+          sources: '["spotify", "lastfm"]',
+          createdAt,
+          status: 'pending',
+          itemType: 'artist',
+        },
+      ]);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.items).toHaveLength(1);
+      const item = result.items[0];
+      expect(item.linkedResultIds).toEqual([42]);
+      expect(item.artistName).toBe('The Beatles');
+      expect(item.artistMbid).toBe('beatles-mbid');
+      expect(item.imageUrl).toBe('http://example.com/beatles.jpg');
+      expect(item.sourceTypes).toContain('spotify');
+      expect(item.sourceTypes).toContain('lastfm');
+      expect(item.earliestFound).toEqual(createdAt);
+    });
+
+    it('aggregates multiple results from same artist across subscriptions', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([
+        {
+          id: 1,
+          name: 'Radiohead',
+          artistName: null,
+          mbid: 'radiohead-mbid',
+          subscriptionId: 1,
+          imageUrl: 'http://example.com/img1.jpg',
+          sources: '["lastfm"]',
+          createdAt: new Date('2026-01-28'),
+          status: 'pending',
+          itemType: 'artist',
+        },
+        {
+          id: 2,
+          name: 'Radiohead',
+          artistName: null,
+          mbid: 'radiohead-mbid',
+          subscriptionId: 2,
+          imageUrl: 'http://example.com/img2.jpg',
+          sources: '["spotify"]',
+          createdAt: new Date('2026-01-30'),
+          status: 'pending',
+          itemType: 'artist',
+        },
+      ]);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].subscriptionCount).toBe(2);
+      expect(result.items[0].linkedResultIds).toEqual([1, 2]);
+      expect(result.items[0].sourceTypes).toContain('lastfm');
+      expect(result.items[0].sourceTypes).toContain('spotify');
+    });
+
+    it('respects pagination limit and offset', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }]);
+      // Return 5 distinct artists
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([
+        { id: 1, name: 'Artist1', artistName: null, mbid: 'mbid-1', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+        { id: 2, name: 'Artist2', artistName: null, mbid: 'mbid-2', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+        { id: 3, name: 'Artist3', artistName: null, mbid: 'mbid-3', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+        { id: 4, name: 'Artist4', artistName: null, mbid: 'mbid-4', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+        { id: 5, name: 'Artist5', artistName: null, mbid: 'mbid-5', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+      ]);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+
+      const service = new FeedService();
+      
+      const page1 = await service.getFeedForUser(123, { limit: 2, offset: 0 });
+      expect(page1.items).toHaveLength(2);
+      expect(page1.total).toBe(5);
+
+      const page2 = await service.getFeedForUser(123, { limit: 2, offset: 2 });
+      expect(page2.items).toHaveLength(2);
+    });
+
+    it('returns stats with pending count and added today', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([{ id: 1 }]);
+      mockPrisma.subscriptionResult.findMany.mockResolvedValue([
+        { id: 1, name: 'Artist1', artistName: null, mbid: 'mbid-1', subscriptionId: 1, imageUrl: null, sources: '["lastfm"]', createdAt: new Date(), status: 'pending', itemType: 'artist' },
+      ]);
+      // First count call is for addedToday, second is for pending
+      mockPrisma.subscriptionResult.count.mockResolvedValueOnce(3); // addedToday
+      mockPrisma.subscriptionResult.count.mockResolvedValueOnce(5); // pending
+
+      const service = new FeedService();
+      const result = await service.getFeedForUser(123, { limit: 50, offset: 0 });
+
+      expect(result.stats).toEqual({
+        pending: 5,
+        addedToday: 3,
+      });
+    });
+
+    // Note: Tests for excluding already-approved/dismissed items are skipped
+    // because the FeedItemAction table doesn't exist yet.
+    // TODO: Add these tests after schema migration:
+    // - it('excludes results user already approved')
+    // - it('excludes results user already dismissed')
   });
 });

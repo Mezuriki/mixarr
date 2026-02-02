@@ -8,6 +8,9 @@
  * Normalization: lowercase, strip "The " prefix, remove non-alphanumeric chars
  */
 
+import prisma from '../lib/db.js';
+import type { PrismaClient } from '@prisma/client';
+
 export interface AggregatedFeedItem {
   id: string;
   artistName: string;
@@ -27,7 +30,7 @@ export interface SubscriptionResultInput {
   artistMbid: string | null;
   subscriptionId: number;
   imageUrl?: string | null;
-  sources: string[] | string | null;
+  sources: string[] | string | null | unknown;
   createdAt: Date;
   status: string;
 }
@@ -39,7 +42,28 @@ export interface ScoreInput {
   earliestFound: Date;
 }
 
+export interface FeedResponse {
+  items: AggregatedFeedItem[];
+  total: number;
+  stats: {
+    pending: number;
+    addedToday: number;
+  };
+}
+
+export interface FeedOptions {
+  limit: number;
+  offset: number;
+  includeActedOn?: boolean;
+}
+
 export class FeedService {
+  private prismaClient: PrismaClient;
+
+  constructor(prismaInstance?: PrismaClient) {
+    this.prismaClient = (prismaInstance || prisma) as PrismaClient;
+  }
+
   /**
    * Normalize artist name for deduplication.
    * Lowercase, remove "The " prefix, strip non-alphanumeric.
@@ -210,5 +234,99 @@ export class FeedService {
 
     // Sort by score descending
     return aggregated.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Get feed for a specific user.
+   * Queries SubscriptionResult records where status='pending' or 'queued',
+   * joins with Subscription to filter by userId,
+   * aggregates and scores results, then paginates.
+   */
+  async getFeedForUser(userId: number, options: FeedOptions): Promise<FeedResponse> {
+    const { limit, offset, includeActedOn = false } = options;
+
+    // Get user's subscription IDs
+    const subscriptions = await this.prismaClient.subscription.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (subscriptions.length === 0) {
+      return { items: [], total: 0, stats: { pending: 0, addedToday: 0 } };
+    }
+
+    const subscriptionIds = subscriptions.map((s) => s.id);
+
+    // Filter statuses
+    const statusFilter = includeActedOn
+      ? ['pending', 'queued', 'added', 'rejected']
+      : ['pending', 'queued'];
+
+    // Fetch all matching results (artist type only for MVP)
+    const results = await this.prismaClient.subscriptionResult.findMany({
+      where: {
+        subscriptionId: { in: subscriptionIds },
+        itemType: 'artist',
+        status: { in: statusFilter },
+      },
+      select: {
+        id: true,
+        name: true,
+        artistName: true,
+        mbid: true,
+        subscriptionId: true,
+        imageUrl: true,
+        sources: true,
+        createdAt: true,
+        status: true,
+        itemType: true,
+      },
+    });
+
+    // Map Prisma result to SubscriptionResultInput format
+    const mappedResults: SubscriptionResultInput[] = results.map((r) => ({
+      id: r.id,
+      // For artists, 'name' is the artist name; 'artistName' is used for albums
+      artistName: r.name,
+      artistMbid: r.mbid,
+      subscriptionId: r.subscriptionId,
+      imageUrl: r.imageUrl,
+      sources: r.sources,
+      createdAt: r.createdAt,
+      status: r.status,
+    }));
+
+    // Aggregate and score
+    const aggregated = this.aggregateAndScore(mappedResults);
+
+    const total = aggregated.length;
+
+    // Paginate
+    const paginated = aggregated.slice(offset, offset + limit);
+
+    // Calculate stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const addedToday = await this.prismaClient.subscriptionResult.count({
+      where: {
+        subscriptionId: { in: subscriptionIds },
+        status: 'added',
+        createdAt: { gte: today },
+      },
+    });
+
+    const pending = await this.prismaClient.subscriptionResult.count({
+      where: {
+        subscriptionId: { in: subscriptionIds },
+        status: { in: ['pending', 'queued'] },
+      },
+    });
+
+    return {
+      items: paginated,
+      total,
+      stats: { pending, addedToday },
+    };
   }
 }
