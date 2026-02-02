@@ -651,14 +651,16 @@ describe('FeedService', () => {
    */
   describe('approve with Lidarr integration', () => {
     it('calls Lidarr to add artist after updating status', async () => {
-      const addArtist = vi.fn().mockResolvedValue({ id: 123 });
-      const mockLidarrService = { addArtist };
+      const addArtistWithCacheWarm = vi.fn().mockResolvedValue({ artist: { id: 123 } });
+      const mockLidarrService = { addArtistWithCacheWarm };
       const mockLidarrConfig = {
         url: 'http://localhost:8686',
         apiKey: 'test-key',
         qualityProfileId: 1,
         metadataProfileId: 1,
         rootFolderPath: '/music',
+        monitorOption: 'all',
+        monitorNewItems: 'all',
       };
       const mockPrismaClient = {
         subscriptionResult: {
@@ -678,19 +680,22 @@ describe('FeedService', () => {
       );
       await service.approve('feed-1', 1);
 
-      expect(addArtist).toHaveBeenCalledWith(
+      expect(addArtistWithCacheWarm).toHaveBeenCalledWith(
         'abc-123',
         1,  // qualityProfileId
         1,  // metadataProfileId
         '/music',  // rootFolderPath
         true,  // monitored
-        true   // searchForMissingAlbums
+        true,  // searchForMissingAlbums
+        false, // waitForRefresh
+        'all', // monitorOption
+        'all'  // monitorNewItems
       );
     });
 
     it('still succeeds if Lidarr call fails (logs warning)', async () => {
-      const addArtist = vi.fn().mockRejectedValue(new Error('Lidarr unavailable'));
-      const mockLidarrService = { addArtist };
+      const addArtistWithCacheWarm = vi.fn().mockRejectedValue(new Error('Lidarr unavailable'));
+      const mockLidarrService = { addArtistWithCacheWarm };
       const mockLidarrConfig = {
         url: 'http://localhost:8686',
         apiKey: 'test-key',
@@ -717,12 +722,12 @@ describe('FeedService', () => {
 
       // Should not throw - Lidarr failure is non-blocking
       await expect(service.approve('feed-1', 1)).resolves.toEqual({ artistName: 'Test Artist' });
-      expect(addArtist).toHaveBeenCalled();
+      expect(addArtistWithCacheWarm).toHaveBeenCalled();
     });
 
     it('skips Lidarr if no MBID available', async () => {
-      const addArtist = vi.fn();
-      const mockLidarrService = { addArtist };
+      const addArtistWithCacheWarm = vi.fn();
+      const mockLidarrService = { addArtistWithCacheWarm };
       const mockLidarrConfig = {
         url: 'http://localhost:8686',
         apiKey: 'test-key',
@@ -748,7 +753,7 @@ describe('FeedService', () => {
       );
       await service.approve('feed-1', 1);
 
-      expect(addArtist).not.toHaveBeenCalled();
+      expect(addArtistWithCacheWarm).not.toHaveBeenCalled();
     });
 
     it('skips Lidarr if no LidarrService provided', async () => {
@@ -771,8 +776,8 @@ describe('FeedService', () => {
     });
 
     it('skips Lidarr if config is incomplete (missing profile IDs)', async () => {
-      const addArtist = vi.fn();
-      const mockLidarrService = { addArtist };
+      const addArtistWithCacheWarm = vi.fn();
+      const mockLidarrService = { addArtistWithCacheWarm };
       // Config missing qualityProfileId
       const incompleteConfig = {
         url: 'http://localhost:8686',
@@ -800,7 +805,7 @@ describe('FeedService', () => {
       await service.approve('feed-1', 1);
 
       // Should not call Lidarr due to incomplete config
-      expect(addArtist).not.toHaveBeenCalled();
+      expect(addArtistWithCacheWarm).not.toHaveBeenCalled();
     });
   });
 

@@ -466,13 +466,17 @@ export class FeedService {
       this.lidarrConfig?.rootFolderPath
     ) {
       try {
-        await this.lidarrService.addArtist(
+        // Use addArtistWithCacheWarm like all other add operations in the codebase
+        await this.lidarrService.addArtistWithCacheWarm(
           artistMbid,
           this.lidarrConfig.qualityProfileId,
           this.lidarrConfig.metadataProfileId,
           this.lidarrConfig.rootFolderPath,
           true,  // monitored
-          true   // searchForMissingAlbums
+          true,  // searchForMissingAlbums
+          false, // waitForRefresh (deprecated)
+          this.lidarrConfig.monitorOption || 'all',
+          this.lidarrConfig.monitorNewItems || 'all'
         );
         log.info(`Added artist to Lidarr: ${artistName} (${artistMbid})`);
       } catch (error) {
