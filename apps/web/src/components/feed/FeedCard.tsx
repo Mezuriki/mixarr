@@ -27,6 +27,7 @@ export function FeedCard({
   onDismiss,
 }: FeedCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isTouched, setIsTouched] = useState(false);
 
   const showOverlay = status === 'added' || status === 'dismissed';
   const overlayText = status === 'added' ? 'Added' : status === 'dismissed' ? 'Dismissed' : '';
@@ -39,6 +40,8 @@ export function FeedCard({
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsTouched(true)}
+      onTouchEnd={() => setTimeout(() => setIsTouched(false), 3000)}
     >
       {/* Image */}
       <div className="aspect-square relative">
@@ -71,7 +74,7 @@ export function FeedCard({
           <div
             className={cn(
               'absolute inset-0 bg-black/40 flex items-center justify-center gap-4 transition-opacity',
-              isHovered || isLoading ? 'opacity-100' : 'opacity-0'
+              isHovered || isTouched || isLoading ? 'opacity-100' : 'opacity-0'
             )}
           >
             <button
