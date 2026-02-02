@@ -453,22 +453,30 @@ export class LidarrService {
     monitorOption: string = 'all',
     monitorNewItems: string = 'all'
   ): Promise<{ artist: LidarrArtist; refreshCommand?: LidarrCommand; cacheWarmed?: boolean; wasAlreadyCached?: boolean }> {
-    // Warm SkyHook cache before adding
+    // Check if artist exists - only need to warm cache if adding new artist
+    const existingArtist = await this.getArtistByMbid(foreignArtistId);
+    
     let cacheWarmed = false;
     let wasAlreadyCached: boolean | undefined;
-    try {
-      log.info(`Warming SkyHook cache for artist ${foreignArtistId}...`);
-      const warmResult = await skyhookWarmer.warmArtist(foreignArtistId);
-      cacheWarmed = warmResult.success;
-      wasAlreadyCached = warmResult.cached;
-      if (warmResult.success) {
-        log.info(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${foreignArtistId} (${warmResult.attempts} attempts)`);
-      } else {
-        log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${warmResult.error}`);
+    
+    if (!existingArtist) {
+      // Warm SkyHook cache before adding
+      try {
+        log.info(`Warming SkyHook cache for artist ${foreignArtistId}...`);
+        const warmResult = await skyhookWarmer.warmArtist(foreignArtistId);
+        cacheWarmed = warmResult.success;
+        wasAlreadyCached = warmResult.cached;
+        if (warmResult.success) {
+          log.info(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${foreignArtistId} (${warmResult.attempts} attempts)`);
+        } else {
+          log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${warmResult.error}`);
+        }
+      } catch (error) {
+        // Log but don't fail - cache may already be warm or issue may be transient
+        log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${error instanceof Error ? error.message : error}`);
       }
-    } catch (error) {
-      // Log but don't fail - cache may already be warm or issue may be transient
-      log.warn(`Failed to warm SkyHook cache for artist ${foreignArtistId}: ${error instanceof Error ? error.message : error}`);
+    } else {
+      log.debug(`Artist ${foreignArtistId} already exists in Lidarr, skipping cache warm`);
     }
 
     // Proceed with add using existing method
@@ -585,6 +593,56 @@ export class LidarrService {
       album: updatedAlbum,
       isNewArtist,
     };
+  }
+
+  /**
+   * Add an album to Lidarr with SkyHook cache warming.
+   * 
+   * Warms the SkyHook cache for the artist (and album if new artist) before
+   * adding to ensure Lidarr's metadata lookup succeeds. Cache warming is
+   * critical for reliable artist/album adds.
+   */
+  async addAlbumWithCacheWarm(
+    artistMbid: string,
+    albumMbid: string,
+    qualityProfileId: number,
+    metadataProfileId: number,
+    rootFolderPath: string
+  ): Promise<{ artist: LidarrArtist; album: LidarrAlbum; isNewArtist: boolean; cacheWarmed?: boolean; wasAlreadyCached?: boolean }> {
+    // Check if artist exists - only need to warm cache if adding new artist
+    const existingArtist = await this.getArtistByMbid(artistMbid);
+    
+    let cacheWarmed = false;
+    let wasAlreadyCached: boolean | undefined;
+    
+    if (!existingArtist) {
+      // Warm SkyHook cache for artist before adding
+      try {
+        log.info(`Warming SkyHook cache for artist ${artistMbid} (album add)...`);
+        const warmResult = await skyhookWarmer.warmArtist(artistMbid);
+        cacheWarmed = warmResult.success;
+        wasAlreadyCached = warmResult.cached;
+        if (warmResult.success) {
+          log.info(`SkyHook cache ${warmResult.cached ? 'already warm' : 'warmed'} for artist ${artistMbid} (${warmResult.attempts} attempts)`);
+        } else {
+          log.warn(`Failed to warm SkyHook cache for artist ${artistMbid}: ${warmResult.error}`);
+        }
+      } catch (error) {
+        // Log but don't fail - cache may already be warm or issue may be transient
+        log.warn(`Failed to warm SkyHook cache for artist ${artistMbid}: ${error instanceof Error ? error.message : error}`);
+      }
+    }
+
+    // Proceed with album add using existing method
+    const result = await this.addAlbum(
+      artistMbid,
+      albumMbid,
+      qualityProfileId,
+      metadataProfileId,
+      rootFolderPath
+    );
+
+    return { ...result, cacheWarmed, wasAlreadyCached };
   }
 
   async getQualityProfiles(): Promise<Array<{ id: number; name: string }>> {

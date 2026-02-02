@@ -343,8 +343,8 @@ importsRouter.put('/review/:id', async (req, res) => {
     const isAlbumApproval = item.itemType === 'album' && item.albumMbid;
     
     if (isAlbumApproval) {
-      // Album approval - add specific album (and artist if needed)
-      await lidarr.addAlbum(
+      // Album approval - warm cache, add specific album (and artist if needed)
+      await lidarr.addAlbumWithCacheWarm(
         foreignArtistId,
         item.albumMbid!,
         qualityProfiles[0].id,
@@ -577,7 +577,7 @@ importsRouter.post('/review/bulk', async (req, res) => {
             continue;
           }
           
-          await lidarr.addAlbum(
+          await lidarr.addAlbumWithCacheWarm(
             foreignArtistId,
             albumMbid,
             qualityProfiles[0].id,

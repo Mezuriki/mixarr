@@ -233,12 +233,12 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
         lidarr.getRootFolders(),
       ]);
 
-      // Check if this is an album item - use addAlbum for targeted download
+      // Check if this is an album item - use addAlbumWithCacheWarm for targeted download
       const isAlbumItem = result.itemType === 'album' && result.albumMbid;
       
       if (isAlbumItem) {
-        // Album approval - add artist with monitor:none, then monitor only this album
-        await lidarr.addAlbum(
+        // Album approval - warm cache, add artist with monitor:none, then monitor only this album
+        await lidarr.addAlbumWithCacheWarm(
           mbid,
           result.albumMbid!,
           qualityProfiles[0].id,

@@ -458,31 +458,51 @@ export class FeedService {
     });
 
     // Add to Lidarr (non-blocking) - happens after transaction completes
-    if (
-      artistMbid &&
-      this.lidarrService &&
-      this.lidarrConfig?.qualityProfileId &&
-      this.lidarrConfig?.metadataProfileId &&
-      this.lidarrConfig?.rootFolderPath
-    ) {
+    if (artistMbid && this.lidarrService) {
       try {
-        // Use addArtistWithCacheWarm like all other add operations in the codebase
-        await this.lidarrService.addArtistWithCacheWarm(
-          artistMbid,
-          this.lidarrConfig.qualityProfileId,
-          this.lidarrConfig.metadataProfileId,
-          this.lidarrConfig.rootFolderPath,
-          true,  // monitored
-          true,  // searchForMissingAlbums
-          false, // waitForRefresh (deprecated)
-          this.lidarrConfig.monitorOption || 'all',
-          this.lidarrConfig.monitorNewItems || 'all'
-        );
-        log.info(`Added artist to Lidarr: ${artistName} (${artistMbid})`);
+        // Get config values, fetching defaults from Lidarr if not configured
+        let qpId = this.lidarrConfig?.qualityProfileId;
+        let mpId = this.lidarrConfig?.metadataProfileId;
+        let rfPath = this.lidarrConfig?.rootFolderPath;
+
+        // Fetch defaults for any missing config (same pattern as search.ts)
+        if (!qpId) {
+          const profiles = await this.lidarrService.getQualityProfiles();
+          qpId = profiles[0]?.id;
+        }
+        if (!mpId) {
+          const profiles = await this.lidarrService.getMetadataProfiles();
+          mpId = profiles[0]?.id;
+        }
+        if (!rfPath) {
+          const folders = await this.lidarrService.getRootFolders();
+          rfPath = folders[0]?.path;
+        }
+
+        if (!qpId || !mpId || !rfPath) {
+          log.warn(`Cannot add artist to Lidarr - missing configuration: qualityProfileId=${qpId || 'missing'}, metadataProfileId=${mpId || 'missing'}, rootFolderPath=${rfPath || 'missing'}`);
+        } else {
+          log.info(`Adding artist to Lidarr: ${artistName} (${artistMbid}) with config: qualityProfileId=${qpId}, metadataProfileId=${mpId}, rootFolderPath=${rfPath}`);
+          // Use addArtistWithCacheWarm like all other add operations in the codebase
+          await this.lidarrService.addArtistWithCacheWarm(
+            artistMbid,
+            qpId,
+            mpId,
+            rfPath,
+            true,  // monitored
+            true,  // searchForMissingAlbums
+            false, // waitForRefresh (deprecated)
+            this.lidarrConfig?.monitorOption || 'all',
+            this.lidarrConfig?.monitorNewItems || 'all'
+          );
+          log.info(`Successfully added artist to Lidarr: ${artistName} (${artistMbid})`);
+        }
       } catch (error) {
         // Non-blocking - Lidarr failure shouldn't fail the approve action
         log.warn(`Failed to add artist to Lidarr: ${artistMbid}`, error);
       }
+    } else if (!artistMbid) {
+      log.debug(`Skipping Lidarr add for ${artistName}: no MBID available`);
     }
 
     return { artistName };
