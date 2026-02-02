@@ -48,7 +48,37 @@ export const queryKeys = {
   // Settings
   settings: ['settings'] as const,
   aiSettings: ['settings', 'ai'] as const,
+  
+  // Feed
+  feed: ['feed'] as const,
+  feedItems: (limit: number, offset: number) => ['feed', 'items', limit, offset] as const,
 };
+
+// Feed Types
+
+export interface FeedItem {
+  id: string;
+  artistName: string;
+  artistMbid: string | null;
+  imageUrl: string | null;
+  score: number;
+  subscriptionCount: number;
+  sourceCount: number;
+  sources: string[];
+  createdAt: string;
+  status?: 'pending' | 'added' | 'dismissed';
+}
+
+export interface FeedStats {
+  pending: number;
+  addedToday: number;
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+  stats: FeedStats;
+  total: number;
+}
 
 // Dashboard Hooks
 
