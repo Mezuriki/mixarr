@@ -210,6 +210,34 @@ Table Row:        Artist Name | Albums | Status | Issues | Actions
 
 Conservative approach: 1 artist per second. This respects MusicBrainz rate limits and ensures reliable operation. For 1000 artists, expect ~17 minutes.
 
+## Known Limitations
+
+### What This Fixes ✅
+- **Cold cache (503 errors)**: When SkyHook hasn't fetched an artist yet, warming triggers the fetch and metadata populates successfully.
+- **Recent adds during MusicBrainz outages**: Artists added during downtime that got 503s on initial fetch.
+
+### What This Cannot Fix ❌
+- **Stale cached incomplete data**: If SkyHook already has a cached entry with `overview: null` or empty `images`, our cache warming request returns 200 immediately (cache hit) and doesn't trigger a re-fetch from Wikipedia/Fanart.tv. SkyHook caches responses for 30 days.
+- **Genuinely missing upstream data**: If Wikipedia has no bio or Fanart.tv has no images for an artist, no amount of warming will create that data.
+- **MusicBrainz doesn't have the artist**: 404 responses indicate the artist doesn't exist in MusicBrainz.
+
+### Technical Details
+SkyHook (api.lidarr.audio) is a caching proxy that aggregates data from:
+- **MusicBrainz**: Artist names, albums, release dates
+- **Wikipedia**: Artist biographies (via Wikidata links)
+- **Fanart.tv**: Artist images (posters, logos, banners)
+
+Once SkyHook caches an artist (returns HTTP 200), that cache entry is served for up to 30 days (`max-age=2592000`). If the initial cache was incomplete, subsequent requests return the same incomplete data.
+
+### User Expectations
+The "Fix" feature works best for:
+- Artists added in the last few weeks during MusicBrainz issues
+- Artists showing 503 errors in Lidarr logs
+
+It may not help for:
+- Artists with long-standing incomplete metadata
+- Lesser-known artists without Wikipedia bios or Fanart.tv images
+
 ## Files to Create/Modify
 
 ### New Files

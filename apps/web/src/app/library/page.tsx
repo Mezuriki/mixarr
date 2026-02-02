@@ -210,12 +210,13 @@ export default function LibraryPage() {
         // Refresh the artist list to show updated status
         fetchArtists();
       } else {
+        // Metadata still missing - likely stale SkyHook cache or missing upstream data
         const missingInfo = data.stillMissing.length > 0 
-          ? `Still missing: ${data.stillMissing.join(', ')}`
-          : 'Metadata could not be retrieved';
+          ? `Missing: ${data.stillMissing.join(', ')} (may be unavailable upstream)`
+          : 'Metadata unavailable in upstream sources';
         addToast({ 
-          type: 'warning', 
-          title: 'Partial Fix', 
+          type: 'info', 
+          title: 'No Changes', 
           message: `${data.artist.name}: ${missingInfo}` 
         });
         // Still refresh to show any partial updates
