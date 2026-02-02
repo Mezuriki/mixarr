@@ -381,7 +381,7 @@ export class FeedService {
       where: {
         subscriptionId: { in: subscriptionIds },
         status: 'added',
-        createdAt: { gte: today },
+        updatedAt: { gte: today },
       },
     });
 
