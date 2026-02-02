@@ -11,7 +11,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { FeedService, NotFoundError, ForbiddenError } from '../services/FeedService.js';
 import { createLogger } from '../lib/logger.js';
-import { getLidarrServiceWithConfig } from '../lib/connection-resolver.js';
+import { getLidarrServiceWithConfig, getLastfmService } from '../lib/connection-resolver.js';
 
 const logger = createLogger('FeedRoute');
 
@@ -65,7 +65,10 @@ export function feedRouter(feedService?: FeedService): Router {
       const { limit, offset } = parsed.data;
       const userId = req.user!.id;
 
-      const feed = await service.getFeedForUser(userId, { limit, offset });
+      // Get user's Last.fm service for on-demand metadata enrichment
+      const lastfmService = await getLastfmService(userId);
+
+      const feed = await service.getFeedForUser(userId, { limit, offset, lastfmService });
       res.json(feed);
     } catch (error) {
       logger.error('Feed fetch error', { error });

@@ -441,4 +441,51 @@ See [docs/plans/2026-01-18-separation-of-concerns-refactor.md](docs/plans/2026-0
 
 <!-- Add new issues below this line -->
 
+### TD-009: FeedCard formatListeners Missing Negative Number Guard
 
+**Priority:** Low  
+**Created:** February 2, 2026  
+**Status:** Backlog
+
+**Problem:**
+The `formatListeners` helper in `FeedCard.tsx` doesn't guard against negative numbers. While listener counts from the API should always be positive, a defensive check would prevent unexpected display of "-1K listeners" if bad data reached the frontend.
+
+**Location:** `apps/web/src/components/feed/FeedCard.tsx:10-18`
+
+**Solution:**
+Add guard at start of function:
+```typescript
+if (count < 0) return '0';
+```
+
+**Estimated Effort:** 5 minutes
+
+---
+
+### TD-010: FeedCard Tag Key Uses Value Instead of Index
+
+**Priority:** Low  
+**Created:** February 2, 2026  
+**Status:** Backlog
+
+**Problem:**
+In `FeedCard.tsx`, tag rendering uses `key={tag}` which could cause React duplicate key warnings if the backend ever sends duplicate tags (currently prevented by Set deduplication in FeedService).
+
+**Location:** `apps/web/src/components/feed/FeedCard.tsx:139`
+
+**Current Code:**
+```tsx
+{tags!.map((tag, idx) => (
+  <span key={tag} className="inline-flex items-center">
+```
+
+**Solution:**
+Use composite key for safety:
+```tsx
+{tags!.map((tag, idx) => (
+  <span key={`tag-${idx}`} className="inline-flex items-center">
+```
+
+**Estimated Effort:** 2 minutes
+
+---

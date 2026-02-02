@@ -85,10 +85,19 @@ export interface FeedResponse {
   };
 }
 
+/**
+ * Interface for Last.fm service dependency (subset of LastfmService for loose coupling)
+ */
+export interface LastfmStatsService {
+  getArtistStats: (name: string) => Promise<{ listeners: number; playcount: number; tags: string[] } | null>;
+}
+
 export interface FeedOptions {
   limit: number;
   offset: number;
   includeActedOn?: boolean;
+  /** Optional Last.fm service for on-demand metadata enrichment */
+  lastfmService?: LastfmStatsService | null;
 }
 
 export class FeedService {
@@ -194,6 +203,69 @@ export class FeedService {
         return { ...item, imageUrl: imageMap.get(item.id) || null };
       }
       return item;
+    });
+  }
+
+  /**
+   * Enrich feed items with tags and listeners from Last.fm API.
+   * Only fetches for items missing both tags AND listeners (on-demand enrichment).
+   * Skips items that already have metadata from database.
+   * 
+   * @param items - Feed items to enrich
+   * @param lastfmService - Last.fm service instance, or null if no connection
+   * @returns Enriched items with tags/listeners populated where available
+   */
+  async enrichWithLastfm(
+    items: AggregatedFeedItem[],
+    lastfmService: { getArtistStats: (name: string) => Promise<{ listeners: number; playcount: number; tags: string[] } | null> } | null
+  ): Promise<AggregatedFeedItem[]> {
+    // No Last.fm service available - return items unchanged
+    if (!lastfmService) {
+      return items;
+    }
+
+    // Find items that need enrichment (missing both tags AND listeners)
+    const itemsNeedingEnrichment = items.filter(
+      (item) => item.tags === null && item.listeners === null
+    );
+
+    if (itemsNeedingEnrichment.length === 0) {
+      return items;
+    }
+
+    // Fetch stats in parallel
+    const statsPromises = itemsNeedingEnrichment.map(async (item) => {
+      try {
+        const stats = await lastfmService.getArtistStats(item.artistName);
+        return { id: item.id, stats };
+      } catch {
+        return { id: item.id, stats: null };
+      }
+    });
+
+    const results = await Promise.all(statsPromises);
+    const statsMap = new Map(results.map((r) => [r.id, r.stats]));
+
+    // Update items with fetched stats
+    return items.map((item) => {
+      // Skip if item already has data
+      if (item.tags !== null || item.listeners !== null) {
+        return item;
+      }
+
+      const stats = statsMap.get(item.id);
+      if (!stats) {
+        return item;
+      }
+
+      // Limit tags to 3, convert empty array to null
+      const tags = stats.tags.length > 0 ? stats.tags.slice(0, 3) : null;
+
+      return {
+        ...item,
+        tags,
+        listeners: stats.listeners,
+      };
     });
   }
 
@@ -392,7 +464,7 @@ export class FeedService {
    * aggregates and scores results, then paginates.
    */
   async getFeedForUser(userId: number, options: FeedOptions): Promise<FeedResponse> {
-    const { limit, offset, includeActedOn = false } = options;
+    const { limit, offset, includeActedOn = false, lastfmService } = options;
 
     // Get user's subscriptions with names for display
     const subscriptions = await this.prismaClient.subscription.findMany({
@@ -460,7 +532,10 @@ export class FeedService {
     const paginated = aggregated.slice(offset, offset + limit);
 
     // Enrich items missing images from Deezer
-    const enrichedItems = await this.enrichWithImages(paginated);
+    const imageEnrichedItems = await this.enrichWithImages(paginated);
+
+    // Enrich items missing metadata from Last.fm (on-demand)
+    const enrichedItems = await this.enrichWithLastfm(imageEnrichedItems, lastfmService || null);
 
     // Calculate stats
     const today = new Date();

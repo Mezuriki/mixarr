@@ -1245,4 +1245,236 @@ describe('FeedService', () => {
       expect(result[0].subscriptionName).toBe('Found in 2 subs');
     });
   });
+
+  describe('enrichWithLastfm', () => {
+    it('returns items unchanged when lastfmService is null', async () => {
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: 'Test Sub',
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, null);
+      expect(result).toEqual(items);
+      expect(result[0].tags).toBeNull();
+      expect(result[0].listeners).toBeNull();
+    });
+
+    it('enriches items missing tags and listeners from Last.fm', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue({
+          listeners: 5000000,
+          playcount: 100000000,
+          tags: ['alternative', 'rock', 'electronic'],
+        }),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: 'Test Sub',
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      expect(result[0].tags).toEqual(['alternative', 'rock', 'electronic']);
+      expect(result[0].listeners).toBe(5000000);
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
+    });
+
+    it('skips enrichment for items that already have tags and listeners', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn(),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: ['existing-tag'],
+          listeners: 1000000,
+          subscriptionName: 'Test Sub',
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      expect(result[0].tags).toEqual(['existing-tag']);
+      expect(result[0].listeners).toBe(1000000);
+      expect(mockLastfm.getArtistStats).not.toHaveBeenCalled();
+    });
+
+    it('enriches only items missing metadata, not those with data', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue({
+          listeners: 3000000,
+          playcount: 50000000,
+          tags: ['pop', 'indie'],
+        }),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Artist With Data',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: ['rock'],
+          listeners: 2000000,
+          subscriptionName: null,
+        },
+        {
+          id: 'feed-2',
+          artistName: 'Artist Without Data',
+          artistMbid: 'def-456',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['spotify'],
+          sourceCount: 1,
+          linkedResultIds: [2],
+          earliestFound: new Date(),
+          score: 40,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      // First item unchanged (had data)
+      expect(result[0].tags).toEqual(['rock']);
+      expect(result[0].listeners).toBe(2000000);
+      // Second item enriched
+      expect(result[1].tags).toEqual(['pop', 'indie']);
+      expect(result[1].listeners).toBe(3000000);
+      // Only called once for the item missing data
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledTimes(1);
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Artist Without Data');
+    });
+
+    it('handles Last.fm API errors gracefully', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue(null),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Unknown Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      // Should remain null if API returns null
+      expect(result[0].tags).toBeNull();
+      expect(result[0].listeners).toBeNull();
+    });
+
+    it('limits tags to 3 from Last.fm response', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue({
+          listeners: 1000000,
+          playcount: 20000000,
+          tags: ['rock', 'alternative', 'indie', 'british', 'electronic'],
+        }),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Multi Tag Artist',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      expect(result[0].tags).toHaveLength(3);
+      expect(result[0].tags).toEqual(['rock', 'alternative', 'indie']);
+    });
+
+    it('handles empty tags array from Last.fm', async () => {
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue({
+          listeners: 500000,
+          playcount: 10000000,
+          tags: [],
+        }),
+      };
+      const service = new FeedService();
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'No Tags Artist',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+      // Empty tags from API should become null
+      expect(result[0].tags).toBeNull();
+      // But listeners should still be populated
+      expect(result[0].listeners).toBe(500000);
+    });
+  });
 });
