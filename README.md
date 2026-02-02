@@ -114,7 +114,7 @@ See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions including K
 
 ## Features
 
-*   **🎯 No-Miss Lidarr Adds**: SkyHook cache warming ensures artist adds succeed the first time. No more 503 errors or missing metadata.
+*   **No-Miss Lidarr Adds**: SkyHook cache warming ensures artist adds succeed the first time. No more 503 errors or missing metadata.
 *   **Review Queue**: Discovered artists sit in a queue for your approval. No more junk in your library.
 *   **Automated Subscriptions**: Sync standard playlists (Top 50), dynamic lists (Discover Weekly), or charts from Last.fm.
 *   **Multi-Service Support**: 

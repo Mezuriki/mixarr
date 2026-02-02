@@ -10,20 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.3.0] - Unreleased
 
 ### SkyHook Cache Warmer (No-Miss Lidarr Adds)
-- **New Feature**: Pre-flight cache warming eliminates failed artist adds
-- Automatically warms SkyHook (api.lidarr.audio) cache before adding artists to Lidarr
-- Retry with exponential backoff (1s, 2s, 4s, 8s) until cache is populated
-- Prevents 503 errors and empty artist data that plagued Lidarr adds
-- New `SkyHookCacheWarmer` service with `warmArtist()` and `warmAlbum()` methods
-- New `LidarrService.addArtistWithCacheWarm()` wraps standard add with cache warming
+- **New Feature**: Pre-flight SkyHookcache warming eliminates failed artist adds
 
 ### Library Health: Fix Metadata Tool
 - **New Feature**: "Fix" button on Library Health page to repair missing metadata
 - Single-artist fix: Click wrench icon to warm cache + refresh artist
 - Batch "Fix All": Process all artists with issues (1/second rate limit)
-- Progress bar with real-time status, artist count, and cancel button
-- Redis-backed job state persists across page refreshes
-- Reports what was fixed vs what's still missing (upstream data limitations)
 
 ### UI/UX Polish
 - Add skeleton loading states for dashboard and data tables
@@ -47,11 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Theme Consolidation
 - Replace 6-theme system with single "Listening Room" theme (light/dark modes)
-- Remove legacy themes: dark-luxe, editorial-clean, neo-brutalist, soft-gradient, vinyl-retro, midnight-modern
 - Simplify theme picker to Light/Dark/System toggle
-- Warm color palette: off-whites (#f8f6f3) and warm grays (#1c1b19)
-- Rust/copper accent (#bf7a56) with muted teal secondary (#5a8a87)
-- Subtle 6px border radius throughout
 
 ### Accessibility Improvements
 - Add focus trap to modals (Tab cycles within modal)
@@ -84,13 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `mixarr:slim` Docker image containing only API + Web (~700MB vs ~1.5GB unified)
 - `docker-compose.slim.yml` for production deployments with external MariaDB and Redis
 - `docker-compose.byo.yml` for users with existing database/Redis infrastructure
-- Health check endpoint at `GET /api/health` (returns 503 if DB or Redis down)
-- Liveness endpoint at `GET /api/health/live` (always returns 200)
-- Comprehensive deployment guide (`docs/DEPLOYMENT.md`)
-- CI/CD pipeline builds both `latest` and `slim` images on release
-- Slim image uses `tini` for proper PID 1 signal handling
-- Slim image runs as non-root user (`mixarr:1000`)
-- Slim image properly exits when child processes crash (enables orchestrator restarts)
+
 
 #### Ollama & Custom OpenAI Support
 - Use local LLMs or OpenAI-compatible providers (Ollama, LiteLLM, OpenRouter) for AI recommendations
