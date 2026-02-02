@@ -11,6 +11,26 @@
 import prisma from '../lib/db.js';
 import type { PrismaClient } from '@prisma/client';
 
+/**
+ * Error thrown when a feed item is not found
+ */
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotFoundError';
+  }
+}
+
+/**
+ * Error thrown when user is not authorized to access a resource
+ */
+export class ForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ForbiddenError';
+  }
+}
+
 export interface AggregatedFeedItem {
   id: string;
   artistName: string;
@@ -328,5 +348,117 @@ export class FeedService {
       total,
       stats: { pending, addedToday },
     };
+  }
+
+  /**
+   * Parse linked result IDs from synthetic feed ID.
+   * Feed IDs are in format "feed-1-2-3" where 1, 2, 3 are result IDs.
+   */
+  private parseFeedId(feedId: string): number[] {
+    const match = feedId.match(/^feed-(.+)$/);
+    if (!match) return [];
+    return match[1].split('-').map((id) => parseInt(id, 10)).filter((n) => !isNaN(n));
+  }
+
+  /**
+   * Approve a feed item: update status to 'added', remove from ReviewItem.
+   * All linked SubscriptionResults are updated atomically.
+   */
+  async approve(feedId: string, userId: number): Promise<{ artistName: string }> {
+    const resultIds = this.parseFeedId(feedId);
+    if (resultIds.length === 0) {
+      throw new NotFoundError('Feed item not found');
+    }
+
+    // Fetch results with subscription to verify ownership
+    const results = await this.prismaClient.subscriptionResult.findMany({
+      where: { id: { in: resultIds } },
+      include: { subscription: { select: { userId: true } } },
+    });
+
+    if (results.length === 0) {
+      throw new NotFoundError('Feed item not found');
+    }
+
+    // Verify all belong to this user
+    if (results.some((r) => r.subscription.userId !== userId)) {
+      throw new ForbiddenError('Not authorized');
+    }
+
+    const artistName = results[0].name;
+    const artistMbid = results[0].mbid;
+
+    // Wrap in transaction
+    await this.prismaClient.$transaction(async (tx) => {
+      // Update all linked results
+      await tx.subscriptionResult.updateMany({
+        where: { id: { in: resultIds } },
+        data: { status: 'added' },
+      });
+
+      // Delete matching ReviewItems (by MBID or name)
+      const orConditions: { artistMbid?: string; artistName?: string }[] = [];
+      if (artistMbid) {
+        orConditions.push({ artistMbid });
+      }
+      orConditions.push({ artistName });
+
+      await tx.reviewItem.deleteMany({
+        where: { OR: orConditions },
+      });
+    });
+
+    return { artistName };
+  }
+
+  /**
+   * Dismiss a feed item: update status to 'rejected', remove from ReviewItem.
+   * All linked SubscriptionResults are updated atomically.
+   */
+  async dismiss(feedId: string, userId: number): Promise<{ artistName: string }> {
+    const resultIds = this.parseFeedId(feedId);
+    if (resultIds.length === 0) {
+      throw new NotFoundError('Feed item not found');
+    }
+
+    // Fetch results with subscription to verify ownership
+    const results = await this.prismaClient.subscriptionResult.findMany({
+      where: { id: { in: resultIds } },
+      include: { subscription: { select: { userId: true } } },
+    });
+
+    if (results.length === 0) {
+      throw new NotFoundError('Feed item not found');
+    }
+
+    // Verify all belong to this user
+    if (results.some((r) => r.subscription.userId !== userId)) {
+      throw new ForbiddenError('Not authorized');
+    }
+
+    const artistName = results[0].name;
+    const artistMbid = results[0].mbid;
+
+    // Wrap in transaction
+    await this.prismaClient.$transaction(async (tx) => {
+      // Update all linked results
+      await tx.subscriptionResult.updateMany({
+        where: { id: { in: resultIds } },
+        data: { status: 'rejected' },
+      });
+
+      // Delete matching ReviewItems (by MBID or name)
+      const orConditions: { artistMbid?: string; artistName?: string }[] = [];
+      if (artistMbid) {
+        orConditions.push({ artistMbid });
+      }
+      orConditions.push({ artistName });
+
+      await tx.reviewItem.deleteMany({
+        where: { OR: orConditions },
+      });
+    });
+
+    return { artistName };
   }
 }
