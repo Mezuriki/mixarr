@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### SkyHook Cache Warmer (No-Miss Lidarr Adds)
 - **New Feature**: Pre-flight SkyHookcache warming eliminates failed artist adds
 
+### Theme Consolidation
+- Replace 6-theme system with single "Listening Room" theme
+- Simplify theme picker to Light/Dark/System toggle
+
 ### Library Health: Fix Metadata Tool
 - **New Feature**: "Fix" button on Library Health page to repair missing metadata
 - Single-artist fix: Click wrench icon to warm cache + refresh artist
@@ -36,10 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract run history endpoints to controller pattern
 - Standardize error logging across subscription controller
 - Reduce subscriptions.ts route file by 76% (1,452 → 347 lines)
-
-### Theme Consolidation
-- Replace 6-theme system with single "Listening Room" theme (light/dark modes)
-- Simplify theme picker to Light/Dark/System toggle
 
 ### Accessibility Improvements
 - Add focus trap to modals (Tab cycles within modal)
