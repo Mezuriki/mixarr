@@ -57,7 +57,6 @@ export function FeedCard({
   const hasTags = tags && tags.length > 0;
   const hasListeners = listeners !== null && listeners !== undefined;
   const hasSource = subscriptionName !== null && subscriptionName !== undefined;
-  const hasMetadata = hasTags || hasListeners || hasSource;
 
   return (
     <div
@@ -131,25 +130,26 @@ export function FeedCard({
         <p className="text-white font-medium truncate" title={artistName}>
           {artistName}
         </p>
-        {/* Metadata line: tags · listeners · source */}
-        {hasMetadata && (
+        {/* Metadata line 1: tags */}
+        {hasTags && (
+          <div
+            data-testid="metadata-tags"
+            className="text-xs text-gray-400 truncate mt-1"
+          >
+            {tags!.map((tag, idx) => (
+              <span key={idx} className="inline-flex items-center">
+                {idx > 0 && <span className="mx-0.5 text-gray-500">,</span>}
+                <span className="text-gray-300">{tag}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Metadata line 2: listeners · source */}
+        {(hasListeners || hasSource) && (
           <div
             data-testid="metadata-line"
-            className="text-xs text-gray-400 truncate mt-1 flex items-center gap-1"
+            className="text-xs text-gray-400 truncate mt-0.5 flex items-center gap-1"
           >
-            {hasTags && (
-              <span data-testid="metadata-tags" className="flex items-center gap-1">
-                {tags!.map((tag, idx) => (
-                  <span key={tag} className="inline-flex items-center">
-                    {idx > 0 && <span className="mx-0.5 text-gray-500">,</span>}
-                    <span className="text-gray-300">{tag}</span>
-                  </span>
-                ))}
-              </span>
-            )}
-            {hasTags && (hasListeners || hasSource) && (
-              <span className="mx-1 text-gray-500">·</span>
-            )}
             {hasListeners && (
               <span>{formatListeners(listeners!)} listeners</span>
             )}

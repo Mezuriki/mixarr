@@ -146,7 +146,22 @@ describe('FeedCard', () => {
       expect(screen.queryByTestId('metadata-source')).not.toBeInTheDocument();
     });
 
-    it('displays all metadata on single line', () => {
+    it('displays tags on first metadata line', () => {
+      render(
+        <FeedCard
+          {...defaultProps}
+          tags={['rock', 'alternative']}
+          listeners={5000000}
+          subscriptionName="New Releases"
+        />
+      );
+      const tagsLine = screen.getByTestId('metadata-tags');
+      expect(tagsLine).toBeInTheDocument();
+      expect(tagsLine).toHaveTextContent('rock');
+      expect(tagsLine).toHaveTextContent('alternative');
+    });
+
+    it('displays listeners and source on second metadata line', () => {
       render(
         <FeedCard
           {...defaultProps}
@@ -157,12 +172,11 @@ describe('FeedCard', () => {
       );
       const metadataLine = screen.getByTestId('metadata-line');
       expect(metadataLine).toBeInTheDocument();
-      expect(metadataLine).toHaveTextContent('rock');
       expect(metadataLine).toHaveTextContent('5M listeners');
       expect(metadataLine).toHaveTextContent('New Releases');
     });
 
-    it('renders metadata with separator dots between sections', () => {
+    it('renders metadata with separator dot between listeners and source', () => {
       render(
         <FeedCard
           {...defaultProps}
@@ -171,7 +185,7 @@ describe('FeedCard', () => {
           subscriptionName="New Releases"
         />
       );
-      // Check for dot separators (using · character or similar)
+      // Check for dot separator between listeners and source
       const metadataLine = screen.getByTestId('metadata-line');
       expect(metadataLine.textContent).toMatch(/·|•/);
     });
