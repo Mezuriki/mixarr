@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
+import { DashboardTiles } from '@/components/feed/DashboardTiles';
 import { StatsBar } from '@/components/feed/StatsBar';
 import { FeedGrid } from '@/components/feed/FeedGrid';
 import { Loading } from '@/components/ui/loading';
@@ -125,6 +126,7 @@ export default function Home() {
   return (
     <>
       <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
+      <DashboardTiles />
       <StatsBar pending={stats.pending} addedToday={stats.addedToday} />
       <FeedGrid
         items={items}

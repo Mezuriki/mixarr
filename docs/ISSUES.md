@@ -489,3 +489,21 @@ Use composite key for safety:
 **Estimated Effort:** 2 minutes
 
 ---
+
+### TD-011: Lidarr Library Cancel Buttons Do Not Cancel "Fix All" Job
+
+**Priority:** Medium  
+**Created:** February 2, 2026  
+**Status:** Backlog
+
+**Problem:**
+On the Lidarr Library page, clicking "Cancel" does not actually cancel the running "Fix All" metadata job. The UI appears to acknowledge the action, but the background job continues.
+
+**Location:** `apps/web/src/app/library/page.tsx` (UI) and relevant API/job cancel endpoint (TBD)
+
+**Expected Behavior:**
+Cancel button should terminate the "Fix All" job and update the UI state accordingly.
+
+**Estimated Effort:** 30-60 minutes
+
+---

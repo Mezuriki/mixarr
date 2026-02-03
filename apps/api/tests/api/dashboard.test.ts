@@ -97,6 +97,19 @@ describe('Dashboard API', () => {
 
       expect(mockPrisma.subscriptionRun.aggregate).toHaveBeenCalled();
     });
+
+    it('should count active connections', async () => {
+      mockPrisma.connection.count.mockResolvedValue(4);
+
+      const count = await mockPrisma.connection.count({
+        where: { userId: testUser.id, isActive: true },
+      });
+
+      expect(mockPrisma.connection.count).toHaveBeenCalledWith({
+        where: { userId: testUser.id, isActive: true },
+      });
+      expect(count).toBe(4);
+    });
   });
 
   describe('GET /api/dashboard/activity', () => {

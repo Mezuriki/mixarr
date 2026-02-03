@@ -211,6 +211,7 @@ interface DashboardStats {
   artistsAdded: number;
   pendingReviews: number;
   runningJobs: number;
+  activeConnections: number;
 }
 
 interface Activity {

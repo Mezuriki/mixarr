@@ -19,7 +19,8 @@ dashboardRouter.get('/stats', async (req, res) => {
       activeSubscriptions,
       artistsAdded,
       pendingReviews,
-      recentRuns
+      recentRuns,
+      activeConnections
     ] = await Promise.all([
       // Active subscriptions count
       prisma.subscription.count({
@@ -47,6 +48,11 @@ dashboardRouter.get('/stats', async (req, res) => {
           subscription: { userId },
           status: 'running'
         }
+      }),
+
+      // Active connections count
+      prisma.connection.count({
+        where: { userId, isActive: true }
       })
     ]);
 
@@ -55,7 +61,8 @@ dashboardRouter.get('/stats', async (req, res) => {
         activeSubscriptions,
         artistsAdded: artistsAdded._sum.addedCount || 0,
         pendingReviews,
-        runningJobs: recentRuns
+        runningJobs: recentRuns,
+        activeConnections
       }
     });
   } catch (error) {
