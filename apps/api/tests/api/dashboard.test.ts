@@ -32,21 +32,19 @@ describe('Dashboard API', () => {
   describe('GET /api/dashboard/stats', () => {
     it('should return stats for authenticated user', async () => {
       mockPrisma.subscription.count.mockResolvedValue(5);
-      mockPrisma.subscriptionRun.aggregate.mockResolvedValue({
-        _sum: { addedCount: 150 },
-      });
-      mockPrisma.reviewItem.count.mockResolvedValue(23);
+      mockPrisma.reviewItem.count.mockResolvedValueOnce(150); // artists added
+      mockPrisma.reviewItem.count.mockResolvedValueOnce(23);  // pending reviews
       mockPrisma.subscriptionRun.count.mockResolvedValue(2);
 
       const [subCount, artistsAdded, pendingReviews, runningJobs] = await Promise.all([
         mockPrisma.subscription.count({ where: { userId: testUser.id, isActive: true } }),
-        mockPrisma.subscriptionRun.aggregate({ where: { subscription: { userId: testUser.id } } }),
+        mockPrisma.reviewItem.count({ where: { userId: testUser.id, status: 'approved' } }),
         mockPrisma.reviewItem.count({ where: { userId: testUser.id, status: 'pending' } }),
         mockPrisma.subscriptionRun.count({ where: { subscription: { userId: testUser.id }, status: 'running' } }),
       ]);
 
       expect(subCount).toBe(5);
-      expect(artistsAdded._sum.addedCount).toBe(150);
+      expect(artistsAdded).toBe(150);
       expect(pendingReviews).toBe(23);
       expect(runningJobs).toBe(2);
     });
@@ -66,36 +64,30 @@ describe('Dashboard API', () => {
 
     it('should return zero for users with no data', async () => {
       mockPrisma.subscription.count.mockResolvedValue(0);
-      mockPrisma.subscriptionRun.aggregate.mockResolvedValue({
-        _sum: { addedCount: null },
-      });
       mockPrisma.reviewItem.count.mockResolvedValue(0);
       mockPrisma.subscriptionRun.count.mockResolvedValue(0);
 
-      const artistsAdded = await mockPrisma.subscriptionRun.aggregate({});
+      const artistsAdded = await mockPrisma.reviewItem.count({
+        where: { userId: testUser.id, status: 'approved' },
+      });
       
-      // Handle null case (no artists added)
-      const addedCount = artistsAdded._sum.addedCount || 0;
-      expect(addedCount).toBe(0);
+      expect(artistsAdded).toBe(0);
     });
 
     it('should filter artists added by date range (30 days)', async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       
-      mockPrisma.subscriptionRun.aggregate.mockResolvedValue({
-        _sum: { addedCount: 50 },
-      });
+      mockPrisma.reviewItem.count.mockResolvedValue(50);
 
-      await mockPrisma.subscriptionRun.aggregate({
+      await mockPrisma.reviewItem.count({
         where: {
-          subscription: { userId: testUser.id },
-          status: 'completed',
-          completedAt: { gte: thirtyDaysAgo },
+          userId: testUser.id,
+          status: 'approved',
+          updatedAt: { gte: thirtyDaysAgo },
         },
-        _sum: { addedCount: true },
       });
 
-      expect(mockPrisma.subscriptionRun.aggregate).toHaveBeenCalled();
+      expect(mockPrisma.reviewItem.count).toHaveBeenCalled();
     });
 
     it('should count active connections', async () => {

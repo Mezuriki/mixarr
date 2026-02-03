@@ -27,14 +27,13 @@ dashboardRouter.get('/stats', async (req, res) => {
         where: { userId, isActive: true }
       }),
       
-      // Artists added in last 30 days (from subscription runs)
-      prisma.subscriptionRun.aggregate({
+      // Artists added in last 30 days (approved review items)
+      prisma.reviewItem.count({
         where: {
-          subscription: { userId },
-          status: 'completed',
-          completedAt: { gte: thirtyDaysAgo }
-        },
-        _sum: { addedCount: true }
+          userId,
+          status: 'approved',
+          updatedAt: { gte: thirtyDaysAgo }
+        }
       }),
       
       // Pending review items
@@ -59,7 +58,7 @@ dashboardRouter.get('/stats', async (req, res) => {
     res.json({
       stats: {
         activeSubscriptions,
-        artistsAdded: artistsAdded._sum.addedCount || 0,
+        artistsAdded,
         pendingReviews,
         runningJobs: recentRuns,
         activeConnections
