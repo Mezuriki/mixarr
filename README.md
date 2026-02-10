@@ -16,7 +16,7 @@
 
 Mixarr is a free, self-hosted music discovery companion for your *arr stack. It connects to Spotify, TIDAL, Last.fm, Deezer, Plex, and more to automatically discover new artists and add them to Lidarr. Deploy with Docker in minutes. Review queue, automated subscriptions, and AI-powered recommendations included.
 
-![Mixarr Dashboard](website/img/mixarr-discover.png)
+![Mixarr Dashboard](website/img/mixarr-dashboard.png)
 
 ## Quick Start
 
