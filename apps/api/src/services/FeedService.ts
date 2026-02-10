@@ -635,11 +635,19 @@ export class FeedService {
     // Paginate
     const paginated = aggregated.slice(offset, offset + limit);
 
+    // Snapshot items before enrichment (for write-back comparison)
+    const preEnrichment = paginated.map(item => ({ ...item }));
+
     // Enrich items missing images from Deezer
     const imageEnrichedItems = await this.enrichWithImages(paginated);
 
     // Enrich items missing metadata from Last.fm (on-demand)
     const enrichedItems = await this.enrichWithLastfm(imageEnrichedItems, lastfmService || null);
+
+    // Fire-and-forget: persist enrichment data to SubscriptionResult rows
+    this.persistEnrichment(preEnrichment, enrichedItems).catch(err =>
+      log.warn('Background enrichment write-back failed', { error: (err as Error).message })
+    );
 
     // Calculate stats
     const today = new Date();

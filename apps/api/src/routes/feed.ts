@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { FeedService, NotFoundError, ForbiddenError } from '../services/FeedService.js';
 import { createLogger } from '../lib/logger.js';
 import { getLidarrServiceWithConfig, getLastfmService } from '../lib/connection-resolver.js';
+import { cacheService } from '../services/cache.js';
 
 const logger = createLogger('FeedRoute');
 
@@ -34,7 +35,7 @@ const feedQuerySchema = z.object({
  */
 export function feedRouter(feedService?: FeedService): Router {
   const router = Router();
-  const service = feedService || new FeedService();
+  const service = feedService || new FeedService(undefined, undefined, undefined, cacheService);
 
   /**
    * Auth middleware - ensures user is authenticated.
