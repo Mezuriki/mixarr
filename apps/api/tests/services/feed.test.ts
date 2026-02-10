@@ -1702,4 +1702,151 @@ describe('FeedService', () => {
       expect(vi.mocked(fetchDeezerArtistImage)).toHaveBeenCalledWith('No Cache Artist');
     });
   });
+
+  describe('enrichWithLastfm (cached)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    const makeItem = (overrides: Partial<import('../../src/services/FeedService.js').AggregatedFeedItem> = {}): import('../../src/services/FeedService.js').AggregatedFeedItem => ({
+      id: 'feed-1',
+      artistName: 'Radiohead',
+      artistMbid: 'abc-123',
+      imageUrl: null,
+      subscriptionCount: 1,
+      sourceTypes: ['lastfm'],
+      sourceCount: 1,
+      linkedResultIds: [1],
+      earliestFound: new Date(),
+      score: 50,
+      tags: null,
+      listeners: null,
+      subscriptionName: null,
+      ...overrides,
+    });
+
+    it('uses cached stats and skips Last.fm call', async () => {
+      const cachedStats = { listeners: 5000000, playcount: 100000000, tags: ['rock', 'alternative', 'british'] };
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(cachedStats),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const mockLastfm = {
+        getArtistStats: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].listeners).toBe(5000000);
+      expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      expect(mockCache.get).toHaveBeenCalledWith('lastfm:stats:radiohead');
+      expect(mockLastfm.getArtistStats).not.toHaveBeenCalled();
+    });
+
+    it('skips Last.fm call when miss sentinel is cached', async () => {
+      const { CACHE_MISS_SENTINEL } = await import('../../src/services/cache.js');
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(CACHE_MISS_SENTINEL),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const mockLastfm = {
+        getArtistStats: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].tags).toBeNull();
+      expect(result[0].listeners).toBeNull();
+      expect(mockLastfm.getArtistStats).not.toHaveBeenCalled();
+    });
+
+    it('calls Last.fm on cache miss and caches the result', async () => {
+      const apiStats = { listeners: 5000000, playcount: 100000000, tags: ['rock', 'alternative', 'british'] };
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue(apiStats),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].listeners).toBe(5000000);
+      expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'lastfm:stats:radiohead',
+        apiStats,
+        24 * 60 * 60
+      );
+    });
+
+    it('caches miss when Last.fm returns null', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue(null),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].tags).toBeNull();
+      expect(result[0].listeners).toBeNull();
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
+      expect(mockCache.setMiss).toHaveBeenCalledWith(
+        'lastfm:stats:radiohead',
+        60 * 60
+      );
+    });
+
+    it('works without cacheService (backward compatible)', async () => {
+      const apiStats = { listeners: 5000000, playcount: 100000000, tags: ['rock', 'alternative', 'british'] };
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue(apiStats),
+      };
+      const service = new FeedService(); // No cache
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].listeners).toBe(5000000);
+      expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
+    });
+
+    it('falls through to Last.fm when cache errors', async () => {
+      const apiStats = { listeners: 5000000, playcount: 100000000, tags: ['rock', 'alternative', 'british'] };
+      const mockCache = {
+        get: vi.fn().mockRejectedValue(new Error('Redis down')),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const mockLastfm = {
+        getArtistStats: vi.fn().mockResolvedValue(apiStats),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items = [makeItem()];
+
+      const result = await service.enrichWithLastfm(items, mockLastfm as any);
+
+      expect(result[0].listeners).toBe(5000000);
+      expect(result[0].tags).toEqual(['rock', 'alternative', 'british']);
+      expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
+    });
+  });
 });

@@ -267,8 +267,32 @@ export class FeedService {
 
     // Fetch stats in parallel
     const statsPromises = itemsNeedingEnrichment.map(async (item) => {
+      const normalizedName = this.normalizeName(item.artistName);
+      const cacheKey = CACHE_KEYS.lastfmStats(normalizedName);
+
+      // Check cache first
+      if (this.cacheService) {
+        try {
+          const cached = await this.cacheService.get<{ listeners: number; playcount: number; tags: string[] }>(cacheKey);
+          if (cached === CACHE_MISS_SENTINEL) {
+            return { id: item.id, stats: null };
+          }
+          if (cached !== null) {
+            return { id: item.id, stats: cached };
+          }
+        } catch {
+          // Cache error — fall through to API
+        }
+      }
+
+      // Cache miss or no cache — call Last.fm
       try {
         const stats = await lastfmService.getArtistStats(item.artistName);
+        if (stats) {
+          try { if (this.cacheService) await this.cacheService.set(cacheKey, stats, CACHE_TTLS.LASTFM_STATS); } catch { /* non-fatal */ }
+        } else {
+          try { if (this.cacheService) await this.cacheService.setMiss(cacheKey, CACHE_TTLS.MISS); } catch { /* non-fatal */ }
+        }
         return { id: item.id, stats };
       } catch {
         return { id: item.id, stats: null };
