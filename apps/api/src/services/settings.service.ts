@@ -6,11 +6,9 @@
  */
 
 import prisma from '../lib/db.js';
+import { Prisma } from '@prisma/client';
 import { getBaseUrl as getConfiguredBaseUrl } from '../lib/settings.js';
-import { createLogger } from '../lib/logger.js';
 import type { JsonValue } from '@prisma/client/runtime/library';
-
-const logger = createLogger('SettingsService');
 
 /**
  * Default user preferences
@@ -81,10 +79,11 @@ export class SettingsService {
    * Set a user setting (upsert)
    */
   static async setUserSetting(userId: number, key: string, value: JsonValue): Promise<void> {
+    const dbValue = value === null ? Prisma.JsonNull : value;
     await prisma.userSetting.upsert({
       where: { userId_key: { userId, key } },
-      create: { userId, key, value },
-      update: { value },
+      create: { userId, key, value: dbValue },
+      update: { value: dbValue },
     });
   }
 
@@ -163,10 +162,11 @@ export class SettingsService {
    * Set a global setting (upsert)
    */
   static async setGlobalSetting(key: string, value: JsonValue): Promise<void> {
+    const dbValue = value === null ? Prisma.JsonNull : value;
     await prisma.globalSetting.upsert({
       where: { key },
-      create: { key, value },
-      update: { value },
+      create: { key, value: dbValue },
+      update: { value: dbValue },
     });
   }
 }

@@ -32,19 +32,21 @@ describe('Dashboard API', () => {
   describe('GET /api/dashboard/stats', () => {
     it('should return stats for authenticated user', async () => {
       mockPrisma.subscription.count.mockResolvedValue(5);
-      mockPrisma.reviewItem.count.mockResolvedValueOnce(150); // artists added
+      mockPrisma.subscriptionResult.count.mockResolvedValue(120); // artists added via subscriptions/feed
+      mockPrisma.reviewItem.count.mockResolvedValueOnce(30);  // artists added via review queue
       mockPrisma.reviewItem.count.mockResolvedValueOnce(23);  // pending reviews
       mockPrisma.subscriptionRun.count.mockResolvedValue(2);
 
-      const [subCount, artistsAdded, pendingReviews, runningJobs] = await Promise.all([
+      const [subCount, addedViaSubs, addedViaReview, pendingReviews, runningJobs] = await Promise.all([
         mockPrisma.subscription.count({ where: { userId: testUser.id, isActive: true } }),
+        mockPrisma.subscriptionResult.count({ where: { subscription: { userId: testUser.id }, status: 'added' } }),
         mockPrisma.reviewItem.count({ where: { userId: testUser.id, status: 'approved' } }),
         mockPrisma.reviewItem.count({ where: { userId: testUser.id, status: 'pending' } }),
         mockPrisma.subscriptionRun.count({ where: { subscription: { userId: testUser.id }, status: 'running' } }),
       ]);
 
       expect(subCount).toBe(5);
-      expect(artistsAdded).toBe(150);
+      expect(addedViaSubs + addedViaReview).toBe(150); // 120 + 30 = combined count
       expect(pendingReviews).toBe(23);
       expect(runningJobs).toBe(2);
     });
@@ -64,30 +66,44 @@ describe('Dashboard API', () => {
 
     it('should return zero for users with no data', async () => {
       mockPrisma.subscription.count.mockResolvedValue(0);
-      mockPrisma.reviewItem.count.mockResolvedValue(0);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(0);
+      mockPrisma.reviewItem.count.mockResolvedValue(0); // covers both approved + pending
       mockPrisma.subscriptionRun.count.mockResolvedValue(0);
 
-      const artistsAdded = await mockPrisma.reviewItem.count({
-        where: { userId: testUser.id, status: 'approved' },
-      });
+      const [addedViaSubs, addedViaReview] = await Promise.all([
+        mockPrisma.subscriptionResult.count({ where: { subscription: { userId: testUser.id }, status: 'added' } }),
+        mockPrisma.reviewItem.count({ where: { userId: testUser.id, status: 'approved' } }),
+      ]);
       
-      expect(artistsAdded).toBe(0);
+      expect(addedViaSubs + addedViaReview).toBe(0);
     });
 
     it('should filter artists added by date range (30 days)', async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       
-      mockPrisma.reviewItem.count.mockResolvedValue(50);
+      mockPrisma.subscriptionResult.count.mockResolvedValue(40);
+      mockPrisma.reviewItem.count.mockResolvedValue(10);
 
-      await mockPrisma.reviewItem.count({
-        where: {
-          userId: testUser.id,
-          status: 'approved',
-          updatedAt: { gte: thirtyDaysAgo },
-        },
-      });
+      const [viaSubs, viaReview] = await Promise.all([
+        mockPrisma.subscriptionResult.count({
+          where: {
+            subscription: { userId: testUser.id },
+            status: 'added',
+            processedAt: { gte: thirtyDaysAgo },
+          },
+        }),
+        mockPrisma.reviewItem.count({
+          where: {
+            userId: testUser.id,
+            status: 'approved',
+            updatedAt: { gte: thirtyDaysAgo },
+          },
+        }),
+      ]);
 
+      expect(mockPrisma.subscriptionResult.count).toHaveBeenCalled();
       expect(mockPrisma.reviewItem.count).toHaveBeenCalled();
+      expect(viaSubs + viaReview).toBe(50);
     });
 
     it('should count active connections', async () => {

@@ -2,8 +2,9 @@ import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
-import { LidarrService, LidarrCache } from '../services/lidarr.js';
+import { LidarrCache } from '../services/lidarr.js';
 import { MusicBrainzService } from '../services/musicbrainz.js';
+import { LastfmService } from '../services/lastfm.js';
 import { fetchDeezerArtistImages } from '../services/deezer.js';
 import { multiSourceSearch, resolveMbid, SearchSource } from '../services/multi-search.js';
 import { MetadataEnrichmentService } from '../services/metadata-enrichment.js';
@@ -13,7 +14,6 @@ import { MetadataFixService } from '../services/metadata-fix.js';
 import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
-import { LidarrConnectionConfig } from '../types/connections.js';
 import { 
   getLidarrService, 
   getLidarrServiceWithConfig, 

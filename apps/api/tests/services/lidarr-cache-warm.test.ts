@@ -35,6 +35,12 @@ describe('LidarrService.addArtistWithCacheWarm', () => {
       cached: false,
     });
 
+    // Mock getArtists() - return empty so artist appears new (triggers cache warm)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
+
     // Mock Lidarr search response (for addArtist lookup)
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -74,6 +80,12 @@ describe('LidarrService.addArtistWithCacheWarm', () => {
       error: 'timeout',
     });
 
+    // Mock getArtists() - return empty so artist appears new
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve([{
@@ -107,6 +119,12 @@ describe('LidarrService.addArtistWithCacheWarm', () => {
       success: true,
       attempts: 1,
       cached: true,
+    });
+
+    // Mock getArtists() - return empty so artist appears new
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
     });
 
     mockFetch.mockResolvedValueOnce({

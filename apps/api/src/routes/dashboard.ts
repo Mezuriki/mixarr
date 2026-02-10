@@ -17,7 +17,8 @@ dashboardRouter.get('/stats', async (req, res) => {
 
     const [
       activeSubscriptions,
-      artistsAdded,
+      artistsAddedViaSubscriptions,
+      artistsAddedViaReviewQueue,
       pendingReviews,
       recentRuns,
       activeConnections
@@ -27,7 +28,17 @@ dashboardRouter.get('/stats', async (req, res) => {
         where: { userId, isActive: true }
       }),
       
-      // Artists added in last 30 days (approved review items)
+      // Artists added in last 30 days via subscriptions/feed (SubscriptionResult)
+      prisma.subscriptionResult.count({
+        where: {
+          subscription: { userId },
+          status: 'added',
+          processedAt: { gte: thirtyDaysAgo }
+        }
+      }),
+
+      // Artists added in last 30 days via review queue (ReviewItem)
+      // See TD-009: these two "added" tracking paths should be unified
       prisma.reviewItem.count({
         where: {
           userId,
@@ -54,6 +65,8 @@ dashboardRouter.get('/stats', async (req, res) => {
         where: { userId, isActive: true }
       })
     ]);
+
+    const artistsAdded = artistsAddedViaSubscriptions + artistsAddedViaReviewQueue;
 
     res.json({
       stats: {

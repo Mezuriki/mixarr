@@ -1,9 +1,7 @@
 import { Router } from 'express';
-import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
-import { LidarrService, LidarrCache } from '../services/lidarr.js';
-import { LidarrConnectionConfig } from '../types/connections.js';
+import { LidarrCache } from '../services/lidarr.js';
 import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';

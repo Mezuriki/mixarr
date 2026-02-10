@@ -10,6 +10,28 @@
 
 ## 🔧 TECHNICAL DEBT (Deferred)
 
+### TD-009: Unify "Artist Added" Tracking Across Add Paths
+
+**Priority:** Low  
+**Status:** Backlog  
+**Added:** February 9, 2026
+
+Artists can be added to Lidarr through multiple paths, each tracking the addition in a different table:
+- **Subscriptions/Feed** → `SubscriptionResult` with `status: 'added'`
+- **Review Queue** → `ReviewItem` with `status: 'approved'`
+
+The dashboard stats counter currently sums both tables to get an accurate count, but this is fragile. If a new add path is introduced, the counter must be updated to include it.
+
+**Proposed fix:** Create a unified `artist_additions` audit table (or similar) that all add paths write to, so dashboard stats only need one query. This also enables better analytics (e.g., "added via subscription" vs "added via review queue").
+
+**Files involved:**
+- `apps/api/src/routes/dashboard.ts` — current dual-query workaround
+- `apps/api/src/routes/imports.ts` — review queue approval (lines ~305-390)
+- `apps/api/src/services/FeedService.ts` — feed approval
+- `apps/api/src/jobs/subscription-worker.ts` — auto-add
+
+---
+
 ### TD-006: OpenAI SDK Placeholder API Key
 
 **Priority:** Low  

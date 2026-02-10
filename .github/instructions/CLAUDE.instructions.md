@@ -40,6 +40,7 @@ You have superpowers. Superpowers are mandatory skills that govern your developm
 | Bug, test failure, unexpected behavior | **Systematic Debugging** | `skills/systematic-debugging/SKILL.md` | Complete Phase 1 (root cause) before ANY fix attempt |
 | Claiming work is done | **Verification Before Completion** | `skills/verification-before-completion/SKILL.md` | Run command, read output, THEN claim success |
 | Need code review | **Requesting Code Review** | `skills/requesting-code-review/SKILL.md` | Review after each task or batch |
+| Merging dev→staging→prod | **Release Review** | `skills/release-review/SKILL.md` | Every dimension safe, no manual steps, no data loss |
 | Building UI/web components | **Frontend Design** | `.github/skills/frontend-design/` | Distinctive design, avoid generic AI aesthetics |
 | Deep code analysis | **Rubber Duck** | `.github/skills/rubber-duck/` | Explain code like teaching, catch hidden bugs |
 

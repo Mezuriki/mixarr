@@ -171,6 +171,7 @@ export function createMockPrisma() {
       update: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
+      count: vi.fn(),
     },
     importSource: {
       findUnique: vi.fn(),

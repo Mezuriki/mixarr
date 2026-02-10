@@ -13,9 +13,10 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { feedRouter } from '../../src/routes/feed.js';
 import { NotFoundError, ForbiddenError } from '../../src/services/FeedService.js';
 
-// Mock connection-resolver to prevent real Lidarr lookup
+// Mock connection-resolver to prevent real Lidarr/Last.fm lookup
 vi.mock('../../src/lib/connection-resolver.js', () => ({
   getLidarrServiceWithConfig: vi.fn().mockResolvedValue(null),
+  getLastfmService: vi.fn().mockResolvedValue(null),
 }));
 
 describe('Feed Routes', () => {
@@ -91,7 +92,7 @@ describe('Feed Routes', () => {
       expect(response.body.items).toHaveLength(1);
       expect(response.body.total).toBe(1);
       expect(response.body.stats).toEqual({ pending: 1, addedToday: 0 });
-      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 50, offset: 0 });
+      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 50, offset: 0, lastfmService: null });
     });
 
     it('accepts custom limit and offset', async () => {
@@ -103,7 +104,7 @@ describe('Feed Routes', () => {
 
       await request(app).get('/api/feed?limit=20&offset=40');
 
-      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 20, offset: 40 });
+      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 20, offset: 40, lastfmService: null });
     });
 
     it('rejects invalid limit (negative)', async () => {
@@ -129,7 +130,7 @@ describe('Feed Routes', () => {
 
       await request(app).get('/api/feed?limit=500');
 
-      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 100, offset: 0 });
+      expect(mockFeedService.getFeedForUser).toHaveBeenCalledWith(1, { limit: 100, offset: 0, lastfmService: null });
     });
 
     it('handles service errors gracefully', async () => {

@@ -87,7 +87,7 @@ export function toNotificationChannelDto(channel: NotificationChannel): Notifica
     type: channel.type as NotificationChannelType,
     name: channel.name,
     config,
-    events: channel.events,
+    events: (Array.isArray(channel.events) ? channel.events : []) as string[],
     isActive: channel.isActive,
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
