@@ -53,7 +53,7 @@
   --sidebar-border: 30 5% 18%; /* subtle divider */
 
   /* Border Radius */
-  --radius: 0.375rem; /* 6px */
+  --radius: 0.625rem; /* 10px - base unit for derived radii */
 
   /* Status Colors - Desaturated */
   --success: 120 20% 51%; /* #6b9b6b */
@@ -110,7 +110,7 @@
   --sidebar-border: 36 15% 88%; /* subtle divider */
 
   /* Border Radius */
-  --radius: 0.375rem; /* 6px */
+  --radius: 0.625rem; /* 10px - base unit for derived radii */
 
   /* Status Colors - Adjusted for light mode contrast */
   --success: 120 25% 42%; /* darker green */
@@ -169,7 +169,7 @@
     --sidebar-border: 36 15% 88%; /* subtle divider */
 
     /* Border Radius */
-    --radius: 0.375rem; /* 6px */
+    --radius: 0.625rem; /* 10px - base unit for derived radii */
 
     /* Status Colors - Adjusted for light mode contrast */
     --success: 120 25% 42%; /* darker green */

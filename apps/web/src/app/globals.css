@@ -71,7 +71,7 @@
 @layer components {
   /* Button variants */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium 
+    @apply inline-flex items-center justify-center rounded-button text-sm font-medium 
            transition-colors focus-visible:outline-none focus-visible:ring-2 
            focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none 
            disabled:opacity-50 h-10 px-4 py-2;
@@ -98,7 +98,7 @@
   }
   
   .btn-sm {
-    @apply h-9 rounded-md px-3;
+    @apply h-9 rounded-button px-3;
   }
   
   .btn-lg {
@@ -111,7 +111,7 @@
   
   /* Card component */
   .card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply rounded-card border bg-card text-card-foreground shadow-sm;
   }
   
   .card-header {

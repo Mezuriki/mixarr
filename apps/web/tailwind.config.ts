@@ -83,6 +83,21 @@ const config: Config = {
         display: ['var(--font-display)', 'Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
+      borderRadius: {
+        'card': '1.25rem',    // 20px - generous card rounding
+        'button': '0.625rem', // 10px - pill-ish buttons
+      },
+      boxShadow: {
+        // Elevation system
+        'elevation-1': '0 2px 8px rgba(0, 0, 0, 0.06)',
+        'elevation-2': '0 4px 16px rgba(0, 0, 0, 0.1)',
+        'elevation-3': '0 8px 30px rgba(0, 0, 0, 0.14)',
+        'elevation-4': '0 16px 48px rgba(0, 0, 0, 0.18)',
+        // Glow variants using Listening Room copper (#bf7a56)
+        'glow-sm': '0 0 12px rgba(191, 122, 86, 0.2)',
+        'glow-md': '0 4px 16px rgba(191, 122, 86, 0.3)',
+        'glow-primary': '0 4px 20px rgba(191, 122, 86, 0.25), 0 0 0 1px rgba(191, 122, 86, 0.1)',
+      },
     },
   },
   plugins: [],
