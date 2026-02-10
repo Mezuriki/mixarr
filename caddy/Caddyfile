@@ -1,4 +1,4 @@
-# Caddy configuration for Lidarr Spotify Scraper
+# Caddy configuration for Mixarr
 # Provides HTTPS with auto-generated self-signed certificates
 # Required for Spotify OAuth which mandates HTTPS for non-localhost URLs
 
