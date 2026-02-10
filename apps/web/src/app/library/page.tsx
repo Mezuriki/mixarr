@@ -2,12 +2,39 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Badge, useToast, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { DuplicatesContent } from '@/components/library/duplicates-content';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { RefreshCw, Search, CheckCircle, AlertTriangle, Image, FileText, Music, ChevronUp, ChevronDown, Copy } from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
+import Copy from 'lucide-react/dist/esm/icons/copy';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Image from 'lucide-react/dist/esm/icons/image';
+import Music from 'lucide-react/dist/esm/icons/music';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Wrench from 'lucide-react/dist/esm/icons/wrench';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
+
+interface FixJobStatus {
+  jobId: string | null;
+  status: 'running' | 'completed' | 'cancelled' | null;
+  total: number;
+  processed: number;
+  fixed: number;
+  failed: number;
+  currentArtist?: string;
+  startedAt?: string;
+}
 
 interface LidarrArtist {
   id: number;
@@ -54,10 +81,155 @@ export default function LibraryPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [activeTab, setActiveTab] = useState<TabType>('health');
   const [duplicateCount, setDuplicateCount] = useState<number>(0);
+  const [fixJob, setFixJob] = useState<FixJobStatus | null>(null);
+  const [isStartingFix, setIsStartingFix] = useState(false);
+  const [isCancellingFix, setIsCancellingFix] = useState(false);
+  const [fixingArtistId, setFixingArtistId] = useState<number | null>(null);
 
   const handleDuplicateCountChange = useCallback((count: number) => {
     setDuplicateCount(count);
   }, []);
+
+  const JOB_COMPLETE_DISPLAY_MS = 3000;
+  const POLL_INTERVAL_MS = 2000;
+
+  // Check for existing fix job on mount
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const checkJobStatus = async () => {
+      const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
+      if (data) {
+        setFixJob(data);
+      }
+    };
+
+    checkJobStatus();
+  }, [isAdmin]);
+
+  // Poll when job is running, handle completion
+  useEffect(() => {
+    if (!fixJob || fixJob.status !== 'running') return;
+
+    const pollStatus = async () => {
+      const { data } = await api.get<FixJobStatus>('/api/search/lidarr/artists/fix-all/status');
+      if (data) {
+        setFixJob(data);
+        if (data.status === 'completed' || data.status === 'cancelled') {
+          fetchArtists();
+          addToast({
+            type: data.status === 'completed' ? 'success' : 'info',
+            title: data.status === 'completed' ? 'Fix All Completed' : 'Fix All Cancelled',
+            message: `Processed ${data.processed}/${data.total} artists. Fixed: ${data.fixed}, Failed: ${data.failed}`
+          });
+          setTimeout(() => setFixJob(null), JOB_COMPLETE_DISPLAY_MS);
+        }
+      }
+    };
+
+    const interval = setInterval(pollStatus, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fixJob?.status, fixJob?.jobId]);
+
+  const handleFixAll = async () => {
+    const artistsWithIssues = artists.filter(a => a.needsRefresh).length;
+    if (artistsWithIssues === 0) return;
+
+    const confirmed = window.confirm(
+      `This will attempt to fix metadata for ${artistsWithIssues} artists with issues.\n\n` +
+      `This may take several minutes and will make requests to Lidarr.\n\n` +
+      `Continue?`
+    );
+    if (!confirmed) return;
+
+    setIsStartingFix(true);
+    const { data, error } = await api.post<{ jobId: string | null; total: number; message?: string }>('/api/search/lidarr/artists/fix-all');
+    
+    if (error) {
+      addToast({ type: 'error', title: 'Failed to start fix', message: error });
+    } else if (data) {
+      // API returns jobId: null if no artists need fixing
+      if (!data.jobId || data.total === 0) {
+        addToast({ type: 'info', title: 'No artists to fix', message: data.message || 'All artists already have complete metadata' });
+      } else {
+        setFixJob({
+          jobId: data.jobId,
+          status: 'running',
+          total: data.total,
+          processed: 0,
+          fixed: 0,
+          failed: 0
+        });
+        addToast({ type: 'success', title: 'Fix All Started', message: `Processing ${data.total} artists...` });
+      }
+    }
+    setIsStartingFix(false);
+  };
+
+  const handleCancelFix = async () => {
+    if (!fixJob?.jobId || isCancellingFix) return;
+    
+    setIsCancellingFix(true);
+    const { error } = await api.post('/api/search/lidarr/artists/fix-all/cancel');
+    setIsCancellingFix(false);
+    
+    if (error) {
+      addToast({ type: 'error', title: 'Failed to cancel', message: error });
+    } else {
+      addToast({ type: 'info', title: 'Cancelling...', message: 'Fix operation will stop after current artist' });
+    }
+  };
+
+  const handleFixArtist = async (artistId: number) => {
+    if (fixingArtistId !== null || fixJob?.status === 'running') return;
+    
+    setFixingArtistId(artistId);
+    const { data, error } = await api.post<{
+      success: boolean;
+      artist: {
+        id: number;
+        name: string;
+        hasPoster: boolean;
+        hasOverview: boolean;
+        hasGenres: boolean;
+      };
+      fixed: string[];
+      stillMissing: string[];
+    }>(`/api/search/lidarr/artists/${artistId}/fix`);
+    
+    if (error) {
+      addToast({ type: 'error', title: 'Fix Failed', message: error });
+    } else if (data) {
+      if (data.success) {
+        addToast({ 
+          type: 'success', 
+          title: 'Artist Fixed', 
+          message: `${data.artist.name}: Metadata refreshed successfully` 
+        });
+        // Refresh the artist list to show updated status
+        fetchArtists();
+      } else {
+        // Metadata still missing - likely stale SkyHook cache or missing upstream data
+        const missingInfo = data.stillMissing.length > 0 
+          ? `Missing: ${data.stillMissing.join(', ')} (may be unavailable upstream)`
+          : 'Metadata unavailable in upstream sources';
+        addToast({ 
+          type: 'info', 
+          title: 'No Changes', 
+          message: `${data.artist.name}: ${missingInfo}` 
+        });
+        // Still refresh to show any partial updates
+        fetchArtists();
+      }
+    }
+    setFixingArtistId(null);
+  };
+
+  // Calculate artists needing fix
+  const artistsNeedingFix = useMemo(() => {
+    return artists.filter(a => a.needsRefresh).length;
+  }, [artists]);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -173,6 +345,26 @@ export default function LibraryPage() {
         description="View the health of your Lidarr library"
       >
         <div className="flex gap-2">
+          {fixJob?.status === 'running' ? (
+            <Button 
+              variant="outline" 
+              onClick={handleCancelFix} 
+              disabled={isCancellingFix}
+              className="text-status-error border-status-error hover:bg-status-error/10"
+            >
+              <XCircle className={`h-4 w-4 mr-2 ${isCancellingFix ? 'animate-spin' : ''}`} />
+              {isCancellingFix ? 'Cancelling...' : 'Cancel Fix'}
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={handleFixAll} 
+              disabled={artistsNeedingFix === 0 || isStartingFix || isLoading}
+            >
+              <Wrench className={`h-4 w-4 mr-2 ${isStartingFix ? 'animate-spin' : ''}`} />
+              Fix All{artistsNeedingFix > 0 ? ` (${artistsNeedingFix})` : ''}
+            </Button>
+          )}
           <Button variant="outline" onClick={fetchArtists} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -184,14 +376,14 @@ export default function LibraryPage() {
       <Card className="mb-4">
         <CardContent className="pt-4">
           <div className="flex items-center gap-4">
-            <div className={`text-2xl font-bold ${healthScore >= 80 ? 'text-green-500' : healthScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>
+            <div className={`text-2xl font-bold ${healthScore >= 80 ? 'text-status-success' : healthScore >= 50 ? 'text-status-warning' : 'text-status-error'}`}>
               {healthScore}%
             </div>
             <div className="flex-1">
               <div className="text-sm text-muted-foreground mb-1">Library Health</div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className={`h-full transition-all ${healthScore >= 80 ? 'bg-green-500' : healthScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                  className={`h-full transition-all ${healthScore >= 80 ? 'bg-status-success' : healthScore >= 50 ? 'bg-status-warning' : 'bg-status-error'}`}
                   style={{ width: `${healthScore}%` }} 
                 />
               </div>
@@ -199,6 +391,57 @@ export default function LibraryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Fix Progress Bar */}
+      {fixJob?.status === 'running' && (
+        <Card className="mb-4 border-primary/50">
+          <CardContent className="pt-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 animate-spin text-primary" />
+                  <span className="font-medium">Fixing Library Metadata</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleCancelFix}
+                  disabled={isCancellingFix}
+                  className="text-status-error hover:text-status-error hover:bg-status-error/10"
+                >
+                  <XCircle className={`h-4 w-4 mr-1 ${isCancellingFix ? 'animate-spin' : ''}`} />
+                  {isCancellingFix ? 'Cancelling...' : 'Cancel'}
+                </Button>
+              </div>
+              
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${fixJob.total > 0 ? (fixJob.processed / fixJob.total) * 100 : 0}%` }} 
+                />
+              </div>
+              
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span>{fixJob.processed} / {fixJob.total} artists</span>
+                  <span className="text-status-success">✓ {fixJob.fixed} fixed</span>
+                  {fixJob.failed > 0 && (
+                    <span className="text-status-error">✗ {fixJob.failed} failed</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  {fixJob.currentArtist && (
+                    <span className="truncate max-w-48">Current: {fixJob.currentArtist}</span>
+                  )}
+                  <span className="font-medium">
+                    {fixJob.total > 0 ? Math.round((fixJob.processed / fixJob.total) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b">
@@ -239,33 +482,33 @@ export default function LibraryPage() {
                 <p className="text-xs text-muted-foreground">Total Artists</p>
               </CardContent>
             </Card>
-        <Card className={issueStats?.noAlbums ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noAlbums ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noAlbums ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noAlbums ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noAlbums || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Albums</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noPoster ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noPoster ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noPoster ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noPoster ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noPoster || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Poster</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noOverview ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noOverview ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noOverview ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noOverview ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noOverview || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Bio</p>
           </CardContent>
         </Card>
-        <Card className={issueStats?.noGenres ? 'border-yellow-500/50' : ''}>
+        <Card className={issueStats?.noGenres ? 'border-status-warning/50' : ''}>
           <CardContent className="pt-4">
-            <div className={`text-2xl font-bold ${issueStats?.noGenres ? 'text-yellow-500' : 'text-green-500'}`}>
+            <div className={`text-2xl font-bold ${issueStats?.noGenres ? 'text-status-warning' : 'text-status-success'}`}>
               {issueStats?.noGenres || 0}
             </div>
             <p className="text-xs text-muted-foreground">No Genres</p>
@@ -348,6 +591,7 @@ export default function LibraryPage() {
                     >
                       Issues <SortIcon field="issues" />
                     </th>
+                    <th className="text-center py-3 px-2 w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -360,34 +604,47 @@ export default function LibraryPage() {
                         </div>
                       </td>
                       <td className="text-center py-3 px-2">
-                        <span className={artist.albumCount === 0 ? 'text-yellow-500 font-medium' : ''}>
+                        <span className={artist.albumCount === 0 ? 'text-status-warning font-medium' : ''}>
                           {artist.albumCount}
                         </span>
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center justify-center gap-1">
                           <span title={artist.hasPoster ? 'Has poster' : 'No poster'}>
-                            <Image className={`h-4 w-4 ${artist.hasPoster ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <Image className={`h-4 w-4 ${artist.hasPoster ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                           <span title={artist.hasOverview ? 'Has bio' : 'No bio'}>
-                            <FileText className={`h-4 w-4 ${artist.hasOverview ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <FileText className={`h-4 w-4 ${artist.hasOverview ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                           <span title={artist.hasGenres ? 'Has genres' : 'No genres'}>
-                            <Music className={`h-4 w-4 ${artist.hasGenres ? 'text-green-500' : 'text-yellow-500'}`} />
+                            <Music className={`h-4 w-4 ${artist.hasGenres ? 'text-status-success' : 'text-status-warning'}`} />
                           </span>
                         </div>
                       </td>
                       <td className="text-center py-3 px-2">
                         {artist.issues.length === 0 ? (
-                          <Badge variant="default" className="bg-green-600">
+                          <Badge variant="default" className="bg-status-success">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             OK
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="bg-yellow-600/20 text-yellow-500">
+                          <Badge variant="secondary" className="bg-status-warning/20 text-status-warning">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             {artist.issues.length}
                           </Badge>
+                        )}
+                      </td>
+                      <td className="text-center py-3 px-2">
+                        {artist.needsRefresh && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleFixArtist(artist.id)}
+                            disabled={fixingArtistId !== null || fixJob?.status === 'running' || isLoading}
+                            title="Fix artist metadata"
+                          >
+                            <Wrench className={`h-4 w-4 ${fixingArtistId === artist.id ? 'animate-spin' : ''}`} />
+                          </Button>
                         )}
                       </td>
                     </tr>

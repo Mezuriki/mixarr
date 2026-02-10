@@ -1,7 +1,16 @@
 'use client';
 
-import { Music, Plus, Check, CheckSquare, Square, Loader2, Search } from 'lucide-react';
-import { Card, Badge, Button } from '@/components/ui';
+import Image from 'next/image';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music from 'lucide-react/dist/esm/icons/music';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Square from 'lucide-react/dist/esm/icons/square';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { GenrePills } from '@/components/GenrePills';
 import { SpotifyIcon, LastfmIcon, MusicBrainzIcon } from '@/components/ExternalLinks';
 import { cn } from '@/lib/utils';
@@ -96,16 +105,19 @@ export function ArtistCard({
         )}
         
         {/* Thumbnail - standardized size matching Discover page */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-md overflow-hidden bg-muted">
           {imageUrl ? (
-            <img 
+            <Image 
               src={imageUrl} 
               alt={artistName} 
-              className="w-full h-full object-cover" 
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 64px, 80px"
+              className="object-cover" 
             />
           ) : (
-            <Music className="h-8 w-8 text-muted-foreground" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Music className="h-8 w-8 text-muted-foreground" />
+            </div>
           )}
         </div>
         
@@ -182,7 +194,7 @@ export function ArtistCard({
                 <span>{(fans / 1000).toFixed(0)}K fans</span>
               )}
               {listeners !== undefined && listeners > 0 && (
-                <span>{listeners.toLocaleString()} listeners</span>
+                <span className="tabular-nums">{listeners.toLocaleString()} listeners</span>
               )}
             </div>
           )}

@@ -1,14 +1,17 @@
 import { Router } from 'express';
-import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
-import { LidarrService, LidarrCache } from '../services/lidarr.js';
-import { LastfmService } from '../services/lastfm.js';
-import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
+import { LidarrCache } from '../services/lidarr.js';
+import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
 import { addLogEntry } from './logs.js';
 import { notificationService } from '../services/notifications.js';
 import { createLogger } from '../lib/logger.js';
+import { 
+  getLidarrService, 
+  getLidarrServiceWithConfig, 
+  getLastfmService 
+} from '../lib/connection-resolver.js';
 
 const logger = createLogger('DiscoverRoute');
 
@@ -23,51 +26,6 @@ interface CachedLibrary {
 }
 const libraryCache = new Map<string, CachedLibrary>();
 const LIBRARY_CACHE_TTL = 60 * 1000; // 1 minute TTL
-
-// Helper to get Last.fm service if configured
-async function getLastfmService(userId: number): Promise<LastfmService | null> {
-  const connection = await prisma.connection.findFirst({
-    where: { userId, type: 'lastfm', isActive: true },
-  });
-  if (!connection) return null;
-  const config = connection.config as { apiKey: string };
-  return new LastfmService(config);
-}
-
-// Helper to get Lidarr service (user-owned or global)
-async function getLidarrService(userId: number): Promise<LidarrService | null> {
-  // First try user's own connection, then fall back to global
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true }, // Global Lidarr
-      ],
-    },
-    orderBy: { userId: 'desc' }, // Prefer user's own connection (non-null userId first)
-  });
-  if (!connection) return null;
-  const config = connection.config as { url: string; apiKey: string };
-  return new LidarrService(config);
-}
-
-// Helper to get Lidarr service with full config (for add operations)
-async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true },
-      ],
-    },
-    orderBy: { userId: 'desc' },
-  });
-  if (!connection) return null;
-  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
-  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
-  const config = normalizeLidarrConfig(rawConfig);
-  return { service: new LidarrService(config), config };
-}
 
 /**
  * GET /api/discover/library
@@ -309,7 +267,15 @@ discoverRouter.post('/add', async (req, res) => {
 
     // Try MBID first if available - this is more reliable with Lidarr
     if (mbid) {
-      const mbidResults = await lidarr.searchArtist(mbid);
+      // Warm SkyHook cache BEFORE searching - this dramatically improves success rate
+      try {
+        const warmResult = await skyhookWarmer.warmArtist(mbid);
+        logger.info(`SkyHook cache ${warmResult.cached ? 'already warm' : warmResult.success ? 'warmed' : 'warm failed'} for MBID ${mbid}`);
+      } catch (error) {
+        logger.warn(`Failed to warm SkyHook cache for MBID ${mbid}: ${error instanceof Error ? error.message : error}`);
+      }
+      
+      const mbidResults = await lidarr.searchArtist(`lidarr:${mbid}`);
       const mbidMatch = mbidResults.find(a => a.foreignArtistId === mbid);
       if (mbidMatch) {
         foreignArtistId = mbidMatch.foreignArtistId;
@@ -362,9 +328,9 @@ discoverRouter.post('/add', async (req, res) => {
       return;
     }
 
-    // Add to Lidarr with metadata refresh to ensure complete MusicBrainz data
+    // Add to Lidarr with SkyHook cache warming for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist: result, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist: result, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       foreignArtistId,
       qpId,
       mpId,

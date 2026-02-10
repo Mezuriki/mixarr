@@ -1,13 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, useToast, Loading } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Loading } from '@/components/ui/loading';
 import { PageHeader } from '@/components/layout/page-header';
 import { useSlskdDownloads, useRetrySlskdDownload, useCancelSlskdDownload, SlskdDownload } from '@/lib/hooks';
-import { 
-  Download, RefreshCw, Trash2, RotateCcw, Clock, CheckCircle, 
-  XCircle, Loader2, Music, HardDrive, User, File, FolderOpen 
-} from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Download from 'lucide-react/dist/esm/icons/download';
+import File from 'lucide-react/dist/esm/icons/file';
+import FolderOpen from 'lucide-react/dist/esm/icons/folder-open';
+import HardDrive from 'lucide-react/dist/esm/icons/hard-drive';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music from 'lucide-react/dist/esm/icons/music';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import User from 'lucide-react/dist/esm/icons/user';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 
 type StatusFilter = 'all' | 'pending' | 'downloading' | 'completed' | 'failed' | 'cancelled';
 
@@ -239,25 +252,25 @@ export default function DownloadsPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-500">{stats.pending}</div>
+            <div className="text-2xl font-bold text-status-warning">{stats.pending}</div>
             <div className="text-sm text-muted-foreground">Pending</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-500">{stats.downloading}</div>
+            <div className="text-2xl font-bold text-status-info">{stats.downloading}</div>
             <div className="text-sm text-muted-foreground">Downloading</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-500">{stats.completed}</div>
+            <div className="text-2xl font-bold text-status-success">{stats.completed}</div>
             <div className="text-sm text-muted-foreground">Completed</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-red-500">{stats.failed}</div>
+            <div className="text-2xl font-bold text-status-error">{stats.failed}</div>
             <div className="text-sm text-muted-foreground">Failed</div>
           </CardContent>
         </Card>

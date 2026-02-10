@@ -2,21 +2,22 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Download, 
-  CheckCircle, 
-  XCircle, 
-  Sparkles, 
-  Music2, 
-  Radio,
-  Users,
-  Loader2
-} from 'lucide-react';
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Download from 'lucide-react/dist/esm/icons/download';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Radio from 'lucide-react/dist/esm/icons/radio';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Users from 'lucide-react/dist/esm/icons/users';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 
 interface Artist {
   id?: string;
@@ -223,11 +224,11 @@ export default function PreviewPage() {
                   {importResults.map((result, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm">
                       {result.success ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-status-success" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
+                        <XCircle className="h-4 w-4 text-status-error" />
                       )}
-                      <span className={result.success ? 'text-green-600' : 'text-red-600'}>
+                      <span className={result.success ? 'text-status-success' : 'text-status-error'}>
                         {result.name}: {result.message}
                       </span>
                     </div>
@@ -281,7 +282,7 @@ export default function PreviewPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{artist.name}</p>
                         {artist.listeners && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground tabular-nums">
                             {parseInt(artist.listeners).toLocaleString()} listeners
                           </p>
                         )}

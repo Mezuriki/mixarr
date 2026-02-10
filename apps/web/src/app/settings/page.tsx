@@ -3,12 +3,22 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, useToast, Select } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/layout/page-header';
 import { AISettings } from '@/components/settings/ai-settings';
 import { SSOSettings } from '@/components/settings/sso-settings';
 import { api } from '@/lib/api';
-import { Settings as SettingsIcon, Save, RefreshCw, Bell, Globe, ChevronRight, Shield } from 'lucide-react';
+import Bell from 'lucide-react/dist/esm/icons/bell';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Globe from 'lucide-react/dist/esm/icons/globe';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Save from 'lucide-react/dist/esm/icons/save';
+import SettingsIcon from 'lucide-react/dist/esm/icons/settings';
+import Shield from 'lucide-react/dist/esm/icons/shield';
 import { useAuth } from '@/lib/auth';
 
 interface SettingGroup {

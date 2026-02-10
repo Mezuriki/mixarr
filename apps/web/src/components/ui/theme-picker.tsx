@@ -1,131 +1,72 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { Palette, Check } from 'lucide-react';
-import { themes } from '@/lib/themes';
+import Monitor from 'lucide-react/dist/esm/icons/monitor';
+import Moon from 'lucide-react/dist/esm/icons/moon';
+import Sun from 'lucide-react/dist/esm/icons/sun';
 import { cn } from '@/lib/utils';
 
+const themeOptions = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+] as const;
+
 export function ThemePicker() {
-  const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Close on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
-
-  // Close on escape
-  useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [isOpen]);
-
   if (!mounted) {
     return (
-      <button className="rounded-lg p-2 hover:bg-accent transition-colors" disabled>
-        <Palette className="h-5 w-5" />
-      </button>
+      <div
+        className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
+        aria-hidden="true"
+      >
+        {themeOptions.map((option) => (
+          <div
+            key={option.value}
+            className="rounded-md p-1.5 w-8 h-8"
+          />
+        ))}
+      </div>
     );
   }
 
-  const handleThemeSelect = (themeId: string) => {
-    setTheme(themeId);
-    setIsOpen(false);
-  };
-
-  // Get current theme for potential future use (e.g., showing current theme indicator)
-  const _currentTheme = themes.find(t => t.id === theme) || themes[0];
-  void _currentTheme; // Suppress unused variable warning
-
   return (
-    <div ref={containerRef} className="relative">
-      {/* Trigger button - icon only, no text */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          'flex items-center justify-center rounded-lg p-2 transition-all duration-200',
-          'hover:bg-accent hover:text-accent-foreground',
-          isOpen && 'bg-accent text-accent-foreground'
-        )}
-        aria-label="Choose theme"
-        aria-expanded={isOpen}
-        aria-haspopup="true"
-      >
-        <Palette className="h-5 w-5" />
-      </button>
+    <div
+      role="radiogroup"
+      aria-label="Theme selection"
+      className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1"
+    >
+      {themeOptions.map((option) => {
+        const Icon = option.icon;
+        const isActive = theme === option.value;
 
-      {/* Dropdown menu - opens downward since picker is in header */}
-      {isOpen && (
-        <div
-          className="theme-picker-dropdown absolute top-full left-0 mt-2 w-56 max-h-80 overflow-y-auto rounded-lg border p-1 shadow-lg z-50 animate-in fade-in-0 slide-in-from-top-2 duration-100"
-          style={{ 
-            backgroundColor: 'var(--theme-picker-bg, hsl(var(--popover)))',
-            color: 'var(--theme-picker-text, hsl(var(--popover-foreground)))',
-            borderColor: 'hsl(var(--border))'
-          }}
-          role="menu"
-          aria-label="Theme options"
-        >
-          {themes.map((t) => {
-            const isActive = theme === t.id;
-            
-            return (
-              <button
-                key={t.id}
-                onClick={() => handleThemeSelect(t.id)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm',
-                  'transition-colors duration-100',
-                  'hover:bg-accent hover:text-accent-foreground',
-                  isActive && 'bg-accent/50'
-                )}
-                role="menuitem"
-              >
-                {/* Color indicator */}
-                <div
-                  className="h-4 w-4 rounded-full border border-border flex-shrink-0"
-                  style={{ background: t.colors.primary }}
-                />
-                {/* Theme name and description */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">{t.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {t.description}
-                  </div>
-                </div>
-                {/* Active check */}
-                {isActive && (
-                  <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            aria-label={`${option.label} theme`}
+            onClick={() => setTheme(option.value)}
+            className={cn(
+              'rounded-md p-1.5 transition-all duration-200',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              isActive
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        );
+      })}
     </div>
   );
 }

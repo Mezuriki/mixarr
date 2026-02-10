@@ -1,0 +1,89 @@
+# =============================================================================
+# Mixarr Slim Stack
+# Production deployment using slim image with external MariaDB and Redis
+#
+# Usage:
+#   docker compose -f docker-compose.slim.yml up -d
+#
+# Requirements:
+#   - Set SESSION_SECRET in environment or .env file
+#
+# Ports:
+#   - 3000: Web UI
+#   - 3005: API
+#
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Mixarr Application (API + Web)
+  # ---------------------------------------------------------------------------
+  mixarr:
+    image: ghcr.io/aquantumofdonuts/mixarr:slim
+    container_name: mixarr
+    ports:
+      - "3000:3000"    # Web UI
+      - "3005:3005"    # API
+    environment:
+      - DATABASE_URL=mysql://mixarr:mixarr@db:3306/mixarr
+      - REDIS_URL=redis://redis:6379
+      - SESSION_SECRET=${SESSION_SECRET:-CHANGE_ME_IN_PRODUCTION}
+    volumes:
+      - mixarr-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # MariaDB Database
+  # ---------------------------------------------------------------------------
+  db:
+    image: mariadb:11
+    container_name: mixarr-db
+    environment:
+      # ⚠️ Change these passwords in production!
+      - MYSQL_ROOT_PASSWORD=mixarr_root
+      - MYSQL_DATABASE=mixarr
+      - MYSQL_USER=mixarr
+      - MYSQL_PASSWORD=mixarr
+    volumes:
+      - mixarr-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis Cache & Queue
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: mixarr-redis
+    volumes:
+      - mixarr-redis:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mixarr-data:
+    name: mixarr-data
+  mixarr-db:
+    name: mixarr-db
+  mixarr-redis:
+    name: mixarr-redis

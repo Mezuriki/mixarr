@@ -2,13 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  ListTodo, 
-  Calendar, 
-  Search,
-  Library 
-} from 'lucide-react';
+import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import Home from 'lucide-react/dist/esm/icons/home';
+import Library from 'lucide-react/dist/esm/icons/library';
+import ListTodo from 'lucide-react/dist/esm/icons/list-todo';
+import Search from 'lucide-react/dist/esm/icons/search';
 import { useOfflineStatus } from '@/lib/use-offline-status';
 
 interface NavItem {
@@ -61,7 +59,7 @@ export function MobileNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t border-border md:hidden safe-area-inset-bottom">
       {/* Offline indicator */}
       {isOffline && (
-        <div className="bg-yellow-500/90 text-yellow-950 text-xs text-center py-1 px-2">
+        <div className="bg-status-warning/90 text-yellow-950 text-xs text-center py-1 px-2">
           You&apos;re offline
           {pendingActionsCount > 0 && ` • ${pendingActionsCount} pending`}
         </div>

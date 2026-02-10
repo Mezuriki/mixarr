@@ -2,7 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
-import { LidarrService, LidarrCache } from '../services/lidarr.js';
+import { LidarrCache } from '../services/lidarr.js';
 import { MusicBrainzService } from '../services/musicbrainz.js';
 import { LastfmService } from '../services/lastfm.js';
 import { fetchDeezerArtistImages } from '../services/deezer.js';
@@ -10,65 +10,24 @@ import { multiSourceSearch, resolveMbid, SearchSource } from '../services/multi-
 import { MetadataEnrichmentService } from '../services/metadata-enrichment.js';
 import { notificationService } from '../services/notifications.js';
 import { aiService } from '../services/ai.js';
+import { MetadataFixService } from '../services/metadata-fix.js';
+import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { addLogEntry } from './logs.js';
 import { createLogger } from '../lib/logger.js';
-import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
+import { 
+  getLidarrService, 
+  getLidarrServiceWithConfig, 
+  getLastfmService 
+} from '../lib/connection-resolver.js';
 
 const log = createLogger('Search');
+
+// Singleton for metadata fix operations
+const metadataFixService = new MetadataFixService(skyhookWarmer);
 
 export const searchRouter = Router();
 
 searchRouter.use(requireAuth);
-
-// Helper to get Last.fm service (user-owned or global)
-async function getLastfmService(userId: number): Promise<LastfmService | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lastfm', isActive: true },
-        { userId: null, type: 'lastfm', isActive: true },
-      ],
-    },
-    orderBy: { userId: 'desc' },
-  });
-  if (!connection) return null;
-  const config = connection.config as { apiKey: string };
-  return new LastfmService(config);
-}
-
-// Helper to get Lidarr service (user-owned or global)
-async function getLidarrService(userId: number): Promise<LidarrService | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true },
-      ],
-    },
-    orderBy: { userId: 'desc' },
-  });
-  if (!connection) return null;
-  const config = connection.config as { url: string; apiKey: string };
-  return new LidarrService(config);
-}
-
-// Helper to get Lidarr service with full config (for add operations)
-async function getLidarrServiceWithConfig(userId: number): Promise<{ service: LidarrService; config: LidarrConnectionConfig } | null> {
-  const connection = await prisma.connection.findFirst({
-    where: {
-      OR: [
-        { userId, type: 'lidarr', isActive: true },
-        { userId: null, type: 'lidarr', isActive: true },
-      ],
-    },
-    orderBy: { userId: 'desc' },
-  });
-  if (!connection) return null;
-  const rawConfig = connection.config as unknown as LidarrConnectionConfig;
-  // Normalize config to ensure profile IDs are numbers (handles string values from DB)
-  const config = normalizeLidarrConfig(rawConfig);
-  return { service: new LidarrService(config), config };
-}
 
 // Search for artists
 searchRouter.get('/artists', async (req, res) => {
@@ -435,9 +394,9 @@ searchRouter.post('/discover/add', async (req, res) => {
       return;
     }
 
-    // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
+    // Use addArtistWithCacheWarm to warm SkyHook cache for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       resolvedMbid, qpId, mpId, rfPath,
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
@@ -518,9 +477,9 @@ searchRouter.post('/artists/add', async (req, res) => {
       return;
     }
 
-    // Use addArtistWithRefresh to trigger metadata refresh for complete MusicBrainz data
+    // Use addArtistWithCacheWarm to warm SkyHook cache for reliable metadata lookup
     // Use monitorOption from connection config (defaults to 'all' if not set)
-    const { artist, refreshCommand } = await lidarr.addArtistWithRefresh(
+    const { artist, refreshCommand } = await lidarr.addArtistWithCacheWarm(
       foreignArtistId, qpId, mpId, rfPath,
       true,  // monitored
       lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
@@ -737,6 +696,172 @@ searchRouter.post('/lidarr/artists/:id/refresh', async (req, res) => {
   } catch (error) {
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to refresh artist' 
+    });
+  }
+});
+
+// =====================================================
+// BATCH FIX ENDPOINTS
+// These static routes MUST be placed BEFORE the /:id routes
+// to avoid Express matching "fix-all" as an artist ID
+// =====================================================
+
+// Start batch fix job for all artists with metadata issues
+searchRouter.post('/lidarr/artists/fix-all', async (req, res) => {
+  try {
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    // Get optional issue type filter from request body
+    const { issueType } = req.body as { issueType?: 'no_poster' | 'no_overview' | 'no_genres' | 'any' };
+
+    // Get all artists from Lidarr
+    const artists = await lidarr.getArtists();
+
+    // Filter to artists with metadata issues
+    const artistsWithIssues = artists.filter(artist => {
+      // Must have foreignArtistId (MBID) to be fixable
+      if (!artist.foreignArtistId) return false;
+
+      const issues = getMetadataIssues(artist);
+      if (issues.length === 0) return false;
+
+      // If specific issue type requested, filter by it
+      if (issueType && issueType !== 'any') {
+        return issues.includes(issueType);
+      }
+
+      // Filter to only metadata issues (not structural issues like no_albums)
+      const metadataIssues = issues.filter(i => 
+        i === 'no_poster' || i === 'no_overview' || i === 'no_genres'
+      );
+      return metadataIssues.length > 0;
+    });
+
+    // If no artists need fixing, return early
+    if (artistsWithIssues.length === 0) {
+      res.json({
+        jobId: null,
+        total: 0,
+        estimatedMinutes: 0,
+        message: 'No artists need fixing',
+      });
+      return;
+    }
+
+    // Prepare artists for batch fix
+    const artistsToFix = artistsWithIssues.map(a => ({
+      id: a.id,
+      foreignArtistId: a.foreignArtistId,
+      artistName: a.artistName,
+    }));
+
+    // Start batch fix job
+    try {
+      const jobInfo = await metadataFixService.startBatchFix(req.user!.id, artistsToFix);
+
+      // Execute batch fix asynchronously (non-blocking)
+      setImmediate(async () => {
+        try {
+          await metadataFixService.executeBatchFix(req.user!.id, lidarr, artistsToFix);
+        } catch (error) {
+          log.error('Batch fix execution failed:', error);
+        }
+      });
+
+      res.json(jobInfo);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Job already in progress') {
+        res.status(409).json({ error: 'Job already in progress' });
+        return;
+      }
+      throw error;
+    }
+  } catch (error) {
+    log.error('Failed to start batch fix:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to start batch fix' 
+    });
+  }
+});
+
+// Get batch fix job status
+searchRouter.get('/lidarr/artists/fix-all/status', async (req, res) => {
+  try {
+    const status = await metadataFixService.getJobStatus(req.user!.id);
+
+    if (!status) {
+      res.json({ status: null });
+      return;
+    }
+
+    res.json(status);
+  } catch (error) {
+    log.error('Failed to get job status:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to get job status' 
+    });
+  }
+});
+
+// Cancel running batch fix job
+searchRouter.post('/lidarr/artists/fix-all/cancel', async (req, res) => {
+  try {
+    const cancelled = await metadataFixService.cancelJob(req.user!.id);
+
+    if (!cancelled) {
+      res.status(404).json({ error: 'No running job to cancel' });
+      return;
+    }
+
+    res.json({ cancelled: true });
+  } catch (error) {
+    log.error('Failed to cancel job:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Failed to cancel job' 
+    });
+  }
+});
+
+// Fix missing metadata for a specific artist
+searchRouter.post('/lidarr/artists/:id/fix', async (req, res) => {
+  try {
+    const artistId = parseIntParam(req.params.id);
+    if (artistId === null || artistId <= 0) {
+      res.status(400).json({ error: 'Invalid artist ID' });
+      return;
+    }
+
+    const lidarr = await getLidarrService(req.user!.id);
+    if (!lidarr) {
+      res.status(400).json({ error: 'No active Lidarr connection' });
+      return;
+    }
+
+    // Fetch artist from Lidarr to get MBID
+    const artist = await lidarr.getArtist(artistId);
+    if (!artist) {
+      res.status(404).json({ error: 'Artist not found' });
+      return;
+    }
+
+    // Check artist has foreignArtistId (MBID)
+    if (!artist.foreignArtistId) {
+      res.status(400).json({ error: 'Artist has no MusicBrainz ID' });
+      return;
+    }
+
+    // Call metadataFixService to fix the artist
+    const result = await metadataFixService.fixArtist(lidarr, artistId, artist.foreignArtistId);
+
+    res.json(result);
+  } catch (error) {
+    log.error('Failed to fix artist metadata:', error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Fix operation failed' 
     });
   }
 });
@@ -1211,9 +1336,9 @@ searchRouter.post('/batch', async (req, res) => {
           continue;
         }
 
-        // Use addArtistWithRefresh but don't wait (batch mode - avoid blocking)
+        // Use addArtistWithCacheWarm to warm SkyHook cache (batch mode)
         // Use monitorOption from connection config (defaults to 'all' if not set)
-        await lidarr.addArtistWithRefresh(
+        await lidarr.addArtistWithCacheWarm(
           artistId, qpId, mpId, rfPath,
           true,  // monitored
           lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config

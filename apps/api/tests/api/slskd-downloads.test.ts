@@ -50,6 +50,29 @@ vi.mock('../../src/services/slskd.js', () => ({
   },
 }));
 
+// Mock settings
+vi.mock('../../src/lib/settings.js', () => ({
+  isSlskdRateLimitingEnabled: vi.fn().mockResolvedValue(false),
+}));
+
+// Mock queue operations
+vi.mock('../../src/jobs/slskd-operations-queue.js', () => ({
+  enqueueSlskdDownload: vi.fn().mockResolvedValue({
+    waitUntilFinished: vi.fn().mockResolvedValue({}),
+  }),
+  SLSKD_QUEUE_NAME: 'slskd-operations',
+}));
+
+// Mock redis
+vi.mock('../../src/lib/redis.js', () => ({
+  createRedisConnection: vi.fn().mockReturnValue({
+    duplicate: vi.fn().mockReturnValue({
+      on: vi.fn().mockReturnThis(),
+      connect: vi.fn().mockResolvedValue({}),
+    }),
+  }),
+}));
+
 // Mock logger
 vi.mock('../../src/lib/logger.js', () => ({
   createLogger: () => ({

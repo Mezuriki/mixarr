@@ -7,14 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.2.0] - 2026-01-27
+## [v1.3.0] - Unreleased
 
-### Added
+### SkyHook Cache Warmer (No-Miss Lidarr Adds)
+- **New Feature**: Pre-flight SkyHookcache warming eliminates failed artist adds
+
+### Theme Consolidation
+- Replace 6-theme system with single "Listening Room" theme
+- Simplify theme picker to Light/Dark/System toggle
+
+### Library Health: Fix Metadata Tool
+- **New Feature**: "Fix" button on Library Health page to repair missing metadata
+- Single-artist fix: Click wrench icon to warm cache + refresh artist
+- Batch "Fix All": Process all artists with issues (1/second rate limit)
+
+### UI/UX Polish
+- Add skeleton loading states for dashboard and data tables
+- Group sidebar navigation into logical sections (Home, Library, Discover, Settings)
+- Add interactive card variant with enhanced hover states
+- Add actionable CTA to empty dashboard state
+- Migrate to semantic status color tokens (success, warning, error, info)
+- Badge component uses semantic status tokens for consistency
+
+### slskd Quality Scoring
+- Add audio format classification system (lossless, high-quality, lossy, low-quality, unknown)
+- Intelligent file extension parsing with comprehensive format support
+- Add slskd peer quality scoring algorithm with weighted factors
+- Peer scoring considers: file format, bitrate, lossless detection, filename patterns
+
+### API Architecture Improvements
+- Extract subscription presets to dedicated data module (1,021 lines)
+- Extract run history endpoints to controller pattern
+- Standardize error logging across subscription controller
+- Reduce subscriptions.ts route file by 76% (1,452 → 347 lines)
+
+### Accessibility Improvements
+- Add focus trap to modals (Tab cycles within modal)
+- Add focus restoration when modals close
+- Add screen reader support for loading spinner
+- Respect `prefers-reduced-motion` user preference
+- Add proper ARIA attributes to modals (role=dialog, aria-modal, aria-labelledby)
+- Escape key closes modals
+
+### Performance Improvements
+- Remove 8 external Google Font dependencies (Inter, Playfair, IBM Plex, etc.)
+- Use system font stack (eliminates font loading latency)
+- Replace lucide-react barrel imports with direct imports (better tree-shaking)
+- Replace @/components/ui barrel imports with direct imports (better code splitting)
+- Migrate to next/image for automatic image optimization (WebP, srcset, lazy loading)
+
+### UX Improvements
+- Add tabular-nums to numeric displays (prevents layout shift)
+- Add motion-safe animations for modal transitions
+- Configure remote image patterns for cover art (coverartarchive.org, musicbrainz.org)
+
+### Documentation
+- Add theme system README with design principles and color palette reference
+
+### Fixed
+- Fix 40 failing tests (SSO, slskd, controller, jellyfin mocks)
+- Move integration tests to separate directory for cleaner test runs
+
+#### Docker Slim Image
+- New `mixarr:slim` Docker image containing only API + Web (~700MB vs ~1.5GB unified)
+- `docker-compose.slim.yml` for production deployments with external MariaDB and Redis
+- `docker-compose.byo.yml` for users with existing database/Redis infrastructure
+
+
+#### Ollama & Custom OpenAI Support
+- Use local LLMs or OpenAI-compatible providers (Ollama, LiteLLM, OpenRouter) for AI recommendations
+- Configure custom base URL and model name in AI Settings
+- Works without API key for local Ollama instances
+- Security: Reject URLs with embedded credentials
 
 #### Lidarr Monitor New Items
 - Add "Monitor New Albums" dropdown to Lidarr connection settings
 - Support for None, All, New, and Existing monitor options
 - Automatically apply monitor setting when adding artists via subscriptions
+
+## [v1.2.1] - 2026-01-27
+
+### Hotfixes
+
+- Issue #30 - HTTP Access Shows Blank Dashboard
+
+
+## [v1.2.0] - 2026-01-27
 
 ### Fixed
 - Issue #24: Lidarr import settings are not respected
@@ -38,6 +116,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global rate limiting for CodeQL findings
 
 ### Added
+
+#### Lidarr Monitor New Items
+- Add "Monitor New Albums" dropdown to Lidarr connection settings
+- Support for None, All, New, and Existing monitor options
+- Automatically apply monitor setting when adding artists via subscriptions
 
 #### Subscription System Refactoring
 - Extract SubscriptionService with TDD (business logic layer)

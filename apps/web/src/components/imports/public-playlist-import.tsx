@@ -1,9 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Input, Modal, Checkbox, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
-import { Link2, Music2, Check, Loader2, ListMusic } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Link2 from 'lucide-react/dist/esm/icons/link-2';
+import ListMusic from 'lucide-react/dist/esm/icons/list-music';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
 
 interface PlaylistArtist {
   name: string;

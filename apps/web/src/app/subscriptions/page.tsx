@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, useToast } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import {
@@ -14,7 +16,8 @@ import {
   useCreateSubscription,
   useUpdateSubscription,
 } from '@/lib/hooks';
-import { Plus, TrendingUp } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 
 // Import extracted components
 import { SubscriptionCard, Subscription } from '@/components/subscriptions/SubscriptionCard';

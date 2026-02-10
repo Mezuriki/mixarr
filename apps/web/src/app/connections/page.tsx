@@ -2,13 +2,31 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Modal, ModalFooter, useToast, Select, Badge } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useConnections, useDeleteConnection, queryKeys } from '@/lib/hooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, TestTube2, Trash2, Edit, Check, X, Eye, EyeOff, RefreshCw, ExternalLink, Unlink, Search, Library } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
+import Library from 'lucide-react/dist/esm/icons/library';
+import Plus from 'lucide-react/dist/esm/icons/plus';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Search from 'lucide-react/dist/esm/icons/search';
+import TestTube2 from 'lucide-react/dist/esm/icons/test-tube-2';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Unlink from 'lucide-react/dist/esm/icons/unlink';
+import X from 'lucide-react/dist/esm/icons/x';
 
 interface Connection {
   id: number;

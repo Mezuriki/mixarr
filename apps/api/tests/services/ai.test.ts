@@ -80,6 +80,8 @@ describe('AIService', () => {
         openaiApiKey: 'test-key',
         openaiEnabled: true,
         openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: null,
         anthropicApiKey: null,
         anthropicEnabled: false,
         anthropicStrategy: 'similar',
@@ -111,6 +113,8 @@ describe('AIService', () => {
         openaiApiKey: 'test-openai-key',
         openaiEnabled: true,
         openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: null,
         anthropicApiKey: null,
         anthropicEnabled: false,
         anthropicStrategy: 'similar',
@@ -140,6 +144,8 @@ describe('AIService', () => {
         openaiApiKey: 'test-openai-key',
         openaiEnabled: true,
         openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: null,
         anthropicApiKey: null,
         anthropicEnabled: false,
         anthropicStrategy: 'similar',
@@ -160,6 +166,133 @@ describe('AIService', () => {
 
       expect(result.artists).toEqual(['Bonobo', 'Four Tet', 'Caribou']);
       expect(result.providers).toEqual(['openai']);
+    });
+
+    it('should use custom model when configured', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue({
+        id: 1,
+        openaiApiKey: 'test-key',
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: 'gpt-4o',
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{ message: { content: '["Test Artist"]' } }],
+      });
+
+      const service = new AIService();
+      await service.searchByPrompt('jazz fusion');
+
+      expect(mockOpenAICreate).toHaveBeenCalled();
+      const callArgs = mockOpenAICreate.mock.calls[0][0];
+      expect(callArgs.model).toBe('gpt-4o');
+    });
+
+    it('should use default model when not configured', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue({
+        id: 1,
+        openaiApiKey: 'test-key',
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: null,
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{ message: { content: '["Test Artist"]' } }],
+      });
+
+      const service = new AIService();
+      await service.searchByPrompt('jazz fusion');
+
+      expect(mockOpenAICreate).toHaveBeenCalled();
+      const callArgs = mockOpenAICreate.mock.calls[0][0];
+      expect(callArgs.model).toBe('gpt-3.5-turbo');
+    });
+
+    it('should work with custom base URL and no API key (Ollama mode)', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue({
+        id: 1,
+        openaiApiKey: null,
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: 'http://localhost:11434/v1',
+        openaiModel: 'llama3.2',
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{ message: { content: '["Local Artist"]' } }],
+      });
+
+      const service = new AIService();
+      const result = await service.searchByPrompt('electronic music');
+
+      expect(result.artists).toEqual(['Local Artist']);
+      expect(result.providers).toEqual(['openai']);
+      expect(mockOpenAICreate).toHaveBeenCalled();
+      const callArgs = mockOpenAICreate.mock.calls[0][0];
+      expect(callArgs.model).toBe('llama3.2');
+    });
+  });
+
+  describe('isAvailable', () => {
+    it('should return true when OpenAI has custom base URL but no API key', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue({
+        id: 1,
+        openaiApiKey: null,
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: 'http://localhost:11434/v1',
+        openaiModel: null,
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const service = new AIService();
+      const available = await service.isAvailable();
+
+      expect(available).toBe(true);
+    });
+
+    it('should return false when OpenAI is enabled but has neither API key nor base URL', async () => {
+      vi.mocked(prisma.aISettings.findFirst).mockResolvedValue({
+        id: 1,
+        openaiApiKey: null,
+        openaiEnabled: true,
+        openaiStrategy: 'similar',
+        openaiBaseUrl: null,
+        openaiModel: null,
+        anthropicApiKey: null,
+        anthropicEnabled: false,
+        anthropicStrategy: 'similar',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const service = new AIService();
+      const available = await service.isAvailable();
+
+      expect(available).toBe(false);
     });
   });
 });

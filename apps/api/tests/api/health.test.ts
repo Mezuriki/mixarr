@@ -22,7 +22,104 @@ describe('Health Routes', () => {
     vi.resetModules();
   });
 
-  describe('GET /ready', () => {
+  describe('GET /live', () => {
+    it('returns 200 always (liveness check)', async () => {
+      const { healthRouter } = await import('../../src/routes/health.js');
+      
+      const app = express();
+      app.use('/health', healthRouter);
+
+      const response = await request(app).get('/health/live');
+      
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('alive');
+      expect(response.body.timestamp).toBeDefined();
+    });
+  });
+
+  describe('GET / (health check)', () => {
+    it('returns 200 when database and redis are healthy', async () => {
+      const prisma = await import('../../src/lib/db.js');
+      const { redis } = await import('../../src/lib/redis.js');
+      
+      vi.mocked(prisma.default.$queryRaw).mockResolvedValue([{ 1: 1 }]);
+      vi.mocked(redis.ping).mockResolvedValue('PONG');
+
+      const { healthRouter } = await import('../../src/routes/health.js');
+      
+      const app = express();
+      app.use('/health', healthRouter);
+
+      const response = await request(app).get('/health');
+      
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('ok');
+      expect(response.body.db).toBe(true);
+      expect(response.body.redis).toBe(true);
+    });
+
+    it('returns 503 when database is down', async () => {
+      const prisma = await import('../../src/lib/db.js');
+      const { redis } = await import('../../src/lib/redis.js');
+      
+      vi.mocked(prisma.default.$queryRaw).mockRejectedValue(new Error('Connection refused'));
+      vi.mocked(redis.ping).mockResolvedValue('PONG');
+
+      const { healthRouter } = await import('../../src/routes/health.js');
+      
+      const app = express();
+      app.use('/health', healthRouter);
+
+      const response = await request(app).get('/health');
+      
+      expect(response.status).toBe(503);
+      expect(response.body.status).toBe('error');
+      expect(response.body.db).toBe(false);
+      expect(response.body.redis).toBe(true);
+    });
+
+    it('returns 503 when redis is down', async () => {
+      const prisma = await import('../../src/lib/db.js');
+      const { redis } = await import('../../src/lib/redis.js');
+      
+      vi.mocked(prisma.default.$queryRaw).mockResolvedValue([{ 1: 1 }]);
+      vi.mocked(redis.ping).mockRejectedValue(new Error('Connection refused'));
+
+      const { healthRouter } = await import('../../src/routes/health.js');
+      
+      const app = express();
+      app.use('/health', healthRouter);
+
+      const response = await request(app).get('/health');
+      
+      expect(response.status).toBe(503);
+      expect(response.body.status).toBe('error');
+      expect(response.body.db).toBe(true);
+      expect(response.body.redis).toBe(false);
+    });
+
+    it('returns 503 when both are down', async () => {
+      const prisma = await import('../../src/lib/db.js');
+      const { redis } = await import('../../src/lib/redis.js');
+      
+      vi.mocked(prisma.default.$queryRaw).mockRejectedValue(new Error('Connection refused'));
+      vi.mocked(redis.ping).mockRejectedValue(new Error('Connection refused'));
+
+      const { healthRouter } = await import('../../src/routes/health.js');
+      
+      const app = express();
+      app.use('/health', healthRouter);
+
+      const response = await request(app).get('/health');
+      
+      expect(response.status).toBe(503);
+      expect(response.body.status).toBe('error');
+      expect(response.body.db).toBe(false);
+      expect(response.body.redis).toBe(false);
+    });
+  });
+
+  describe('GET /ready (legacy)', () => {
     it('returns 200 when database and redis are healthy', async () => {
       const prisma = await import('../../src/lib/db.js');
       const { redis } = await import('../../src/lib/redis.js');

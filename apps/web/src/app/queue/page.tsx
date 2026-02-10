@@ -1,12 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, Badge, useToast, Input } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { useReviewQueue, useUpdateReviewItem, useBulkUpdateReview } from '@/lib/hooks';
 import { SlskdSearchModal } from '@/components/slskd/SearchModal';
-import { Check, X, Music2, Clock, User, Search, CheckSquare, Square, Loader2, Disc, Users } from 'lucide-react';
+import Check from 'lucide-react/dist/esm/icons/check';
+import CheckSquare from 'lucide-react/dist/esm/icons/check-square';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Square from 'lucide-react/dist/esm/icons/square';
+import User from 'lucide-react/dist/esm/icons/user';
+import Users from 'lucide-react/dist/esm/icons/users';
+import X from 'lucide-react/dist/esm/icons/x';
 
 export default function QueuePage() {
   const { user } = useAuth();
@@ -280,7 +294,7 @@ export default function QueuePage() {
                         }}
                         title="Search on Soulseek"
                       >
-                        <Search className="h-4 w-4 text-blue-500" />
+                        <Search className="h-4 w-4 text-status-info" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -290,9 +304,9 @@ export default function QueuePage() {
                         title="Approve"
                       >
                         {processingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                          <Loader2 className="h-4 w-4 animate-spin text-status-success" />
                         ) : (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-4 w-4 text-status-success" />
                         )}
                       </Button>
                       <Button

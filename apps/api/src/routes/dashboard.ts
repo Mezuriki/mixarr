@@ -17,23 +17,34 @@ dashboardRouter.get('/stats', async (req, res) => {
 
     const [
       activeSubscriptions,
-      artistsAdded,
+      artistsAddedViaSubscriptions,
+      artistsAddedViaReviewQueue,
       pendingReviews,
-      recentRuns
+      recentRuns,
+      activeConnections
     ] = await Promise.all([
       // Active subscriptions count
       prisma.subscription.count({
         where: { userId, isActive: true }
       }),
       
-      // Artists added in last 30 days (from subscription runs)
-      prisma.subscriptionRun.aggregate({
+      // Artists added in last 30 days via subscriptions/feed (SubscriptionResult)
+      prisma.subscriptionResult.count({
         where: {
           subscription: { userId },
-          status: 'completed',
-          completedAt: { gte: thirtyDaysAgo }
-        },
-        _sum: { addedCount: true }
+          status: 'added',
+          processedAt: { gte: thirtyDaysAgo }
+        }
+      }),
+
+      // Artists added in last 30 days via review queue (ReviewItem)
+      // See TD-009: these two "added" tracking paths should be unified
+      prisma.reviewItem.count({
+        where: {
+          userId,
+          status: 'approved',
+          updatedAt: { gte: thirtyDaysAgo }
+        }
       }),
       
       // Pending review items
@@ -47,15 +58,23 @@ dashboardRouter.get('/stats', async (req, res) => {
           subscription: { userId },
           status: 'running'
         }
+      }),
+
+      // Active connections count
+      prisma.connection.count({
+        where: { userId, isActive: true }
       })
     ]);
+
+    const artistsAdded = artistsAddedViaSubscriptions + artistsAddedViaReviewQueue;
 
     res.json({
       stats: {
         activeSubscriptions,
-        artistsAdded: artistsAdded._sum.addedCount || 0,
+        artistsAdded,
         pendingReviews,
-        runningJobs: recentRuns
+        runningJobs: recentRuns,
+        activeConnections
       }
     });
   } catch (error) {

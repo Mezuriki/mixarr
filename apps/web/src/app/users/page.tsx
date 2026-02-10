@@ -1,11 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Modal, ModalFooter, useToast, Select, Badge } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Modal, ModalFooter } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast';
+import { Select } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { User, KeyRound, Shield, LogOut, UserPlus, Trash2, Edit, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Edit from 'lucide-react/dist/esm/icons/edit';
+import KeyRound from 'lucide-react/dist/esm/icons/key-round';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Shield from 'lucide-react/dist/esm/icons/shield';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import User from 'lucide-react/dist/esm/icons/user';
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface UserData {
@@ -431,7 +446,7 @@ export default function UsersPage() {
                   onChange={() => setEditForm({ ...editForm, isActive: true })}
                   disabled={editingUser?.id === user?.id}
                 />
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-status-success" />
                 Active
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -442,7 +457,7 @@ export default function UsersPage() {
                   onChange={() => setEditForm({ ...editForm, isActive: false })}
                   disabled={editingUser?.id === user?.id}
                 />
-                <XCircle className="h-4 w-4 text-red-500" />
+                <XCircle className="h-4 w-4 text-status-error" />
                 Inactive
               </label>
             </div>

@@ -81,7 +81,7 @@ describe('SubscriptionController', () => {
       await controller.list(mockReq as Request, mockRes as Response, mockNext);
 
       expect(subscriptionService.findAll).toHaveBeenCalledWith(1);
-      expect(jsonMock).toHaveBeenCalledWith(mockSubscriptions);
+      expect(jsonMock).toHaveBeenCalledWith({ subscriptions: mockSubscriptions });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -105,7 +105,7 @@ describe('SubscriptionController', () => {
       await controller.getById(mockReq as Request, mockRes as Response, mockNext);
 
       expect(subscriptionService.findById).toHaveBeenCalledWith(1, 1);
-      expect(jsonMock).toHaveBeenCalledWith(mockSubscription);
+      expect(jsonMock).toHaveBeenCalledWith({ subscription: mockSubscription });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -152,7 +152,7 @@ describe('SubscriptionController', () => {
 
       expect(subscriptionService.create).toHaveBeenCalledWith(1, input);
       expect(statusMock).toHaveBeenCalledWith(201);
-      expect(jsonMock).toHaveBeenCalledWith(created);
+      expect(jsonMock).toHaveBeenCalledWith({ subscription: created });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
@@ -178,7 +178,7 @@ describe('SubscriptionController', () => {
       await controller.update(mockReq as Request, mockRes as Response, mockNext);
 
       expect(subscriptionService.update).toHaveBeenCalledWith(1, 1, input);
-      expect(jsonMock).toHaveBeenCalledWith(updated);
+      expect(jsonMock).toHaveBeenCalledWith({ subscription: updated });
       expect(mockNext).not.toHaveBeenCalled();
     });
 
