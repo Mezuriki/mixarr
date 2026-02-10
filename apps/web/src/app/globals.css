@@ -78,7 +78,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply btn bg-primary text-primary-foreground shadow-sm hover:shadow-glow-sm hover:brightness-110 active:brightness-95 active:scale-[0.98];
   }
   
   .btn-secondary {
