@@ -99,10 +99,8 @@ docker run -d \
   ghcr.io/aquantumofdonuts/mixarr:slim
 ```
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions including Kubernetes, reverse proxy examples, and troubleshooting.
 
 ---
-
 ## Post-Installation Setup
 
 1.  **Create Admin Account**: Follow the prompts on first launch.
