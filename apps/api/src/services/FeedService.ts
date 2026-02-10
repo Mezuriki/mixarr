@@ -326,6 +326,54 @@ export class FeedService {
   }
 
   /**
+   * Persist enrichment data back to SubscriptionResult rows.
+   * Compares before/after items and writes changed fields.
+   * Fire-and-forget — errors are logged but don't propagate.
+   */
+  async persistEnrichment(
+    before: AggregatedFeedItem[],
+    after: AggregatedFeedItem[]
+  ): Promise<void> {
+    const beforeMap = new Map(before.map(item => [item.id, item]));
+
+    for (const afterItem of after) {
+      const beforeItem = beforeMap.get(afterItem.id);
+      if (!beforeItem) continue;
+
+      const data: Record<string, unknown> = {};
+
+      // Check if imageUrl was enriched
+      if (!beforeItem.imageUrl && afterItem.imageUrl) {
+        data.imageUrl = afterItem.imageUrl;
+      }
+
+      // Check if tags were enriched
+      if (beforeItem.tags === null && afterItem.tags !== null) {
+        data.tags = JSON.stringify(afterItem.tags);
+      }
+
+      // Check if listeners were enriched
+      if (beforeItem.listeners === null && afterItem.listeners !== null) {
+        data.listeners = afterItem.listeners;
+      }
+
+      if (Object.keys(data).length === 0) continue;
+
+      try {
+        await this.prismaClient.subscriptionResult.updateMany({
+          where: { id: { in: afterItem.linkedResultIds } },
+          data,
+        });
+      } catch (error) {
+        log.warn('Enrichment write-back failed', {
+          artistName: afterItem.artistName,
+          error: (error as Error).message,
+        });
+      }
+    }
+  }
+
+  /**
    * Generate a synthetic feed item ID from linked result IDs.
    * Sorted for consistency.
    */

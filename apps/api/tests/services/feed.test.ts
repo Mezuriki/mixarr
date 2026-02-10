@@ -1849,4 +1849,142 @@ describe('FeedService', () => {
       expect(mockLastfm.getArtistStats).toHaveBeenCalledWith('Radiohead');
     });
   });
+
+  describe('persistEnrichment', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('updates SubscriptionResult rows with enriched image data', async () => {
+      const mockUpdateMany = vi.fn().mockResolvedValue({ count: 2 });
+      const mockPrismaInstance = {
+        subscriptionResult: { updateMany: mockUpdateMany },
+      };
+      const service = new FeedService(mockPrismaInstance as any);
+
+      const before: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1-2',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1, 2],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+
+      const after = [{ ...before[0], imageUrl: 'https://cdn.deezer.com/img.jpg' }];
+
+      await service.persistEnrichment(before, after);
+
+      expect(mockUpdateMany).toHaveBeenCalledWith({
+        where: { id: { in: [1, 2] } },
+        data: { imageUrl: 'https://cdn.deezer.com/img.jpg' },
+      });
+    });
+
+    it('updates SubscriptionResult rows with enriched tags and listeners', async () => {
+      const mockUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const mockPrismaInstance = {
+        subscriptionResult: { updateMany: mockUpdateMany },
+      };
+      const service = new FeedService(mockPrismaInstance as any);
+
+      const before: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: 'https://existing.com/img.jpg',
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+
+      const after = [{ ...before[0], tags: ['rock', 'alternative'], listeners: 5000000 }];
+
+      await service.persistEnrichment(before, after);
+
+      expect(mockUpdateMany).toHaveBeenCalledWith({
+        where: { id: { in: [1] } },
+        data: { tags: JSON.stringify(['rock', 'alternative']), listeners: 5000000 },
+      });
+    });
+
+    it('does nothing when no items were enriched', async () => {
+      const mockUpdateMany = vi.fn();
+      const mockPrismaInstance = {
+        subscriptionResult: { updateMany: mockUpdateMany },
+      };
+      const service = new FeedService(mockPrismaInstance as any);
+
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+
+      // Before and after identical — no enrichment happened
+      await service.persistEnrichment(items, items);
+
+      expect(mockUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when DB update fails', async () => {
+      const mockUpdateMany = vi.fn().mockRejectedValue(new Error('DB connection lost'));
+      const mockPrismaInstance = {
+        subscriptionResult: { updateMany: mockUpdateMany },
+      };
+      const service = new FeedService(mockPrismaInstance as any);
+
+      const before: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+
+      const after = [{ ...before[0], imageUrl: 'https://cdn.deezer.com/img.jpg' }];
+
+      // Should not throw
+      await expect(service.persistEnrichment(before, after)).resolves.toBeUndefined();
+    });
+  });
 });
