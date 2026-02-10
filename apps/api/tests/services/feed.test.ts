@@ -14,7 +14,13 @@ vi.mock('../../src/lib/db.js', () => ({
   },
 }));
 
+// Mock Deezer service
+vi.mock('../../src/services/deezer.js', () => ({
+  fetchDeezerArtistImage: vi.fn(),
+}));
+
 import prisma from '../../src/lib/db.js';
+import { fetchDeezerArtistImage } from '../../src/services/deezer.js';
 
 const mockPrisma = prisma as unknown as {
   subscription: {
@@ -1475,6 +1481,225 @@ describe('FeedService', () => {
       expect(result[0].tags).toBeNull();
       // But listeners should still be populated
       expect(result[0].listeners).toBe(500000);
+    });
+  });
+
+  describe('enrichWithImages (cached)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('uses cached image URL and skips Deezer call', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue('https://cached.deezer.com/img.jpg'),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Radiohead',
+          artistMbid: 'abc-123',
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 50,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBe('https://cached.deezer.com/img.jpg');
+      expect(mockCache.get).toHaveBeenCalledWith('deezer:image:radiohead');
+      expect(vi.mocked(fetchDeezerArtistImage)).not.toHaveBeenCalled();
+    });
+
+    it('skips Deezer call when miss sentinel is cached', async () => {
+      const { CACHE_MISS_SENTINEL } = await import('../../src/services/cache.js');
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(CACHE_MISS_SENTINEL),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'No Image Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBeNull();
+      expect(mockCache.set).not.toHaveBeenCalled();
+      expect(vi.mocked(fetchDeezerArtistImage)).not.toHaveBeenCalled();
+    });
+
+    it('calls Deezer on cache miss and caches the result', async () => {
+      vi.mocked(fetchDeezerArtistImage).mockResolvedValue('https://deezer.com/fresh.jpg');
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'New Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBe('https://deezer.com/fresh.jpg');
+      expect(vi.mocked(fetchDeezerArtistImage)).toHaveBeenCalledWith('New Artist');
+      expect(mockCache.set).toHaveBeenCalledWith(
+        'deezer:image:newartist',
+        'https://deezer.com/fresh.jpg',
+        7 * 24 * 60 * 60
+      );
+    });
+
+    it('caches miss when Deezer returns no result', async () => {
+      vi.mocked(fetchDeezerArtistImage).mockResolvedValue(null);
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Unknown Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBeNull();
+      expect(mockCache.setMiss).toHaveBeenCalledWith(
+        'deezer:image:unknownartist',
+        60 * 60
+      );
+    });
+
+    it('skips items that already have imageUrl (no cache check)', async () => {
+      const mockCache = {
+        get: vi.fn(),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Has Image',
+          artistMbid: null,
+          imageUrl: 'https://existing.com/img.jpg',
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBe('https://existing.com/img.jpg');
+      expect(mockCache.get).not.toHaveBeenCalled();
+    });
+
+    it('falls through to Deezer when cache errors', async () => {
+      vi.mocked(fetchDeezerArtistImage).mockResolvedValue('https://deezer.com/fallback.jpg');
+      const mockCache = {
+        get: vi.fn().mockRejectedValue(new Error('Redis down')),
+        set: vi.fn(),
+        setMiss: vi.fn(),
+      };
+      const service = new FeedService(undefined, undefined, undefined, mockCache as any);
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'Fallback Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBe('https://deezer.com/fallback.jpg');
+      expect(vi.mocked(fetchDeezerArtistImage)).toHaveBeenCalled();
+    });
+
+    it('works without cacheService (backward compatible)', async () => {
+      vi.mocked(fetchDeezerArtistImage).mockResolvedValue('https://deezer.com/nocache.jpg');
+      const service = new FeedService(); // No cache
+      const items: import('../../src/services/FeedService.js').AggregatedFeedItem[] = [
+        {
+          id: 'feed-1',
+          artistName: 'No Cache Artist',
+          artistMbid: null,
+          imageUrl: null,
+          subscriptionCount: 1,
+          sourceTypes: ['lastfm'],
+          sourceCount: 1,
+          linkedResultIds: [1],
+          earliestFound: new Date(),
+          score: 30,
+          tags: null,
+          listeners: null,
+          subscriptionName: null,
+        },
+      ];
+      const result = await service.enrichWithImages(items);
+      expect(result[0].imageUrl).toBe('https://deezer.com/nocache.jpg');
+      expect(vi.mocked(fetchDeezerArtistImage)).toHaveBeenCalledWith('No Cache Artist');
     });
   });
 });

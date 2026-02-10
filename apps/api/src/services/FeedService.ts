@@ -14,6 +14,7 @@ import type { LidarrService } from './lidarr.js';
 import type { LidarrConnectionConfig } from '../types/connections.js';
 import { createLogger } from '../lib/logger.js';
 import { fetchDeezerArtistImage } from './deezer.js';
+import { CacheService, CACHE_MISS_SENTINEL, CACHE_TTLS, CACHE_KEYS } from './cache.js';
 
 const log = createLogger('FeedService');
 
@@ -104,15 +105,18 @@ export class FeedService {
   private prismaClient: PrismaClient;
   private lidarrService?: LidarrService;
   private lidarrConfig?: LidarrConnectionConfig;
+  private cacheService: CacheService | null;
 
   constructor(
     prismaInstance?: PrismaClient,
     lidarrService?: LidarrService,
-    lidarrConfig?: LidarrConnectionConfig
+    lidarrConfig?: LidarrConnectionConfig,
+    cacheService?: CacheService | null
   ) {
     this.prismaClient = (prismaInstance || prisma) as PrismaClient;
     this.lidarrService = lidarrService;
     this.lidarrConfig = lidarrConfig;
+    this.cacheService = cacheService ?? null;
   }
 
   /**
@@ -176,19 +180,47 @@ export class FeedService {
 
   /**
    * Enrich feed items with images from Deezer for items missing imageUrl.
-   * Fetches images in parallel for efficiency.
+   * Uses Redis cache to avoid redundant Deezer API calls.
+   * Flow per item: cache check → API call (if miss) → cache store
    */
-  private async enrichWithImages(items: AggregatedFeedItem[]): Promise<AggregatedFeedItem[]> {
+  async enrichWithImages(items: AggregatedFeedItem[]): Promise<AggregatedFeedItem[]> {
     const itemsNeedingImages = items.filter((item) => !item.imageUrl);
     if (itemsNeedingImages.length === 0) {
       return items;
     }
 
-    // Fetch images in parallel
+    // Fetch images in parallel (with cache)
     const imagePromises = itemsNeedingImages.map(async (item) => {
+      const normalizedName = this.normalizeName(item.artistName);
+      const cacheKey = CACHE_KEYS.deezerImage(normalizedName);
+
+      // Check cache first
+      if (this.cacheService) {
+        try {
+          const cached = await this.cacheService.get<string>(cacheKey);
+          if (cached === CACHE_MISS_SENTINEL) {
+            return { id: item.id, imageUrl: null };
+          }
+          if (cached !== null) {
+            return { id: item.id, imageUrl: cached };
+          }
+        } catch {
+          // Cache error — fall through to API
+        }
+      }
+
+      // Cache miss or no cache — call Deezer
       try {
         const imageUrl = await fetchDeezerArtistImage(item.artistName);
-        return { id: item.id, imageUrl: imageUrl || null };
+        if (imageUrl) {
+          // Cache the successful result (fire-and-forget, don't discard valid result)
+          try { if (this.cacheService) await this.cacheService.set(cacheKey, imageUrl, CACHE_TTLS.DEEZER_IMAGE); } catch { /* cache write failure is non-fatal */ }
+          return { id: item.id, imageUrl };
+        } else {
+          // Cache the miss (fire-and-forget)
+          try { if (this.cacheService) await this.cacheService.setMiss(cacheKey, CACHE_TTLS.MISS); } catch { /* cache write failure is non-fatal */ }
+          return { id: item.id, imageUrl: null };
+        }
       } catch {
         return { id: item.id, imageUrl: null };
       }
