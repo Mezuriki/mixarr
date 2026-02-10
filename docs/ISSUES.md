@@ -208,6 +208,30 @@ Currently SSO provider credentials (OAuth client secrets, LDAP bind passwords, S
 
 ---
 
+### Cache Connection Resolution in Redis
+**Priority:** Low | **Type:** Performance | **Created:** 2026-02-10
+
+**Description:**
+Connection resolution (`getLidarrService()`, `getLastfmService()`, etc. in `connection-resolver.ts`) hits the database on every API request — often multiple times per request across 20+ route handlers. The connection config rarely changes mid-session.
+
+**Proposed Solution:**
+- Cache `connection:{type}:{userId}` in Redis with 5-minute TTL
+- Invalidate cache keys on connection CRUD operations in the connections route
+- TTL acts as safety net if invalidation is missed
+
+**Current Impact:**
+- ~5-20ms saved per request (single indexed DB query)
+- Individually small, but significant in aggregate across all route handlers
+- Reduces DB connection pool pressure under load
+
+**Decision:** Deferred — the DB query is fast (~5ms), and cache invalidation on CRUD adds complexity. Revisit if DB load becomes a concern or if connection resolution shows up in profiling.
+
+**Files Affected:**
+- `apps/api/src/lib/connection-resolver.ts` — Add cache-aside pattern
+- `apps/api/src/routes/connections.ts` — Add cache invalidation on create/update/delete
+
+---
+
 ### Extract getLidarrServiceWithConfig to Shared Module
 **Priority:** Low | **Type:** Code Quality | **Created:** 2026-01-17
 
