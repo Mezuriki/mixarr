@@ -59,6 +59,36 @@ settingsRouter.get('/', async (req, res) => {
   }
 });
 
+// Bulk update user settings
+settingsRouter.put('/', async (req, res) => {
+  try {
+    const { settings } = req.body;
+
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      res.status(400).json({ error: 'settings must be a non-empty object' });
+      return;
+    }
+
+    const entries = Object.entries(settings);
+    if (entries.length === 0) {
+      res.status(400).json({ error: 'settings must be a non-empty object' });
+      return;
+    }
+
+    for (const [key, value] of entries) {
+      await SettingsService.setUserSetting(req.user!.id, key, value as any);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Failed to bulk update settings', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
 // Update user setting
 settingsRouter.put('/:key', async (req, res) => {
   const { key } = req.params;
