@@ -80,7 +80,6 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-body)', 'DM Sans', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Instrument Serif', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       borderRadius: {

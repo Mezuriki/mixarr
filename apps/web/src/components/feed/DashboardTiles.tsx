@@ -23,7 +23,7 @@ function StatTile({ icon, value, label, colorClass, iconBgClass }: StatTileProps
       <div className="flex items-center justify-between">
         {/* Value and Label */}
         <div>
-          <div className="text-2xl font-bold text-card-foreground font-display">{value.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-card-foreground">{value.toLocaleString()}</div>
           <div className="text-xs text-muted-foreground font-medium">{label}</div>
         </div>
         

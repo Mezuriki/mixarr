@@ -7,20 +7,12 @@ import { ProtectedLayout } from '@/components/layout/protected-layout';
 import { ServiceWorkerRegistration } from '@/lib/service-worker';
 import { OfflineIndicator } from '@/components/ui/offline-indicator';
 import './globals.css';
-import { DM_Sans, Instrument_Serif } from 'next/font/google';
+import { DM_Sans } from 'next/font/google';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-body',
-  display: 'swap',
-});
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ['latin'],
-  weight: '400',
-  style: ['normal', 'italic'],
-  variable: '--font-display',
   display: 'swap',
 });
 
@@ -59,7 +51,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${instrumentSerif.variable} font-sans`}>
+      <body className={`${dmSans.variable} font-sans`}>
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="system"
