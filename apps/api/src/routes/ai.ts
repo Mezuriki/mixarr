@@ -28,6 +28,8 @@ aiRouter.get('/settings', async (req, res) => {
         settings: {
           openaiEnabled: false,
           openaiConfigured: false,
+          openaiBaseUrl: null,
+          openaiModel: null,
           anthropicEnabled: false,
           anthropicConfigured: false,
         },
@@ -38,11 +40,16 @@ aiRouter.get('/settings', async (req, res) => {
     // For non-admins, hide API keys but show if configured
     const isAdmin = req.user?.role === 'admin';
     
+    // OpenAI is configured if it has an API key OR a custom base URL (for Ollama, etc.)
+    const openaiConfigured = !!settings.openaiApiKey || !!settings.openaiBaseUrl;
+    
     res.json({
       settings: {
         openaiEnabled: settings.openaiEnabled,
-        openaiConfigured: !!settings.openaiApiKey,
+        openaiConfigured,
         openaiApiKey: isAdmin ? settings.openaiApiKey : undefined,
+        openaiBaseUrl: isAdmin ? settings.openaiBaseUrl : undefined,
+        openaiModel: isAdmin ? settings.openaiModel : undefined,
         anthropicEnabled: settings.anthropicEnabled,
         anthropicConfigured: !!settings.anthropicApiKey,
         anthropicApiKey: isAdmin ? settings.anthropicApiKey : undefined,
@@ -65,6 +72,8 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
       openaiApiKey,
       openaiEnabled,
       openaiStrategy,
+      openaiBaseUrl,
+      openaiModel,
       anthropicApiKey,
       anthropicEnabled,
       anthropicStrategy,
@@ -85,6 +94,61 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     if (openaiApiKey !== undefined) {
       // Allow setting to null/empty to clear, or set new key
       data.openaiApiKey = openaiApiKey || null;
+    }
+    if (openaiBaseUrl !== undefined) {
+      // Validate URL format if provided
+      if (openaiBaseUrl && typeof openaiBaseUrl === 'string') {
+        // Security: Limit URL length to prevent DoS
+        if (openaiBaseUrl.length > 2048) {
+          logger.warn('Rejected base URL: too long', { length: openaiBaseUrl.length });
+          res.status(400).json({ error: 'Base URL is too long (max 2048 characters)' });
+          return;
+        }
+        try {
+          const parsed = new URL(openaiBaseUrl);
+          // Security: Only allow http and https schemes to prevent SSRF
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            logger.warn('Rejected base URL: invalid scheme', { protocol: parsed.protocol });
+            res.status(400).json({ error: 'Base URL must use http or https protocol' });
+            return;
+          }
+          // Security: Reject URLs with embedded credentials
+          if (parsed.username || parsed.password) {
+            logger.warn('Rejected base URL: contains credentials');
+            res.status(400).json({ error: 'Base URL should not contain credentials. Use API key field for authentication.' });
+            return;
+          }
+          data.openaiBaseUrl = openaiBaseUrl;
+        } catch {
+          logger.warn('Rejected base URL: invalid format', { url: openaiBaseUrl.slice(0, 100) });
+          res.status(400).json({ error: 'Invalid OpenAI base URL format' });
+          return;
+        }
+      } else {
+        data.openaiBaseUrl = null;
+      }
+    }
+    if (openaiModel !== undefined) {
+      // Allow setting to null/empty to clear, or set new model
+      if (openaiModel && typeof openaiModel === 'string') {
+        // Validate length
+        if (openaiModel.length > 100) {
+          logger.warn('Rejected model name: too long', { length: openaiModel.length });
+          res.status(400).json({ error: 'Model name must be 100 characters or less' });
+          return;
+        }
+        // Security: Validate model name format to prevent injection
+        // Allows alphanumeric, dots, dashes, colons, underscores (covers all known model naming schemes)
+        const MODEL_NAME_REGEX = /^[a-zA-Z0-9._:-]+$/;
+        if (!MODEL_NAME_REGEX.test(openaiModel)) {
+          logger.warn('Rejected model name: invalid characters', { model: openaiModel.slice(0, 50) });
+          res.status(400).json({ error: 'Invalid model name format (alphanumeric, dots, dashes, colons, underscores only)' });
+          return;
+        }
+        data.openaiModel = openaiModel;
+      } else {
+        data.openaiModel = null;
+      }
     }
     
     if (typeof anthropicEnabled === 'boolean') {
@@ -108,6 +172,8 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
           openaiEnabled: data.openaiEnabled ?? false,
           openaiStrategy: data.openaiStrategy ?? 'similar',
           openaiApiKey: data.openaiApiKey ?? null,
+          openaiBaseUrl: data.openaiBaseUrl ?? null,
+          openaiModel: data.openaiModel ?? null,
           anthropicEnabled: data.anthropicEnabled ?? false,
           anthropicStrategy: data.anthropicStrategy ?? 'similar',
           anthropicApiKey: data.anthropicApiKey ?? null,
@@ -118,11 +184,14 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     // Reload AI service settings
     await aiService.loadSettings();
 
+    // OpenAI is configured if it has an API key OR a custom base URL
+    const openaiConfigured = !!settings.openaiApiKey || !!settings.openaiBaseUrl;
+
     res.json({
       success: true,
       settings: {
         openaiEnabled: settings.openaiEnabled,
-        openaiConfigured: !!settings.openaiApiKey,
+        openaiConfigured,
         anthropicEnabled: settings.anthropicEnabled,
         anthropicConfigured: !!settings.anthropicApiKey,
       },

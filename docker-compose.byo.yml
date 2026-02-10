@@ -1,0 +1,42 @@
+# =============================================================================
+# Mixarr BYO Infrastructure
+# For users with existing MariaDB/MySQL and Redis
+#
+# Usage:
+#   export DATABASE_URL=mysql://user:pass@your-db:3306/mixarr
+#   export REDIS_URL=redis://your-redis:6379
+#   export SESSION_SECRET=your-secret-here
+#   docker compose -f docker-compose.byo.yml up -d
+#
+# Or create a .env file with these variables.
+#
+# Ports:
+#   - 3000: Web UI
+#   - 3005: API
+#
+# =============================================================================
+
+services:
+  mixarr:
+    image: ghcr.io/aquantumofdonuts/mixarr:slim
+    container_name: mixarr
+    ports:
+      - "3000:3000"    # Web UI
+      - "3005:3005"    # API
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
+      - REDIS_URL=${REDIS_URL:?REDIS_URL is required}
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
+    volumes:
+      - mixarr-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  mixarr-data:
+    name: mixarr-data

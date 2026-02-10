@@ -1,5 +1,23 @@
+# =============================================================================
+# Mixarr Development Stack
+# Development environment with hot-reload and debug logging
+#
+# Usage:
+#   ./start-dev.sh
+#   # or: docker compose -f docker-compose.dev.yml up --build
+#
+# Ports:
+#   - 3443: HTTPS (Caddy reverse proxy)
+#   - 3080: HTTP redirect
+#   - 3010: Direct web access (hot-reload)
+#   - 3005: API (direct access)
+#
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
   # MySQL Database
+  # ---------------------------------------------------------------------------
   db:
     image: mysql:8.0
     container_name: mixarr-db
@@ -18,7 +36,9 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for sessions and job queue
+  # ---------------------------------------------------------------------------
+  # Redis (sessions and job queue)
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: mixarr-redis
@@ -31,7 +51,9 @@ services:
       timeout: 5s
       retries: 5
 
-  # API Server (development)
+  # ---------------------------------------------------------------------------
+  # API Server (development with hot-reload)
+  # ---------------------------------------------------------------------------
   api:
     build:
       context: .
@@ -58,7 +80,9 @@ services:
       - ./packages:/app/packages
     command: sh -c "cd /app/apps/api && npx prisma generate && npx prisma db push --accept-data-loss && cd /app && npm run dev --workspace=@mixarr/api"
 
-  # Web Frontend (development)
+  # ---------------------------------------------------------------------------
+  # Web Frontend (development with hot-reload)
+  # ---------------------------------------------------------------------------
   web:
     build:
       context: .
@@ -78,7 +102,9 @@ services:
       - ./packages:/app/packages
     command: npm run dev --workspace=@mixarr/web
 
-  # Caddy reverse proxy for HTTPS (required for Spotify OAuth)
+  # ---------------------------------------------------------------------------
+  # Caddy Reverse Proxy (HTTPS)
+  # ---------------------------------------------------------------------------
   caddy:
     build:
       context: ./caddy
@@ -92,7 +118,7 @@ services:
       - "3443:443"
       - "3080:80"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
 

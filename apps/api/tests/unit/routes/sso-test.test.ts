@@ -54,9 +54,14 @@ vi.mock('ldapjs', () => ({
   }),
 }));
 
-// Mock prisma (still needed for service constructor)
+// Mock prisma - wire findUnique to return global test mock
 vi.mock('../../../src/lib/db.js', () => ({
-  default: {},
+  default: {
+    ssoProvider: {
+      findUnique: () => Promise.resolve(globalThis.__ssoTestMockResult),
+      findMany: () => Promise.resolve([]),
+    },
+  },
 }));
 
 import { ssoRouter } from '../../../src/routes/sso.js';

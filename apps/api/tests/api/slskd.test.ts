@@ -16,6 +16,29 @@ vi.mock('../../src/services/rate-limiter.js', () => ({
   rateLimit: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock settings - rate limiting disabled for tests
+vi.mock('../../src/lib/settings.js', () => ({
+  isSlskdRateLimitingEnabled: vi.fn().mockResolvedValue(false),
+}));
+
+// Mock queue operations
+vi.mock('../../src/jobs/slskd-operations-queue.js', () => ({
+  enqueueSlskdDownload: vi.fn().mockResolvedValue({
+    waitUntilFinished: vi.fn().mockResolvedValue({}),
+  }),
+  SLSKD_QUEUE_NAME: 'slskd-operations',
+}));
+
+// Mock redis
+vi.mock('../../src/lib/redis.js', () => ({
+  createRedisConnection: vi.fn().mockReturnValue({
+    duplicate: vi.fn().mockReturnValue({
+      on: vi.fn().mockReturnThis(),
+      connect: vi.fn().mockResolvedValue({}),
+    }),
+  }),
+}));
+
 // Mock the organizer service
 const mockOrganizeFile = vi.fn();
 vi.mock('../../src/services/slskd-organizer.js', () => {
@@ -47,6 +70,7 @@ describe('slskd API Routes', () => {
     slskdDownload: {
       findMany: ReturnType<typeof vi.fn>;
       findFirst: ReturnType<typeof vi.fn>;
+      findUnique: ReturnType<typeof vi.fn>;
       create: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
       updateMany: ReturnType<typeof vi.fn>;
@@ -68,6 +92,7 @@ describe('slskd API Routes', () => {
       slskdDownload: {
         findMany: vi.fn(),
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),

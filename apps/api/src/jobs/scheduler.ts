@@ -36,10 +36,10 @@ async function cleanupStaleJobs(): Promise<void> {
   if (staleRuns.count > 0) {
     logger.info(`Marked ${staleRuns.count} stale subscription runs as failed`);
     
-    // Also update the subscription's lastRunStatus for these
+    // Also update the subscription's last_run_status for these
     await prisma.$executeRaw`
       UPDATE subscriptions s
-      SET s.lastRunStatus = 'failed'
+      SET s.last_run_status = 'failed'
       WHERE EXISTS (
         SELECT 1 FROM subscription_runs r
         WHERE r.subscription_id = s.id

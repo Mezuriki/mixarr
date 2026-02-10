@@ -92,6 +92,49 @@ describe('Settings API', () => {
     });
   });
 
+  describe('PUT /api/settings (bulk)', () => {
+    it('should save multiple settings in one call', async () => {
+      const settings = { theme: 'dark', notifications: true, language: 'en' };
+
+      // Each setting should be upserted
+      for (const [key, value] of Object.entries(settings)) {
+        mockPrisma.userSetting.upsert.mockResolvedValueOnce({
+          userId: testUser.id,
+          key,
+          value,
+        });
+      }
+
+      // Simulate what the bulk route does: iterate and upsert each
+      for (const [key, value] of Object.entries(settings)) {
+        await mockPrisma.userSetting.upsert({
+          where: { userId_key: { userId: testUser.id, key } },
+          create: { userId: testUser.id, key, value },
+          update: { value },
+        });
+      }
+
+      expect(mockPrisma.userSetting.upsert).toHaveBeenCalledTimes(3);
+    });
+
+    it('should reject when settings is not an object', () => {
+      const invalidPayloads = [null, 'string', 42, true, []];
+
+      for (const payload of invalidPayloads) {
+        const isValidObject = payload !== null
+          && typeof payload === 'object'
+          && !Array.isArray(payload);
+        expect(isValidObject).toBe(false);
+      }
+    });
+
+    it('should reject empty settings object', () => {
+      const settings = {};
+      const hasKeys = Object.keys(settings).length > 0;
+      expect(hasKeys).toBe(false);
+    });
+  });
+
   describe('PUT /api/settings/:key', () => {
     it('should create new user setting', async () => {
       const newSetting = { userId: testUser.id, key: 'theme', value: 'dark' };

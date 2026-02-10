@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mixarr - Ink & Paper Theme Mockup</title>
+  <style>
+    /* Reset */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* 
+     * INK & PAPER THEME
+     * Clean, light, typographically rich
+     * Like a well-designed music magazine
+     */
+    
+    :root {
+      /* Clean, warm whites */
+      --bg-primary: #faf9f7;
+      --bg-secondary: #f5f3f0;
+      --bg-card: #ffffff;
+      --bg-elevated: #f0eeeb;
+      
+      /* Rich black text */
+      --text-primary: #1a1a1a;
+      --text-secondary: #5a5a5a;
+      --text-muted: #8a8a8a;
+      
+      /* Terracotta accent - warm, earthy, not tech */
+      --accent: #c45d3a;
+      --accent-hover: #d46a45;
+      --accent-muted: rgba(196, 93, 58, 0.1);
+      
+      /* Status colors */
+      --success: #3d7c47;
+      --warning: #b87a2a;
+      --error: #b54242;
+      
+      /* Borders - clean lines */
+      --border: #e5e3e0;
+      --border-hover: #d0cec9;
+      
+      /* Type */
+      --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-heading: 'Georgia', 'Times New Roman', serif;
+      
+      /* Spacing */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+    }
+    
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+    
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar - clean white with subtle border */
+    .sidebar {
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .logo {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: var(--space-2xl);
+      letter-spacing: -0.03em;
+    }
+    
+    .logo span {
+      color: var(--accent);
+    }
+    
+    .nav-section {
+      margin-bottom: var(--space-xl);
+    }
+    
+    .nav-label {
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+      font-weight: 600;
+    }
+    
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) 0;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.15s;
+      border-bottom: 1px solid transparent;
+    }
+    
+    .nav-link:hover {
+      color: var(--text-primary);
+    }
+    
+    .nav-link.active {
+      color: var(--accent);
+      font-weight: 500;
+    }
+    
+    .nav-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.6;
+    }
+    
+    /* Main content */
+    .main {
+      padding: var(--space-xl) var(--space-2xl);
+      overflow-y: auto;
+    }
+    
+    /* Page header */
+    .page-header {
+      margin-bottom: var(--space-xl);
+      padding-bottom: var(--space-lg);
+      border-bottom: 2px solid var(--text-primary);
+    }
+    
+    .page-title {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    
+    .page-description {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-top: var(--space-xs);
+    }
+    
+    /* Stats - minimal line-based design */
+    .stats-row {
+      display: flex;
+      gap: var(--space-2xl);
+      margin-bottom: var(--space-xl);
+      padding: var(--space-lg) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .stat-item {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-sm);
+    }
+    
+    .stat-value {
+      font-family: var(--font-heading);
+      font-size: 2.5rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Section headers - editorial style */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--space-md);
+      padding-bottom: var(--space-sm);
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    
+    .section-link {
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .section-link:hover {
+      text-decoration: underline;
+    }
+    
+    /* Cards - minimal, let content breathe */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: var(--space-lg);
+    }
+    
+    /* Album grid */
+    .album-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: var(--space-lg);
+    }
+    
+    .album-card {
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    
+    .album-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .album-card:hover .album-title {
+      color: var(--accent);
+    }
+    
+    .album-cover {
+      aspect-ratio: 1;
+      background: var(--bg-elevated);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 2rem;
+      border: 1px solid var(--border);
+    }
+    
+    .album-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.15s;
+    }
+    
+    .album-artist {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .album-meta {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .btn-primary {
+      background: var(--text-primary);
+      color: var(--bg-card);
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    
+    .btn-secondary:hover {
+      border-color: var(--text-primary);
+      color: var(--text-primary);
+    }
+    
+    /* Table - clean lines */
+    .table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .table th {
+      text-align: left;
+      font-size: 0.625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+    }
+    
+    .table td {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .table tr:hover {
+      background: var(--bg-secondary);
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px var(--space-sm);
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid currentColor;
+    }
+    
+    .badge-success {
+      color: var(--success);
+    }
+    
+    .badge-warning {
+      color: var(--warning);
+    }
+    
+    /* Two column layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--space-xl);
+    }
+    
+    /* Activity - timeline style */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .activity-item {
+      display: flex;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+    
+    .activity-time {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      width: 60px;
+      flex-shrink: 0;
+      text-align: right;
+      padding-top: 2px;
+    }
+    
+    .activity-content {
+      flex: 1;
+    }
+    
+    .activity-title {
+      font-size: 0.875rem;
+      color: var(--text-primary);
+    }
+    
+    .activity-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    
+    /* Footer note */
+    .mockup-note {
+      position: fixed;
+      bottom: var(--space-md);
+      right: var(--space-md);
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      padding: var(--space-sm) var(--space-md);
+      font-size: 0.75rem;
+      color: var(--accent);
+      z-index: 1000;
+    }
+    
+    /* Quick Links */
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .quick-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text-primary);
+      transition: border-color 0.15s;
+    }
+    
+    .quick-link:hover {
+      border-color: var(--text-primary);
+    }
+    
+    .quick-link-icon {
+      font-size: 1.25rem;
+      opacity: 0.6;
+    }
+    
+    .quick-link-text {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">Mix<span>arr</span></div>
+      
+      <nav class="nav-section">
+        <div class="nav-label">Navigate</div>
+        <a href="#" class="nav-link active">
+          <span class="nav-icon">◉</span>
+          Dashboard
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⚡</span>
+          Discover
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">↻</span>
+          Subscriptions
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⬇</span>
+          Downloads
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">♫</span>
+          Library
+        </a>
+      </nav>
+      
+      <nav class="nav-section">
+        <div class="nav-label">System</div>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">⚙</span>
+          Connections
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">◷</span>
+          Jobs
+        </a>
+        <a href="#" class="nav-link">
+          <span class="nav-icon">☰</span>
+          Logs
+        </a>
+      </nav>
+    </aside>
+    
+    <!-- Main content -->
+    <main class="main">
+      <header class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-description">Welcome back to Mixarr</p>
+      </header>
+      
+      <!-- Stats - inline style -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value">12</div>
+          <div class="stat-label">Subscriptions</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">47</div>
+          <div class="stat-label">Artists (30d)</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">8</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">2</div>
+          <div class="stat-label">Jobs</div>
+        </div>
+      </div>
+      
+      <!-- Quick Links -->
+      <div class="quick-links">
+        <a href="#" class="quick-link">
+          <span class="quick-link-icon">🔌</span>
+          <span class="quick-link-text">Connections</span>
+        </a>
+        <a href="#" class="quick-link">
+          <span class="quick-link-icon">🔍</span>
+          <span class="quick-link-text">Search</span>
+        </a>
+        <a href="#" class="quick-link">
+          <span class="quick-link-icon">📈</span>
+          <span class="quick-link-text">Subscriptions</span>
+        </a>
+        <a href="#" class="quick-link">
+          <span class="quick-link-icon">📄</span>
+          <span class="quick-link-text">Logs</span>
+        </a>
+      </div>
+      
+      <div class="two-col">
+        <!-- Recent Discoveries -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Recent Discoveries</h2>
+            <a href="#" class="section-link">View all →</a>
+          </div>
+          
+          <div class="album-grid">
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">Brat</div>
+              <div class="album-artist">Charli XCX</div>
+              <div class="album-meta">2024 • Pop</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">Hit Me Hard and Soft</div>
+              <div class="album-artist">Billie Eilish</div>
+              <div class="album-meta">2024 • Alternative</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">The Rise and Fall...</div>
+              <div class="album-artist">Chappell Roan</div>
+              <div class="album-meta">2023 • Pop</div>
+            </div>
+            <div class="album-card">
+              <div class="album-cover">♪</div>
+              <div class="album-title">GNX</div>
+              <div class="album-artist">Kendrick Lamar</div>
+              <div class="album-meta">2024 • Hip-Hop</div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Activity -->
+        <section>
+          <div class="section-header">
+            <h2 class="section-title">Activity</h2>
+          </div>
+          
+          <div class="card">
+            <div class="activity-list">
+              <div class="activity-item">
+                <div class="activity-time">2 min</div>
+                <div class="activity-content">
+                  <div class="activity-title">Added Charli XCX</div>
+                  <div class="activity-meta">via ListenBrainz Radio</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-time">15 min</div>
+                <div class="activity-content">
+                  <div class="activity-title">Downloaded "Brat"</div>
+                  <div class="activity-meta">FLAC via Slskd</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-time">1 hr</div>
+                <div class="activity-content">
+                  <div class="activity-title">Subscription completed</div>
+                  <div class="activity-meta">New Releases • 12 albums</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-time">2 hr</div>
+                <div class="activity-content">
+                  <div class="activity-title">Connection restored</div>
+                  <div class="activity-meta">Lidarr • was offline 5m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  
+  <div class="mockup-note">
+    Mockup 2: Ink & Paper Theme (Light)
+  </div>
+</body>
+</html>

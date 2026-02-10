@@ -23,7 +23,18 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
-  
+
+  /* Heading styles — DM Sans with tight tracking */
+  h1 {
+    @apply text-3xl font-semibold tracking-tight;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold tracking-tight;
+    letter-spacing: -0.01em;
+  }
+
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
@@ -56,14 +67,14 @@
 @layer components {
   /* Button variants */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium 
+    @apply inline-flex items-center justify-center rounded-button text-sm font-medium 
            transition-colors focus-visible:outline-none focus-visible:ring-2 
            focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none 
            disabled:opacity-50 h-10 px-4 py-2;
   }
   
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
+    @apply btn bg-primary text-primary-foreground shadow-sm hover:shadow-glow-sm hover:brightness-110 active:brightness-95 active:scale-[0.98];
   }
   
   .btn-secondary {
@@ -83,7 +94,7 @@
   }
   
   .btn-sm {
-    @apply h-9 rounded-md px-3;
+    @apply h-9 rounded-button px-3;
   }
   
   .btn-lg {
@@ -96,7 +107,7 @@
   
   /* Card component */
   .card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply rounded-card border bg-card text-card-foreground shadow-sm;
   }
   
   .card-header {
@@ -170,5 +181,27 @@
   
   .status-pending {
     @apply status-dot bg-yellow-500 animate-pulse;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-display {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

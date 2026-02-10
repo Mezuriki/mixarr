@@ -121,4 +121,10 @@ export const endpoints = {
     list: '/api/settings',
     update: '/api/settings',
   },
+  // Feed
+  feed: {
+    list: '/api/feed',
+    approve: (id: string) => `/api/feed/${id}/approve`,
+    dismiss: (id: string) => `/api/feed/${id}/dismiss`,
+  },
 };

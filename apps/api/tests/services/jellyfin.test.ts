@@ -112,14 +112,16 @@ describe('JellyfinService', () => {
     it('should return top artists by play count', async () => {
       const { JellyfinService } = await import('../../src/services/jellyfin.js');
       
+      // The service queries Audio items and aggregates by artist
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({
           Items: [
-            { Name: 'Pink Floyd', UserData: { PlayCount: 150 }, Id: 'artist-1' },
-            { Name: 'Led Zeppelin', UserData: { PlayCount: 100 }, Id: 'artist-2' },
+            { Id: 'song-1', Name: 'Comfortably Numb', AlbumArtist: 'Pink Floyd', UserData: { PlayCount: 100 } },
+            { Id: 'song-2', Name: 'Wish You Were Here', AlbumArtist: 'Pink Floyd', UserData: { PlayCount: 50 } },
+            { Id: 'song-3', Name: 'Stairway to Heaven', AlbumArtist: 'Led Zeppelin', UserData: { PlayCount: 100 } },
           ],
-          TotalRecordCount: 2,
+          TotalRecordCount: 3,
         }),
       });
 
@@ -134,8 +136,11 @@ describe('JellyfinService', () => {
       );
 
       expect(artists).toHaveLength(2);
+      // Pink Floyd has 100+50=150 plays, Led Zeppelin has 100
       expect(artists[0].name).toBe('Pink Floyd');
       expect(artists[0].playCount).toBe(150);
+      expect(artists[1].name).toBe('Led Zeppelin');
+      expect(artists[1].playCount).toBe(100);
     });
 
     it('should throw if userId not provided', async () => {

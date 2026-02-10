@@ -288,14 +288,15 @@ async function processImport(job: Job<ImportJobData>): Promise<void> {
           continue;
         }
 
-        // Use monitorOption from connection config (defaults to 'all' if not set)
-        await lidarr.addArtist(
+        // Use addArtistWithCacheWarm for reliable metadata - cache warming is critical
+        await lidarr.addArtistWithCacheWarm(
           mbid,
           qpId,
           mpId,
           rfPath,
           true,  // monitored
           lidarrConfig.searchOnAdd !== false,  // searchForMissingAlbums from config
+          false, // waitForRefresh (not used but required for API)
           lidarrConfig.monitorOption || 'all',
           lidarrConfig.monitorNewItems || 'all'
         );

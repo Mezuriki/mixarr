@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card } from '@/components/ui';
-import { Plus, Disc } from 'lucide-react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import Disc from 'lucide-react/dist/esm/icons/disc';
+import Plus from 'lucide-react/dist/esm/icons/plus';
 import { MusicBrainzIcon } from '@/components/ExternalLinks';
 import { cn } from '@/lib/utils';
 
@@ -40,12 +43,13 @@ export function AlbumCard({
         {/* Album cover with lazy loading */}
         <div className="relative flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-muted">
           {!imageError && (
-            <img
+            <Image
               src={coverUrl}
               alt={title}
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 64px, 80px"
               className={cn(
-                'w-full h-full object-cover transition-opacity duration-200',
+                'object-cover transition-opacity duration-200',
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               )}
               onLoad={() => setImageLoaded(true)}

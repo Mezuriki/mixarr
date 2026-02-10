@@ -4,12 +4,40 @@ import { redis } from '../lib/redis.js';
 
 export const healthRouter = Router();
 
-healthRouter.get('/', (_req, res) => {
+// Basic liveness check - always returns 200 if process is running
+healthRouter.get('/live', (_req, res) => {
   res.json({
-    status: 'healthy',
+    status: 'alive',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '2.0.0',
   });
+});
+
+// Full health check - returns 503 if dependencies are down
+// Use this for Docker HEALTHCHECK and orchestrator probes
+healthRouter.get('/', async (_req, res) => {
+  const health = {
+    status: 'ok' as 'ok' | 'error',
+    db: false,
+    redis: false,
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    health.db = true;
+  } catch {
+    health.status = 'error';
+  }
+
+  try {
+    await redis.ping();
+    health.redis = true;
+  } catch {
+    health.status = 'error';
+  }
+
+  res.status(health.status === 'ok' ? 200 : 503).json(health);
 });
 
 healthRouter.get('/ready', async (_req, res) => {

@@ -3,44 +3,71 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Home,
-  Plug,
-  Search,
-  Sparkles,
-  TrendingUp,
-  FileText,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  Users,
-  Layers,
-  ListChecks,
-  LogOut,
-  ChevronDown,
-  Library,
-  Download,
-} from 'lucide-react';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Download from 'lucide-react/dist/esm/icons/download';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import Home from 'lucide-react/dist/esm/icons/home';
+import Layers from 'lucide-react/dist/esm/icons/layers';
+import Library from 'lucide-react/dist/esm/icons/library';
+import ListChecks from 'lucide-react/dist/esm/icons/list-checks';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Menu from 'lucide-react/dist/esm/icons/menu';
+import Plug from 'lucide-react/dist/esm/icons/plug';
+import Search from 'lucide-react/dist/esm/icons/search';
+import Settings from 'lucide-react/dist/esm/icons/settings';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import Users from 'lucide-react/dist/esm/icons/users';
+import X from 'lucide-react/dist/esm/icons/x';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { ThemePicker } from '@/components/ui/theme-picker';
 
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/connections', label: 'Connections', icon: Plug },
-  { href: '/library', label: 'Library', icon: Library, adminOnly: true },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/discover', label: 'Discover', icon: Sparkles },
-  { href: '/subscriptions', label: 'Subscriptions', icon: TrendingUp },
-  { href: '/queue', label: 'Review Queue', icon: ListChecks },
-  { href: '/downloads', label: 'Downloads', icon: Download },
-  { href: '/jobs', label: 'Jobs', icon: Layers, adminOnly: true },
-  { href: '/logs', label: 'Logs', icon: FileText, adminOnly: true },
-  { href: '/users', label: 'Users', icon: Users, adminOnly: true },
-  { href: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  adminOnly?: boolean;
+}
+
+interface NavGroup {
+  label: string;
+  adminOnly?: boolean;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    label: 'Discovery',
+    items: [
+      { href: '/', label: 'Dashboard', icon: Home },
+      { href: '/search', label: 'Search', icon: Search },
+      { href: '/discover', label: 'Discover', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      { href: '/subscriptions', label: 'Subscriptions', icon: TrendingUp },
+      { href: '/queue', label: 'Review Queue', icon: ListChecks },
+      { href: '/downloads', label: 'Downloads', icon: Download },
+    ],
+  },
+  {
+    label: 'System',
+    adminOnly: true,
+    items: [
+      { href: '/connections', label: 'Connections', icon: Plug },
+      { href: '/library', label: 'Library', icon: Library },
+      { href: '/jobs', label: 'Jobs', icon: Layers },
+      { href: '/logs', label: 'Logs', icon: FileText },
+      { href: '/users', label: 'Users', icon: Users },
+      { href: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -52,8 +79,14 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // Filter nav items based on user role
-  const visibleNavItems = navItems.filter(item => !item.adminOnly || user?.role === 'admin');
+  // Filter nav groups based on user role
+  const visibleNavGroups = navGroups
+    .filter(group => !group.adminOnly || user?.role === 'admin')
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.adminOnly || user?.role === 'admin')
+    }))
+    .filter(group => group.items.length > 0);
 
   useEffect(() => {
     setMounted(true);
@@ -131,27 +164,36 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
-          {visibleNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground',
-                  collapsed && 'justify-center'
-                )}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 space-y-4 p-2 overflow-y-auto">
+          {visibleNavGroups.map((group) => (
+            <div key={group.label} className="space-y-1" role="group" aria-label={group.label}>
+              {!collapsed && (
+                <h3 className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </h3>
+              )}
+              {group.items.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground',
+                      collapsed && 'justify-center'
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {!collapsed && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Footer with user avatar */}

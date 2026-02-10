@@ -48,6 +48,6 @@ COPY --from=deps /app/apps/api/node_modules ./node_modules
 # Generate Prisma client in production
 RUN npx prisma generate
 
-EXPOSE 3010
+EXPOSE 3005
 CMD ["node", "dist/index.js"]
 

@@ -115,7 +115,7 @@ describe('Public Playlist Import', () => {
         text: () => Promise.resolve(mockHtml),
       });
 
-      const result = await fetchPublicPlaylist('testPlaylistId');
+      const result = await fetchPublicPlaylist('0123456789abcdefghijkl');
       
       expect(result).not.toBeNull();
       expect(result?.name).toBe('Test Playlist');
@@ -159,7 +159,7 @@ describe('Public Playlist Import', () => {
         text: () => Promise.resolve(mockHtml),
       });
 
-      const result = await fetchPublicPlaylist('newFormatPlaylist');
+      const result = await fetchPublicPlaylist('0123456789abcdefghijkm');
       
       expect(result).not.toBeNull();
       expect(result?.name).toBe('Christmas Hits');
@@ -203,7 +203,7 @@ describe('Public Playlist Import', () => {
         text: () => Promise.resolve(mockHtml),
       });
 
-      const result = await fetchPublicPlaylist('collabPlaylist');
+      const result = await fetchPublicPlaylist('0123456789abcdefghijkn');
       
       expect(result?.tracks[0].artists).toHaveLength(3);
       expect(result?.tracks[0].artists[0].name).toBe('Artist A');
@@ -217,7 +217,7 @@ describe('Public Playlist Import', () => {
         status: 404,
       });
 
-      await expect(fetchPublicPlaylist('invalidId')).rejects.toThrow('Failed to fetch playlist');
+      await expect(fetchPublicPlaylist('invalidId')).rejects.toThrow('Invalid playlist ID format');
     });
 
     it('throws error when no data found in HTML', async () => {
@@ -226,7 +226,7 @@ describe('Public Playlist Import', () => {
         text: () => Promise.resolve('<html><body>No data</body></html>'),
       });
 
-      await expect(fetchPublicPlaylist('testId')).rejects.toThrow('Could not parse playlist data');
+      await expect(fetchPublicPlaylist('0123456789abcdefghijko')).rejects.toThrow('Could not parse playlist data');
     });
   });
 });

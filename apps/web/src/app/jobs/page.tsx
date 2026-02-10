@@ -1,10 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Badge } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
-import { RefreshCw, Clock, CheckCircle, XCircle, PlayCircle, Loader2, User } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import Clock from 'lucide-react/dist/esm/icons/clock';
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import PlayCircle from 'lucide-react/dist/esm/icons/play-circle';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import User from 'lucide-react/dist/esm/icons/user';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -136,7 +144,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5 text-blue-500" />
+              <PlayCircle className="h-5 w-5 text-status-info" />
               <span className="text-2xl font-bold">{activeJobs.length}</span>
             </div>
           </CardContent>
@@ -147,7 +155,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-status-success" />
               <span className="text-2xl font-bold">{completedJobs.length}</span>
             </div>
           </CardContent>
@@ -158,7 +166,7 @@ export default function JobsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
+              <XCircle className="h-5 w-5 text-status-error" />
               <span className="text-2xl font-bold">{failedJobs.length}</span>
             </div>
           </CardContent>
@@ -217,7 +225,7 @@ export default function JobsPage() {
                         </div>
                       )}
                       {status === 'failed' && job.failedReason && (
-                        <p className="text-sm text-red-500 mt-1">
+                        <p className="text-sm text-status-error mt-1">
                           {job.failedReason}
                         </p>
                       )}
