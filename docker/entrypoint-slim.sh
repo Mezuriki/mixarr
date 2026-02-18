@@ -5,6 +5,16 @@ echo "🎵 Mixarr (slim) starting..."
 echo ""
 
 # ============================================
+# 0. Auto-generate SESSION_SECRET if not set
+# ============================================
+if [ -z "$SESSION_SECRET" ]; then
+  export SESSION_SECRET=$(openssl rand -hex 32)
+  echo "🔑 Generated random SESSION_SECRET (will change on restart)"
+  echo "   Set SESSION_SECRET explicitly for persistent sessions."
+  echo ""
+fi
+
+# ============================================
 # 1. Validate required environment
 # ============================================
 MISSING_VARS=0
