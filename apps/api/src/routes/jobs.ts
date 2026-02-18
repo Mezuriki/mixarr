@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { validateParams, validateQuery, validateBody } from '../middleware/validate.js';
 import { parseIntParam } from '../utils/params.js';
 import {
   scheduleSubscriptionJob,
@@ -10,6 +11,13 @@ import {
   QUEUE_NAMES,
 } from '../jobs/queue.js';
 import { createLogger } from '../lib/logger.js';
+import {
+  jobStatusParamsSchema,
+  recentJobsParamsSchema,
+  limitQuerySchema,
+  jobIdParamSchema,
+  runImportBodySchema,
+} from '../schemas/jobs.js';
 
 const logger = createLogger('JobsRoute');
 
@@ -18,7 +26,7 @@ export const jobsRouter = Router();
 jobsRouter.use(requireAuth);
 
 // Get job status
-jobsRouter.get('/status/:queue/:jobId', async (req, res) => {
+jobsRouter.get('/status/:queue/:jobId', validateParams(jobStatusParamsSchema), async (req, res) => {
   try {
     const { queue, jobId } = req.params;
     
@@ -46,7 +54,7 @@ jobsRouter.get('/status/:queue/:jobId', async (req, res) => {
 });
 
 // Get recent jobs
-jobsRouter.get('/recent/:queue', async (req, res) => {
+jobsRouter.get('/recent/:queue', validateParams(recentJobsParamsSchema), validateQuery(limitQuerySchema), async (req, res) => {
   try {
     const { queue } = req.params;
     const limit = parseInt(req.query.limit as string, 10) || 20;
@@ -88,7 +96,7 @@ jobsRouter.get('/recent/:queue', async (req, res) => {
 });
 
 // Run subscription now
-jobsRouter.post('/run/subscription/:id', async (req, res) => {
+jobsRouter.post('/run/subscription/:id', validateParams(jobIdParamSchema), async (req, res) => {
   try {
     const id = parseIntParam(req.params.id);
     if (id === null) {
@@ -120,7 +128,7 @@ jobsRouter.post('/run/subscription/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to schedule job' });
   }
 });
-jobsRouter.post('/run/import/:id', async (req, res) => {
+jobsRouter.post('/run/import/:id', validateParams(jobIdParamSchema), validateBody(runImportBodySchema), async (req, res) => {
   try {
     const id = parseIntParam(req.params.id);
     if (id === null) {
@@ -159,7 +167,7 @@ jobsRouter.post('/run/import/:id', async (req, res) => {
 });
 
 // Get subscription run history
-jobsRouter.get('/history/subscription/:id', async (req, res) => {
+jobsRouter.get('/history/subscription/:id', validateParams(jobIdParamSchema), validateQuery(limitQuerySchema), async (req, res) => {
   try {
     const id = parseIntParam(req.params.id);
     if (id === null) {
