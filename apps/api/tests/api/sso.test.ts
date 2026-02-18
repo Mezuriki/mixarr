@@ -6,6 +6,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { validateLdapConfig, validateSamlConfig, validateGoogleConfig, validatePlexConfig, validateSsoConfig } from '../../src/types/sso.js';
 import { createMockPrisma, resetIdCounter } from '../utils/fixtures.js';
 import { SsoProviderService } from '../../src/services/sso-provider.js';
+import {
+  ssoProviderTypeParamsSchema,
+  upsertSsoProviderBodySchema,
+  toggleSsoProviderBodySchema,
+  googleConfigSchema,
+  ldapConfigSchema,
+  samlConfigSchema,
+  plexConfigSchema,
+} from '../../src/schemas/sso.js';
 
 describe('SSO Config Validation', () => {
   describe('validateLdapConfig', () => {
@@ -938,6 +947,283 @@ describe('User Identity Management', () => {
       
       expect(isUserIdValid).toBe(false);
       expect(isIdentityIdValid).toBe(false);
+    });
+  });
+});
+
+/**
+ * SSO Zod Schema Validation Tests
+ *
+ * Tests for the Zod schemas used by SSO route validation middleware.
+ */
+describe('SSO Zod Schema Validation', () => {
+  describe('ssoProviderTypeParamsSchema', () => {
+    it('should accept valid provider types', () => {
+      for (const type of ['ldap', 'saml', 'google', 'plex']) {
+        const result = ssoProviderTypeParamsSchema.safeParse({ type });
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it('should reject invalid provider type', () => {
+      const result = ssoProviderTypeParamsSchema.safeParse({ type: 'facebook' });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject empty string provider type', () => {
+      const result = ssoProviderTypeParamsSchema.safeParse({ type: '' });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing type', () => {
+      const result = ssoProviderTypeParamsSchema.safeParse({});
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject uppercase provider type (case sensitive)', () => {
+      const result = ssoProviderTypeParamsSchema.safeParse({ type: 'GOOGLE' });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('upsertSsoProviderBodySchema', () => {
+    it('should accept valid body with name and config', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: 'Google OAuth',
+        config: { clientId: 'id', clientSecret: 'secret' },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept body with optional isEnabled', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: 'Google OAuth',
+        config: { clientId: 'id' },
+        isEnabled: true,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject missing name', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        config: { clientId: 'id' },
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const fields = result.error.flatten().fieldErrors;
+        expect(fields.name).toBeDefined();
+      }
+    });
+
+    it('should reject empty name', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: '',
+        config: { clientId: 'id' },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing config', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: 'Google',
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const fields = result.error.flatten().fieldErrors;
+        expect(fields.config).toBeDefined();
+      }
+    });
+
+    it('should reject non-boolean isEnabled', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: 'Google',
+        config: { clientId: 'id' },
+        isEnabled: 'true',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept config as empty object', () => {
+      const result = upsertSsoProviderBodySchema.safeParse({
+        name: 'Plex',
+        config: {},
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('toggleSsoProviderBodySchema', () => {
+    it('should accept isEnabled true', () => {
+      const result = toggleSsoProviderBodySchema.safeParse({ isEnabled: true });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept isEnabled false', () => {
+      const result = toggleSsoProviderBodySchema.safeParse({ isEnabled: false });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject missing isEnabled', () => {
+      const result = toggleSsoProviderBodySchema.safeParse({});
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject string isEnabled', () => {
+      const result = toggleSsoProviderBodySchema.safeParse({ isEnabled: 'true' });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject numeric isEnabled', () => {
+      const result = toggleSsoProviderBodySchema.safeParse({ isEnabled: 1 });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('googleConfigSchema', () => {
+    it('should accept valid Google config', () => {
+      const result = googleConfigSchema.safeParse({
+        clientId: 'test.apps.googleusercontent.com',
+        clientSecret: 'secret',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept Google config with allowedDomains', () => {
+      const result = googleConfigSchema.safeParse({
+        clientId: 'test.apps.googleusercontent.com',
+        clientSecret: 'secret',
+        allowedDomains: ['example.com', 'test.org'],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject missing clientId', () => {
+      const result = googleConfigSchema.safeParse({
+        clientSecret: 'secret',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing clientSecret', () => {
+      const result = googleConfigSchema.safeParse({
+        clientId: 'id',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject empty clientId', () => {
+      const result = googleConfigSchema.safeParse({
+        clientId: '',
+        clientSecret: 'secret',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('ldapConfigSchema', () => {
+    const validLdap = {
+      serverUrl: 'ldap://ldap.example.com:389',
+      bindDn: 'cn=admin,dc=example,dc=com',
+      bindPassword: 'secret',
+      searchBaseDn: 'ou=users,dc=example,dc=com',
+      searchFilter: '(uid={{username}})',
+      emailAttribute: 'mail',
+      displayNameAttribute: 'cn',
+    };
+
+    it('should accept valid LDAP config', () => {
+      const result = ldapConfigSchema.safeParse(validLdap);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept LDAP config with optional fields', () => {
+      const result = ldapConfigSchema.safeParse({
+        ...validLdap,
+        usernameAttribute: 'uid',
+        useTls: true,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject missing serverUrl', () => {
+      const { serverUrl, ...rest } = validLdap;
+      const result = ldapConfigSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing bindDn', () => {
+      const { bindDn, ...rest } = validLdap;
+      const result = ldapConfigSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing bindPassword', () => {
+      const { bindPassword, ...rest } = validLdap;
+      const result = ldapConfigSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing searchBaseDn', () => {
+      const { searchBaseDn, ...rest } = validLdap;
+      const result = ldapConfigSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject missing emailAttribute', () => {
+      const { emailAttribute, ...rest } = validLdap;
+      const result = ldapConfigSchema.safeParse(rest);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('samlConfigSchema', () => {
+    it('should accept SAML config with metadataUrl', () => {
+      const result = samlConfigSchema.safeParse({
+        idpMetadataUrl: 'https://idp.example.com/metadata',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept SAML config with ssoUrl', () => {
+      const result = samlConfigSchema.safeParse({
+        idpSsoUrl: 'https://idp.example.com/sso',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept SAML config with both URLs', () => {
+      const result = samlConfigSchema.safeParse({
+        idpMetadataUrl: 'https://idp.example.com/metadata',
+        idpSsoUrl: 'https://idp.example.com/sso',
+        idpCertificate: 'MIIC...',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject SAML config with neither metadataUrl nor ssoUrl', () => {
+      const result = samlConfigSchema.safeParse({
+        emailAttribute: 'email',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject empty SAML config', () => {
+      const result = samlConfigSchema.safeParse({});
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('plexConfigSchema', () => {
+    it('should accept empty Plex config', () => {
+      const result = plexConfigSchema.safeParse({});
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept Plex config with restrictToServerId', () => {
+      const result = plexConfigSchema.safeParse({
+        restrictToServerId: 'abc123',
+      });
+      expect(result.success).toBe(true);
     });
   });
 });
