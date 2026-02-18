@@ -32,6 +32,10 @@ authRouter.get('/setup-required', async (_req, res) => {
       baseUrlExists: !!baseUrl?.value,
     });
   } catch (error) {
+    logger.error('Failed to check setup status', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -72,6 +76,10 @@ authRouter.post('/complete-setup', async (_req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to complete setup', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to complete setup' });
   }
 });
@@ -451,6 +459,10 @@ authRouter.get('/users', requireAuth, requireAdmin, async (_req, res) => {
     });
     res.json({ users });
   } catch (error) {
+    logger.error('Failed to fetch users', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -492,6 +504,10 @@ authRouter.post('/users', requireAuth, requireAdmin, createUserLimiter, async (r
       },
     });
   } catch (error) {
+    logger.error('Failed to create user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
@@ -520,6 +536,10 @@ authRouter.post('/users/:id/reset-password', requireAuth, requireAdmin, async (r
 
     res.json({ success: true, userId: id });
   } catch (error) {
+    logger.error('Failed to reset password', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -542,6 +562,10 @@ authRouter.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
     await prisma.user.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to delete user', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

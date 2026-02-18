@@ -231,6 +231,10 @@ importsRouter.get('/review/queue', async (req, res) => {
 
     res.json({ items: itemsWithImages });
   } catch (error) {
+    log.error('Failed to fetch review queue', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch review queue' });
   }
 });
@@ -644,6 +648,10 @@ importsRouter.post('/review/bulk', async (req, res) => {
 
     res.json({ success: true, added, failed, failedItems });
   } catch (error) {
+    log.error('Failed to process review items', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to process review items' });
   }
 });
@@ -697,6 +705,9 @@ importsRouter.post('/refresh', async (req, res) => {
       const artists = await spotify.getAllFollowedArtists();
       sourceCounts['followed_artists'] = artists.length;
     } catch (error) {
+      log.warn('Failed to fetch followed artists', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       sourceCounts['followed_artists'] = 0;
     }
 
@@ -705,6 +716,9 @@ importsRouter.post('/refresh', async (req, res) => {
       const albums = await spotify.getAllSavedAlbums();
       sourceCounts['saved_albums'] = albums.length;
     } catch (error) {
+      log.warn('Failed to fetch saved albums', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       sourceCounts['saved_albums'] = 0;
     }
 
@@ -713,6 +727,9 @@ importsRouter.post('/refresh', async (req, res) => {
       const songs = await spotify.getAllLikedSongs();
       sourceCounts['liked_songs'] = songs.length;
     } catch (error) {
+      log.warn('Failed to fetch liked songs', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       sourceCounts['liked_songs'] = 0;
     }
 
@@ -721,6 +738,9 @@ importsRouter.post('/refresh', async (req, res) => {
       const response = await spotify.getUserPlaylists(50, 0);
       sourceCounts['playlists'] = response.total;
     } catch (error) {
+      log.warn('Failed to fetch user playlists', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       sourceCounts['playlists'] = 0;
     }
 
@@ -730,6 +750,10 @@ importsRouter.post('/refresh', async (req, res) => {
       refreshedAt: new Date().toISOString()
     });
   } catch (error) {
+    log.error('Failed to refresh import sources', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to refresh sources' 
     });
@@ -782,6 +806,10 @@ importsRouter.get('/sources/available', async (req, res) => {
 
     res.json({ sources });
   } catch (error) {
+    log.error('Failed to fetch available sources', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get sources' 
     });
@@ -824,6 +852,10 @@ importsRouter.patch('/:id/toggle', async (req, res) => {
 
     res.json({ success: true, source });
   } catch (error) {
+    log.error('Failed to toggle import source', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to toggle import source' });
   }
 });
@@ -848,7 +880,10 @@ async function getLidarrArtistNames(userId: number): Promise<Set<string>> {
   try {
     const artists = await lidarr.getArtists();
     return new Set(artists.map((a: { artistName: string }) => a.artistName.toLowerCase()));
-  } catch {
+  } catch (error) {
+    log.warn('Failed to fetch Lidarr artist names for filtering', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return new Set();
   }
 }
@@ -1048,8 +1083,10 @@ importsRouter.get('/preview/lastfm/:connectionId', async (req, res) => {
             images: similarImageMap.get(a.name) ? [{ url: similarImageMap.get(a.name) }] : [],
           }));
         }
-      } catch {
-        // Ignore similar artist fetch errors
+      } catch (error) {
+        log.warn('Failed to fetch similar artists from Last.fm', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -1280,8 +1317,10 @@ importsRouter.post('/public-playlist/preview', async (req, res) => {
         const artists = await lidarrService.getArtists();
         existingArtists = artists.map(a => a.artistName.toLowerCase());
       }
-    } catch {
-      // Lidarr not available, skip check
+    } catch (error) {
+      log.warn('Failed to check Lidarr library for existing artists', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     
     const artistsWithStatus = result.artistNames.map(name => ({

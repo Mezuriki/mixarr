@@ -290,6 +290,10 @@ connectionsRouter.get('/', async (req, res) => {
     });
     res.json({ connections });
   } catch (error) {
+    logger.error('Failed to fetch connections', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch connections' });
   }
 });
@@ -352,6 +356,10 @@ connectionsRouter.get('/:id', async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error('Failed to fetch connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to fetch connection' });
   }
 });
@@ -392,6 +400,10 @@ connectionsRouter.post('/', validateBody(createConnectionSchema), async (req, re
       res.status(400).json({ error: 'Connection with this name already exists' });
       return;
     }
+    logger.error('Failed to create connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to create connection' });
   }
 });
@@ -452,6 +464,10 @@ connectionsRouter.put('/:id', validateBody(updateConnectionSchema), async (req, 
       },
     });
   } catch (error) {
+    logger.error('Failed to update connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to update connection' });
   }
 });
@@ -477,6 +493,10 @@ connectionsRouter.delete('/:id', async (req, res) => {
     await prisma.connection.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
+    logger.error('Failed to delete connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ error: 'Failed to delete connection' });
   }
 });
@@ -683,6 +703,10 @@ connectionsRouter.post('/:id/test', async (req, res) => {
 
     res.json(result);
   } catch (error) {
+    logger.error('Failed to test connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       success: false, 
       message: error instanceof Error ? error.message : 'Test failed' 
@@ -771,6 +795,10 @@ connectionsRouter.post('/test-lidarr', async (req, res) => {
       rootFolders 
     });
   } catch (error) {
+    logger.error('Failed to test Lidarr connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       success: false, 
       message: error instanceof Error ? error.message : 'Test failed' 
@@ -806,6 +834,10 @@ connectionsRouter.post('/test-tautulli', async (req, res) => {
       message: 'Connected to Tautulli'
     });
   } catch (error) {
+    logger.error('Failed to test Tautulli connection', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       success: false, 
       message: error instanceof Error ? error.message : 'Test failed' 
@@ -828,6 +860,10 @@ connectionsRouter.post('/tautulli/users', async (req, res) => {
     
     res.json({ users });
   } catch (error) {
+    logger.error('Failed to fetch Tautulli users', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get users' 
     });
@@ -849,6 +885,10 @@ connectionsRouter.post('/tautulli/libraries', async (req, res) => {
     
     res.json({ libraries });
   } catch (error) {
+    logger.error('Failed to fetch Tautulli libraries', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get libraries' 
     });
@@ -895,6 +935,10 @@ connectionsRouter.get('/:id/tautulli/top-artists', async (req, res) => {
     
     res.json({ artists });
   } catch (error) {
+    logger.error('Failed to fetch Tautulli top artists', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get top artists' 
     });
@@ -917,6 +961,10 @@ connectionsRouter.post('/jellyfin/users', async (req, res) => {
     
     res.json({ users });
   } catch (error) {
+    logger.error('Failed to fetch Jellyfin users', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get users' 
     });
@@ -939,6 +987,10 @@ connectionsRouter.post('/jellyfin/libraries', async (req, res) => {
     
     res.json({ libraries });
   } catch (error) {
+    logger.error('Failed to fetch Jellyfin libraries', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Failed to get libraries' 
     });
