@@ -2,8 +2,29 @@ import type { Express, RequestHandler } from 'express';
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
-import session, { MemoryStore } from 'express-session';
+import session from 'express-session';
+import { RedisStore } from 'connect-redis';
+import Redis from 'ioredis';
 import prisma from '../lib/db.js';
+import { createLogger } from '../lib/logger.js';
+
+const logger = createLogger('Auth');
+
+// Create Redis client for session store
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const sessionRedis = new Redis(redisUrl, {
+  maxRetriesPerRequest: 3,
+  retryStrategy: (times) => Math.min(times * 200, 2000),
+  lazyConnect: true,
+});
+
+sessionRedis.on('error', (err) => {
+  logger.error('Session Redis error', { error: err.message });
+});
+
+sessionRedis.on('connect', () => {
+  logger.info('Session Redis connected');
+});
 
 declare global {
   namespace Express {
@@ -17,8 +38,7 @@ declare global {
 }
 
 // Create session middleware - exported for Socket.IO authentication
-// Using explicit MemoryStore to suppress the production warning.
-// Sessions are lost on container restart, which is acceptable for this app.
+// Sessions are stored in Redis for persistence across restarts and horizontal scaling.
 //
 // CSRF Protection Strategy:
 // -------------------------
@@ -36,7 +56,10 @@ export const sessionMiddleware: RequestHandler = session({
   secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
-  store: new MemoryStore(),
+  store: new RedisStore({
+    client: sessionRedis,
+    prefix: 'mixarr:sess:',
+  }),
   proxy: true, // Trust the reverse proxy (Caddy/Next.js) for secure cookies
   cookie: {
     secure: process.env.NODE_ENV === 'production',
@@ -45,6 +68,9 @@ export const sessionMiddleware: RequestHandler = session({
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 });
+
+// Export for graceful shutdown
+export { sessionRedis };
 
 /**
  * Look up a user by ID and verify they are active.

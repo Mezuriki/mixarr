@@ -23,7 +23,7 @@ import { feedRouter } from './routes/feed.js';
 import notificationsRouter from './routes/notifications.js';
 import { duplicatesRouter } from './routes/duplicates.js';
 import { ssoRouter } from './routes/sso.js';
-import { setupPassport, sessionMiddleware } from './auth/passport.js';
+import { setupPassport, sessionMiddleware, sessionRedis } from './auth/passport.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { correlationMiddleware } from './middleware/correlation.js';
@@ -211,6 +211,17 @@ const gracefulShutdown = async (signal: string) => {
     });
   }
   
+  // Close session Redis connection
+  try {
+    await sessionRedis.disconnect();
+    log.info('Session Redis connection closed');
+  } catch (error) {
+    log.error('Error closing session Redis', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+
   // Close Redis connection
   try {
     await redis.quit();
