@@ -46,6 +46,29 @@ export const sessionMiddleware: RequestHandler = session({
   },
 });
 
+/**
+ * Look up a user by ID and verify they are active.
+ * Extracted so both passport.deserializeUser and tests use the same logic.
+ */
+export async function lookupSessionUser(
+  id: number
+): Promise<Express.User | false> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!user || !user.isActive) {
+    return false;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+  };
+}
+
 export function setupPassport(app: Express): void {
   // Use the shared session middleware
   app.use(sessionMiddleware);
@@ -95,20 +118,8 @@ export function setupPassport(app: Express): void {
   // Deserialize user from session
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id },
-      });
-      
-      if (!user) {
-        return done(null, false);
-      }
-      
-      done(null, {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        role: user.role,
-      });
+      const result = await lookupSessionUser(id);
+      done(null, result);
     } catch (error) {
       done(error);
     }
