@@ -31,7 +31,7 @@ import type { AuthenticatedSocket, SessionIncomingMessage, SocketSessionResponse
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
-import { cleanupQueueEvents } from './routes/slskd.js';
+import slskdRouter, { cleanupQueueEvents } from './routes/slskd.js';
 
 // Import workers only in non-test environments to prevent test pollution
 if (process.env.NODE_ENV !== 'test') {
@@ -135,6 +135,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/discover', discoverRouter);
 app.use('/api/feed', feedRouter());
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/slskd', slskdRouter);
 app.use('/api/duplicates', duplicatesRouter);
 app.use('/api/sso', ssoRouter);
 
