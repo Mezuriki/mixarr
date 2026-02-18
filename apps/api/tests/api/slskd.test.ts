@@ -157,7 +157,7 @@ describe('slskd API Routes', () => {
         .send({ query: 'Pink Floyd' });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
 
     it('should return 400 when query is missing', async () => {
@@ -241,7 +241,7 @@ describe('slskd API Routes', () => {
         .get('/api/slskd/search/search-123');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -268,6 +268,16 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
+    });
+
+    it('should return 400 when no slskd connection exists', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .delete('/api/slskd/search/search-123');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -347,7 +357,7 @@ describe('slskd API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -401,6 +411,25 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(0);
+    });
+  });
+
+  describe('POST /api/slskd/downloads/:id/retry', () => {
+    it('should return 400 when no slskd connection exists', async () => {
+      mockPrisma.slskdDownload.findUnique.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        fileSize: 50000000,
+        status: 'failed',
+      });
+      mockPrisma.connection.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/slskd/downloads/1/retry');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
