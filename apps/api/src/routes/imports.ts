@@ -1,6 +1,20 @@
 import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate.js';
+import {
+  createImportSchema,
+  updateImportSchema,
+  importIdParamSchema,
+  connectionIdParamSchema,
+  reviewQueueQuerySchema,
+  updateReviewItemSchema,
+  bulkReviewSchema,
+  previewQuerySchema,
+  previewImportSchema,
+  publicPlaylistPreviewSchema,
+  publicPlaylistImportSchema,
+} from '../schemas/imports.js';
 import { parseIntParam } from '../utils/params.js';
 import { addImportScheduledJob, removeImportScheduledJob } from '../jobs/scheduler.js';
 import { SpotifyService } from '../services/spotify.js';
@@ -53,13 +67,9 @@ importsRouter.get('/', async (req, res) => {
 });
 
 // Get import source by id
-importsRouter.get('/:id', async (req, res) => {
+importsRouter.get('/:id', validateParams(importIdParamSchema), async (req, res) => {
   try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid import ID' });
-      return;
-    }
+    const id = Number(req.params.id);
     
     const source = await prisma.importSource.findUnique({
       where: { id },
@@ -82,14 +92,9 @@ importsRouter.get('/:id', async (req, res) => {
 });
 
 // Create import source
-importsRouter.post('/', async (req, res) => {
+importsRouter.post('/', validateBody(createImportSchema), async (req, res) => {
   try {
     const { type, name, externalId, schedule, resultHandling, isActive } = req.body;
-
-    if (!type || !name) {
-      res.status(400).json({ error: 'Type and name required' });
-      return;
-    }
 
     const source = await prisma.importSource.create({
       data: {
@@ -120,13 +125,9 @@ importsRouter.post('/', async (req, res) => {
 });
 
 // Update import source
-importsRouter.put('/:id', async (req, res) => {
+importsRouter.put('/:id', validateParams(importIdParamSchema), validateBody(updateImportSchema), async (req, res) => {
   try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid import ID' });
-      return;
-    }
+    const id = Number(req.params.id);
     const { name, externalId, schedule, resultHandling, isActive } = req.body;
 
     const existing = await prisma.importSource.findUnique({
@@ -167,13 +168,9 @@ importsRouter.put('/:id', async (req, res) => {
 });
 
 // Delete import source
-importsRouter.delete('/:id', async (req, res) => {
+importsRouter.delete('/:id', validateParams(importIdParamSchema), async (req, res) => {
   try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid import ID' });
-      return;
-    }
+    const id = Number(req.params.id);
 
     const existing = await prisma.importSource.findUnique({
       where: { id },
@@ -199,11 +196,11 @@ importsRouter.delete('/:id', async (req, res) => {
 });
 
 // Get review queue (admins see all, users see own)
-importsRouter.get('/review/queue', async (req, res) => {
+importsRouter.get('/review/queue', validateQuery(reviewQueueQuerySchema), async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string, 10) || 50;
-    const status = req.query.status as string || 'pending';
-    const itemType = req.query.itemType as string; // 'artist', 'album', or undefined for all
+    const limit = req.query.limit as unknown as number;
+    const status = req.query.status as string;
+    const itemType = req.query.itemType as string | undefined;
     const isAdmin = req.user!.role === 'admin';
 
     const items = await prisma.reviewItem.findMany({
@@ -240,19 +237,10 @@ importsRouter.get('/review/queue', async (req, res) => {
 });
 
 // Update review item status
-importsRouter.put('/review/:id', async (req, res) => {
+importsRouter.put('/review/:id', validateParams(importIdParamSchema), validateBody(updateReviewItemSchema), async (req, res) => {
   try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid review item ID' });
-      return;
-    }
+    const id = Number(req.params.id);
     const { status } = req.body;
-
-    if (!['pending', 'approved', 'rejected'].includes(status)) {
-      res.status(400).json({ error: 'Invalid status' });
-      return;
-    }
 
     const item = await prisma.reviewItem.findUnique({
       where: { id },
@@ -424,14 +412,9 @@ importsRouter.put('/review/:id', async (req, res) => {
 });
 
 // Bulk update review items
-importsRouter.post('/review/bulk', async (req, res) => {
+importsRouter.post('/review/bulk', validateBody(bulkReviewSchema), async (req, res) => {
   try {
     const { ids, status } = req.body;
-
-    if (!Array.isArray(ids) || !['pending', 'approved', 'rejected'].includes(status)) {
-      res.status(400).json({ error: 'Invalid request' });
-      return;
-    }
 
     // If rejecting, just update status
     if (status === 'rejected' || status === 'pending') {
@@ -817,13 +800,9 @@ importsRouter.get('/sources/available', async (req, res) => {
 });
 
 // Toggle import source active status
-importsRouter.patch('/:id/toggle', async (req, res) => {
+importsRouter.patch('/:id/toggle', validateParams(importIdParamSchema), async (req, res) => {
   try {
-    const id = parseIntParam(req.params.id);
-    if (id === null) {
-      res.status(400).json({ error: 'Invalid import ID' });
-      return;
-    }
+    const id = Number(req.params.id);
 
     const existing = await prisma.importSource.findFirst({
       where: { id, userId: req.user!.id },
@@ -894,13 +873,9 @@ function normalizeArtistName(name: string): string {
 }
 
 // Get Spotify preview data for a connection
-importsRouter.get('/preview/spotify/:connectionId', async (req, res) => {
+importsRouter.get('/preview/spotify/:connectionId', validateParams(connectionIdParamSchema), validateQuery(previewQuerySchema), async (req, res) => {
   try {
-    const connectionId = parseIntParam(req.params.connectionId);
-    if (connectionId === null) {
-      res.status(400).json({ error: 'Invalid connection ID' });
-      return;
-    }
+    const connectionId = Number(req.params.connectionId);
     const includeAI = req.query.ai === 'true';
     
     const connection = await prisma.connection.findUnique({
@@ -1011,13 +986,9 @@ importsRouter.get('/preview/spotify/:connectionId', async (req, res) => {
 });
 
 // Get Last.fm preview data for a connection
-importsRouter.get('/preview/lastfm/:connectionId', async (req, res) => {
+importsRouter.get('/preview/lastfm/:connectionId', validateParams(connectionIdParamSchema), validateQuery(previewQuerySchema), async (req, res) => {
   try {
-    const connectionId = parseIntParam(req.params.connectionId);
-    if (connectionId === null) {
-      res.status(400).json({ error: 'Invalid connection ID' });
-      return;
-    }
+    const connectionId = Number(req.params.connectionId);
     const includeAI = req.query.ai === 'true';
     const includeSimilar = req.query.similar === 'true';
     
@@ -1116,21 +1087,9 @@ importsRouter.get('/preview/lastfm/:connectionId', async (req, res) => {
 
 // Import selected artists from preview
 // Modes: 'auto' (default) - add to Lidarr, 'queue' - add to review queue, 'preview' - just return artists
-importsRouter.post('/preview/import', async (req, res) => {
+importsRouter.post('/preview/import', validateBody(previewImportSchema), async (req, res) => {
   try {
-    const { artistNames, mode = 'auto' } = req.body;
-
-    if (!Array.isArray(artistNames) || artistNames.length === 0) {
-      res.status(400).json({ error: 'No artists selected' });
-      return;
-    }
-
-    // Validate mode
-    const validModes = ['preview', 'queue', 'auto'];
-    if (!validModes.includes(mode)) {
-      res.status(400).json({ error: `Invalid mode. Must be one of: ${validModes.join(', ')}` });
-      return;
-    }
+    const { artistNames, mode } = req.body;
 
     // Get Lidarr connection (only required for auto mode)
     const lidarrConnection = await prisma.connection.findFirst({
@@ -1284,13 +1243,9 @@ importsRouter.post('/preview/import', async (req, res) => {
 // ============================================================================
 
 // Preview public playlist - extracts artists without adding to queue
-importsRouter.post('/public-playlist/preview', async (req, res) => {
+importsRouter.post('/public-playlist/preview', validateBody(publicPlaylistPreviewSchema), async (req, res) => {
   try {
     const { url, includeAllArtists } = req.body;
-    
-    if (!url) {
-      return res.status(400).json({ error: 'Playlist URL is required' });
-    }
     
     const playlistId = parseSpotifyPlaylistUrl(url);
     if (!playlistId) {
@@ -1343,13 +1298,9 @@ importsRouter.post('/public-playlist/preview', async (req, res) => {
 });
 
 // Import artists from public playlist to review queue
-importsRouter.post('/public-playlist/import', async (req, res) => {
+importsRouter.post('/public-playlist/import', validateBody(publicPlaylistImportSchema), async (req, res) => {
   try {
     const { url, selectedArtists, includeAllArtists } = req.body;
-    
-    if (!url) {
-      return res.status(400).json({ error: 'Playlist URL is required' });
-    }
     
     const result = await importPublicPlaylist(url, { includeAllArtists });
     
