@@ -5,6 +5,7 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 
 export interface TautulliConfig {
   tautulliUrl: string;
@@ -233,7 +234,7 @@ export class TautulliService {
       url.searchParams.set(key, value);
     }
 
-    const response = await fetch(url.toString());
+    const response = await fetchWithTimeout(url.toString());
 
     if (!response.ok) {
       throw new Error(`Tautulli API error: ${response.status} ${response.statusText}`);

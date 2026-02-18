@@ -7,6 +7,7 @@
  */
 
 import { createLogger } from '../lib/logger.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 
 const log = createLogger('SkyHook');
 
@@ -68,7 +69,7 @@ export class SkyHookCacheWarmer {
       attempts++;
 
       try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
           method: 'GET',
           headers: {
             'User-Agent': 'Mixarr/1.0 (SkyHook Cache Warmer)',

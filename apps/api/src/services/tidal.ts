@@ -9,7 +9,10 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import * as crypto from 'crypto';
+
+const API_TIMEOUT = 15_000;
 
 interface TidalConfig {
   clientId: string;
@@ -217,7 +220,7 @@ export class TidalService {
    * Exchange authorization code for access token
    */
   async exchangeCode(code: string, redirectUri: string, codeVerifier: string): Promise<TidalTokens> {
-    const response = await fetch('https://auth.tidal.com/v1/oauth2/token', {
+    const response = await fetchWithTimeout('https://auth.tidal.com/v1/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -229,6 +232,7 @@ export class TidalService {
         redirect_uri: redirectUri,
         code_verifier: codeVerifier,
       }),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -284,7 +288,7 @@ export class TidalService {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch('https://auth.tidal.com/v1/oauth2/token', {
+    const response = await fetchWithTimeout('https://auth.tidal.com/v1/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -294,6 +298,7 @@ export class TidalService {
         grant_type: 'refresh_token',
         refresh_token: this.tokens.refreshToken,
       }),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -330,11 +335,12 @@ export class TidalService {
 
     await rateLimit('tidal');
 
-    const response = await fetch(`https://openapi.tidal.com/v2${endpoint}`, {
+    const response = await fetchWithTimeout(`https://openapi.tidal.com/v2${endpoint}`, {
       headers: {
         Authorization: `Bearer ${this.tokens.accessToken}`,
         Accept: 'application/vnd.api+json',
       },
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {

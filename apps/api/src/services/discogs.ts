@@ -7,6 +7,9 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
 
 interface DiscogsPagination {
   page: number;
@@ -153,8 +156,9 @@ export class DiscogsService {
   private async request<T>(path: string): Promise<T> {
     await rateLimit('discogs');
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetchWithTimeout(`${this.baseUrl}${path}`, {
       headers: this.getHeaders(),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {

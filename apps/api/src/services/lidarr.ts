@@ -5,6 +5,7 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
 import { skyhookWarmer } from './skyhook-cache-warmer.js';
 
@@ -137,7 +138,7 @@ export class LidarrService {
         }
 
         // lgtm[js/request-forgery] - URL is admin-configured via settings, not user input
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
           ...options,
           headers: {
             'X-Api-Key': this.apiKey,

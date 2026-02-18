@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { SsoProviderService } from '../services/sso-provider.js';
 import prisma from '../lib/db.js';
 import type { SsoProviderType } from '@prisma/client';
@@ -155,10 +156,7 @@ ssoRouter.post('/providers/:type/test', validateParams(ssoProviderTypeParamsSche
         if (metadataUrl) {
           // Test metadata URL fetch
           try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(metadataUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            const response = await fetchWithTimeout(metadataUrl, { timeout: 10_000 });
             
             if (!response.ok) {
               res.json({ success: false, message: `Failed to fetch metadata: HTTP ${response.status}` });

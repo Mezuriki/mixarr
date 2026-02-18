@@ -2,9 +2,12 @@
 
 import type { NormalizedArtistMetadata } from '../metadata-enrichment.types.js';
 import { rateLimit } from '../rate-limiter.js';
+import { fetchWithTimeout } from '../../lib/fetch-with-timeout.js';
 import { createLogger } from '../../lib/logger.js';
 
 const logger = createLogger('DiscogsAdapter');
+
+const API_TIMEOUT = 15_000;
 
 const DISCOGS_API_BASE = 'https://api.discogs.com';
 const USER_AGENT = 'Mixarr/1.0 +https://github.com/mixarr';
@@ -93,8 +96,9 @@ export class DiscogsMetadataAdapter {
     const encodedName = encodeURIComponent(name);
     const url = `${DISCOGS_API_BASE}/database/search?type=artist&q=${encodedName}`;
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: this.getHeaders(),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -113,8 +117,9 @@ export class DiscogsMetadataAdapter {
     
     const url = `${DISCOGS_API_BASE}/artists/${artistId}`;
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: this.getHeaders(),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {

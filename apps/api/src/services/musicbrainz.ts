@@ -5,7 +5,10 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
+
+const API_TIMEOUT = 10_000;
 
 const logger = createLogger('MusicBrainz');
 
@@ -103,11 +106,12 @@ export class MusicBrainzService {
   private async request<T>(endpoint: string): Promise<T> {
     await rateLimit('musicbrainz');
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const response = await fetchWithTimeout(`${this.baseUrl}${endpoint}`, {
       headers: {
         Accept: 'application/json',
         'User-Agent': this.userAgent,
       },
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {

@@ -5,6 +5,7 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 
 export interface JellyfinConfig {
   jellyfinUrl: string;
@@ -194,7 +195,7 @@ export class JellyfinService {
       }
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithTimeout(url.toString(), {
       headers: {
         'X-Emby-Token': config.jellyfinApiKey,
       },
