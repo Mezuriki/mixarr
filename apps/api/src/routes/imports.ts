@@ -15,7 +15,6 @@ import {
   publicPlaylistPreviewSchema,
   publicPlaylistImportSchema,
 } from '../schemas/imports.js';
-import { parseIntParam } from '../utils/params.js';
 import { addImportScheduledJob, removeImportScheduledJob } from '../jobs/scheduler.js';
 import { SpotifyService } from '../services/spotify.js';
 import { LastfmService } from '../services/lastfm.js';
@@ -1115,7 +1114,7 @@ importsRouter.post('/preview/import', validateBody(previewImportSchema), async (
         success: true,
         mode: 'preview',
         message: `Preview of ${artistNames.length} artist(s)`,
-        artists: artistNames.map(name => ({ name, status: 'preview' })),
+        artists: artistNames.map((name: string) => ({ name, status: 'preview' })),
       });
       return;
     }
