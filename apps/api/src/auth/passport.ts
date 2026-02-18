@@ -12,13 +12,13 @@ const logger = createLogger('Auth');
 
 // Create Redis client for session store
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-const sessionRedis = new Redis(redisUrl, {
+const sessionRedis = new Redis.default(redisUrl, {
   maxRetriesPerRequest: 3,
-  retryStrategy: (times) => Math.min(times * 200, 2000),
+  retryStrategy: (times: number) => Math.min(times * 200, 2000),
   lazyConnect: true,
 });
 
-sessionRedis.on('error', (err) => {
+sessionRedis.on('error', (err: Error) => {
   logger.error('Session Redis error', { error: err.message });
 });
 
