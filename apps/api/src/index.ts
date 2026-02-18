@@ -232,4 +232,19 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
+process.on('unhandledRejection', (reason, promise) => {
+  log.error('Unhandled promise rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+process.on('uncaughtException', (error) => {
+  log.error('Uncaught exception — shutting down', {
+    error: error.message,
+    stack: error.stack,
+  });
+  process.exit(1);
+});
+
 export { app, io };
