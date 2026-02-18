@@ -234,6 +234,15 @@ set -e
 echo "=== Mixarr Unified Container Starting ==="
 
 # -----------------------------------------------------------------------------
+# Auto-generate SESSION_SECRET if not provided
+# -----------------------------------------------------------------------------
+if [ -z "$SESSION_SECRET" ]; then
+  export SESSION_SECRET=$(openssl rand -hex 32)
+  echo "Generated random SESSION_SECRET (will change on restart)"
+  echo "Set SESSION_SECRET explicitly for persistent sessions."
+fi
+
+# -----------------------------------------------------------------------------
 # Setup directories and permissions
 # -----------------------------------------------------------------------------
 mkdir -p /data/certs /data/mysql /data/redis /run/mysqld

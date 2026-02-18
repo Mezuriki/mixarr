@@ -157,7 +157,7 @@ describe('slskd API Routes', () => {
         .send({ query: 'Pink Floyd' });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
 
     it('should return 400 when query is missing', async () => {
@@ -241,7 +241,7 @@ describe('slskd API Routes', () => {
         .get('/api/slskd/search/search-123');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -268,6 +268,16 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
+    });
+
+    it('should return 400 when no slskd connection exists', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .delete('/api/slskd/search/search-123');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -347,7 +357,7 @@ describe('slskd API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('No slskd connection configured');
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -401,6 +411,25 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(0);
+    });
+  });
+
+  describe('POST /api/slskd/downloads/:id/retry', () => {
+    it('should return 400 when no slskd connection exists', async () => {
+      mockPrisma.slskdDownload.findUnique.mockResolvedValue({
+        id: 1,
+        username: 'soulseekuser',
+        filename: 'track.flac',
+        fileSize: 50000000,
+        status: 'failed',
+      });
+      mockPrisma.connection.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/slskd/downloads/1/retry');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('No Soulseek connection configured. Add one in Settings → Connections.');
     });
   });
 
@@ -619,5 +648,46 @@ describe('slskd API Routes', () => {
 
       expect(response.status).toBe(500);
     });
+  });
+});
+
+/**
+ * Separate describe block to verify webhook auth requirement.
+ * Uses a rejecting requireAuth mock to prove the router-level middleware
+ * protects the webhook endpoint.
+ */
+describe('slskd webhook authentication', () => {
+  it('should require authentication for webhook endpoint (router-level middleware)', async () => {
+    vi.resetModules();
+
+    // Mock auth middleware to REJECT - simulating unauthenticated request
+    vi.doMock('../../src/middleware/auth.js', () => ({
+      requireAuth: (_req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        res.status(401).json({ error: 'Authentication required' });
+      },
+    }));
+
+    // Need all the same infrastructure mocks so the router module loads
+    vi.doMock('../../src/lib/db.js', () => ({
+      prisma: { connection: { findFirst: vi.fn() }, slskdDownload: { findFirst: vi.fn() } },
+      default: { connection: { findFirst: vi.fn() }, slskdDownload: { findFirst: vi.fn() } },
+    }));
+
+    const testApp = express();
+    testApp.use(express.json());
+    const { default: slskdRouter } = await import('../../src/routes/slskd.js');
+    testApp.use('/api/slskd', slskdRouter);
+
+    const response = await request(testApp)
+      .post('/api/slskd/webhook')
+      .send({
+        event: 'DownloadComplete',
+        username: 'testuser',
+        filename: 'test.flac',
+        directory: 'Album',
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Authentication required');
   });
 });

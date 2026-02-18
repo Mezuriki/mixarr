@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { createLogger } from '../lib/logger.js';
 import { SettingsService } from '../services/settings.service.js';
+import prisma from '../lib/db.js';
 
 const logger = createLogger('SettingsRoute');
 
@@ -21,13 +22,40 @@ settingsRouter.get('/base-url', async (_req, res) => {
   }
 });
 
-// Public endpoint - set base URL during setup
+// Set base URL - open during setup (no users), admin-only after setup
 settingsRouter.post('/base-url', async (req, res) => {
   try {
+    // Check if setup is complete (users exist in DB)
+    const userCount = await prisma.user.count();
+    if (userCount > 0) {
+      // After setup: require authentication + admin role
+      // Use middleware-style inline checks to keep it in one handler
+      if (!req.isAuthenticated()) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+      if (req.user?.role !== 'admin') {
+        res.status(403).json({ error: 'Admin access required' });
+        return;
+      }
+    }
+
     const { baseUrl } = req.body;
     
     if (!baseUrl || typeof baseUrl !== 'string') {
       res.status(400).json({ error: 'baseUrl is required' });
+      return;
+    }
+
+    // Validate URL format to prevent stored XSS/SSRF via javascript: or other schemes
+    try {
+      const parsed = new URL(baseUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        res.status(400).json({ error: 'baseUrl must use http or https protocol' });
+        return;
+      }
+    } catch {
+      res.status(400).json({ error: 'baseUrl must be a valid URL' });
       return;
     }
 

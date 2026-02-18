@@ -101,7 +101,7 @@ router.post('/search', async (req: Request, res: Response) => {
 
     const slskd = await getSlskdService();
     if (!slskd) {
-      res.status(400).json({ error: 'No slskd connection configured' });
+      res.status(400).json({ error: 'No Soulseek connection configured. Add one in Settings → Connections.' });
       return;
     }
 
@@ -127,7 +127,7 @@ router.get('/search/:id', async (req: Request, res: Response) => {
 
     const slskd = await getSlskdService();
     if (!slskd) {
-      res.status(400).json({ error: 'No slskd connection configured' });
+      res.status(400).json({ error: 'No Soulseek connection configured. Add one in Settings → Connections.' });
       return;
     }
 
@@ -153,7 +153,7 @@ router.delete('/search/:id', async (req: Request, res: Response) => {
 
     const slskd = await getSlskdService();
     if (!slskd) {
-      res.status(400).json({ error: 'No slskd connection configured' });
+      res.status(400).json({ error: 'No Soulseek connection configured. Add one in Settings → Connections.' });
       return;
     }
 
@@ -192,7 +192,7 @@ router.post('/download', async (req: Request, res: Response) => {
 
     const slskd = await getSlskdService();
     if (!slskd) {
-      res.status(400).json({ error: 'No slskd connection configured' });
+      res.status(400).json({ error: 'No Soulseek connection configured. Add one in Settings → Connections.' });
       return;
     }
 
@@ -313,7 +313,7 @@ router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
     
     const slskd = await getSlskdService();
     if (!slskd) {
-      res.status(400).json({ error: 'No slskd connection configured' });
+      res.status(400).json({ error: 'No Soulseek connection configured. Add one in Settings → Connections.' });
       return;
     }
     
@@ -427,7 +427,7 @@ const webhookLimiter = rateLimit({
  * 
  * Returns: { success: true, organized: boolean }
  * 
- * Note: This endpoint does NOT require authentication as it's called by slskd
+ * Auth: Protected by router-level requireAuth middleware.
  */
 router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
   try {

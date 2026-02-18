@@ -8,13 +8,56 @@
  * - Base URL endpoint
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createMockPrisma,
   createMockUser,
   createMockAdminUser,
   resetIdCounter,
 } from '../utils/fixtures.js';
+import express from 'express';
+import request from 'supertest';
+
+// Mock modules used by the settings router
+vi.mock('../../src/lib/db.js', () => ({
+  default: {
+    user: { count: vi.fn() },
+    globalSetting: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
+    userSetting: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
+  },
+}));
+
+vi.mock('../../src/services/settings.service.js', () => ({
+  SettingsService: {
+    getBaseUrl: vi.fn().mockResolvedValue('http://localhost:3010'),
+    setBaseUrl: vi.fn().mockResolvedValue(undefined),
+    getUserSettings: vi.fn().mockResolvedValue({}),
+    setUserSetting: vi.fn().mockResolvedValue(undefined),
+    getUserPreferences: vi.fn().mockResolvedValue({}),
+    updateUserPreferences: vi.fn().mockResolvedValue({}),
+    getGlobalSettings: vi.fn().mockResolvedValue([]),
+    setGlobalSetting: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('../../src/lib/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+vi.mock('../../src/middleware/auth.js', () => ({
+  requireAuth: (_req: any, _res: any, next: any) => next(),
+  requireAdmin: (_req: any, _res: any, next: any) => next(),
+}));
+
+// Import router after mocks
+import { settingsRouter } from '../../src/routes/settings.js';
+import prisma from '../../src/lib/db.js';
+import { SettingsService } from '../../src/services/settings.service.js';
 
 describe('Settings API', () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
@@ -22,6 +65,7 @@ describe('Settings API', () => {
   let adminUser: ReturnType<typeof createMockAdminUser>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     resetIdCounter();
     mockPrisma = createMockPrisma();
     testUser = createMockUser();
@@ -51,6 +95,95 @@ describe('Settings API', () => {
 
       const baseUrl = setting?.value || process.env.BASE_URL || 'http://localhost:3010';
       expect(baseUrl).toBe('http://localhost:3010');
+    });
+  });
+
+  describe('POST /api/settings/base-url', () => {
+    /** Build an Express app with the settings router and a chosen auth state. */
+    function buildApp(authState: 'none' | 'user' | 'admin') {
+      const app = express();
+      app.use(express.json());
+      app.use((req: any, _res: any, next: any) => {
+        if (authState === 'none') {
+          req.isAuthenticated = () => false;
+        } else {
+          req.isAuthenticated = () => true;
+          req.user = authState === 'admin'
+            ? { id: 1, role: 'admin', username: 'admin' }
+            : { id: 1, role: 'user', username: 'testuser' };
+        }
+        next();
+      });
+      app.use('/', settingsRouter);
+      return app;
+    }
+
+    it('should allow unauthenticated access during setup (no users)', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'http://localhost:3010' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ success: true });
+      expect(SettingsService.setBaseUrl).toHaveBeenCalledWith('http://localhost:3010');
+    });
+
+    it('should reject unauthenticated requests when users exist (401)', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(1);
+
+      const response = await request(buildApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'http://localhost:3010' });
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('Authentication required');
+    });
+
+    it('should reject non-admin authenticated requests when users exist (403)', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(2);
+
+      const response = await request(buildApp('user'))
+        .post('/base-url')
+        .send({ baseUrl: 'http://localhost:3010' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Admin access required');
+    });
+
+    it('should allow admin to set base URL when users exist (200)', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(2);
+
+      const response = await request(buildApp('admin'))
+        .post('/base-url')
+        .send({ baseUrl: 'https://music.example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ success: true });
+      expect(SettingsService.setBaseUrl).toHaveBeenCalledWith('https://music.example.com');
+    });
+
+    it('should reject requests with missing baseUrl', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildApp('none'))
+        .post('/base-url')
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('baseUrl is required');
+    });
+
+    it('should reject requests with non-string baseUrl', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 12345 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('baseUrl is required');
     });
   });
 

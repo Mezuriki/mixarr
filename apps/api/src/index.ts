@@ -23,7 +23,7 @@ import { feedRouter } from './routes/feed.js';
 import notificationsRouter from './routes/notifications.js';
 import { duplicatesRouter } from './routes/duplicates.js';
 import { ssoRouter } from './routes/sso.js';
-import { setupPassport, sessionMiddleware } from './auth/passport.js';
+import { setupPassport, sessionMiddleware, sessionRedis } from './auth/passport.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { correlationMiddleware } from './middleware/correlation.js';
@@ -31,7 +31,7 @@ import type { AuthenticatedSocket, SessionIncomingMessage, SocketSessionResponse
 import { apiLimiter } from './middleware/rate-limiter.js';
 import { initializeScheduler } from './jobs/scheduler.js';
 import { redis } from './lib/redis.js';
-import { cleanupQueueEvents } from './routes/slskd.js';
+import slskdRouter, { cleanupQueueEvents } from './routes/slskd.js';
 
 // Import workers only in non-test environments to prevent test pollution
 if (process.env.NODE_ENV !== 'test') {
@@ -135,6 +135,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/discover', discoverRouter);
 app.use('/api/feed', feedRouter());
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/slskd', slskdRouter);
 app.use('/api/duplicates', duplicatesRouter);
 app.use('/api/sso', ssoRouter);
 
@@ -211,6 +212,17 @@ const gracefulShutdown = async (signal: string) => {
     });
   }
   
+  // Close session Redis connection
+  try {
+    await sessionRedis.disconnect();
+    log.info('Session Redis connection closed');
+  } catch (error) {
+    log.error('Error closing session Redis', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+
   // Close Redis connection
   try {
     await redis.quit();
@@ -231,5 +243,20 @@ const gracefulShutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason, _promise) => {
+  log.error('Unhandled promise rejection', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});
+
+process.on('uncaughtException', (error) => {
+  log.error('Uncaught exception — shutting down', {
+    error: error.message,
+    stack: error.stack,
+  });
+  process.exit(1);
+});
 
 export { app, io };
