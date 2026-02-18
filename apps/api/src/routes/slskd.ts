@@ -427,7 +427,7 @@ const webhookLimiter = rateLimit({
  * 
  * Returns: { success: true, organized: boolean }
  * 
- * Note: This endpoint does NOT require authentication as it's called by slskd
+ * Auth: Protected by router-level requireAuth middleware.
  */
 router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
   try {

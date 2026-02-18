@@ -621,3 +621,44 @@ describe('slskd API Routes', () => {
     });
   });
 });
+
+/**
+ * Separate describe block to verify webhook auth requirement.
+ * Uses a rejecting requireAuth mock to prove the router-level middleware
+ * protects the webhook endpoint.
+ */
+describe('slskd webhook authentication', () => {
+  it('should require authentication for webhook endpoint (router-level middleware)', async () => {
+    vi.resetModules();
+
+    // Mock auth middleware to REJECT - simulating unauthenticated request
+    vi.doMock('../../src/middleware/auth.js', () => ({
+      requireAuth: (_req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        res.status(401).json({ error: 'Authentication required' });
+      },
+    }));
+
+    // Need all the same infrastructure mocks so the router module loads
+    vi.doMock('../../src/lib/db.js', () => ({
+      prisma: { connection: { findFirst: vi.fn() }, slskdDownload: { findFirst: vi.fn() } },
+      default: { connection: { findFirst: vi.fn() }, slskdDownload: { findFirst: vi.fn() } },
+    }));
+
+    const testApp = express();
+    testApp.use(express.json());
+    const { default: slskdRouter } = await import('../../src/routes/slskd.js');
+    testApp.use('/api/slskd', slskdRouter);
+
+    const response = await request(testApp)
+      .post('/api/slskd/webhook')
+      .send({
+        event: 'DownloadComplete',
+        username: 'testuser',
+        filename: 'test.flac',
+        directory: 'Album',
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Authentication required');
+  });
+});
