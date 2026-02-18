@@ -7,9 +7,13 @@
  * - Filtering already in library
  * - Seed selection
  * - Batch add operations
+ * - Input validation
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import { discoverRouter } from '../../src/routes/discover.js';
 import {
   createMockPrisma,
   createMockUser,
@@ -19,6 +23,57 @@ import {
   createMockLidarrConnection,
   resetIdCounter,
 } from '../utils/fixtures.js';
+
+// Mock all external dependencies so validation middleware can run
+vi.mock('../../src/middleware/auth.js', () => ({
+  requireAuth: vi.fn((_req: any, _res: any, next: any) => {
+    _req.user = { id: 1, username: 'test', role: 'user' };
+    next();
+  }),
+}));
+
+vi.mock('../../src/lib/connection-resolver.js', () => ({
+  getLidarrService: vi.fn().mockResolvedValue(null),
+  getLidarrServiceWithConfig: vi.fn().mockResolvedValue(null),
+  getLastfmService: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('../../src/services/deezer.js', () => ({
+  fetchDeezerArtistImage: vi.fn(),
+  getDeezerChartArtists: vi.fn().mockResolvedValue([]),
+  getDeezerGenres: vi.fn().mockResolvedValue([]),
+  getDeezerGenreArtists: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../../src/services/lidarr.js', () => ({
+  LidarrCache: vi.fn(),
+}));
+
+vi.mock('../../src/services/skyhook-cache-warmer.js', () => ({
+  skyhookWarmer: { warmArtist: vi.fn() },
+}));
+
+vi.mock('../../src/routes/logs.js', () => ({
+  addLogEntry: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../src/services/notifications.js', () => ({
+  notificationService: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('../../src/lib/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+// Set up Express app with the real router (includes validation middleware)
+const app = express();
+app.use(express.json());
+app.use('/api/discover', discoverRouter);
 
 describe('Discover API', () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
@@ -266,6 +321,314 @@ describe('Discover API', () => {
       
       expect(enriched[0].imageUrl).toBeDefined();
       expect(enriched[1].imageUrl).toBeDefined();
+    });
+  });
+
+  describe('Input Validation', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    describe('GET /api/discover/library validation', () => {
+      it('should reject non-numeric page', async () => {
+        const res = await request(app)
+          .get('/api/discover/library')
+          .query({ page: 'abc' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.page).toBeDefined();
+      });
+
+      it('should reject non-numeric limit', async () => {
+        const res = await request(app)
+          .get('/api/discover/library')
+          .query({ limit: 'xyz' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should reject invalid refresh value', async () => {
+        const res = await request(app)
+          .get('/api/discover/library')
+          .query({ refresh: 'yes' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.refresh).toBeDefined();
+      });
+
+      it('should reject search term over 500 characters', async () => {
+        const res = await request(app)
+          .get('/api/discover/library')
+          .query({ search: 'a'.repeat(501) });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.search).toBeDefined();
+      });
+
+      it('should accept valid query parameters', async () => {
+        const res = await request(app)
+          .get('/api/discover/library')
+          .query({ page: '1', limit: '50', search: 'Pink', refresh: 'true' });
+
+        // Should pass validation (may get 400 from service layer for no Lidarr connection)
+        expect(res.body.code).not.toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept request with no query parameters', async () => {
+        const res = await request(app)
+          .get('/api/discover/library');
+
+        // Should pass validation (may get 400 from service layer for no Lidarr connection)
+        expect(res.body.code).not.toBe('VALIDATION_ERROR');
+      });
+    });
+
+    describe('POST /api/discover/similar validation', () => {
+      it('should reject missing artistNames', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistNames).toBeDefined();
+      });
+
+      it('should reject empty artistNames array', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: [] });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistNames).toBeDefined();
+      });
+
+      it('should reject non-array artistNames', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: 'Pink Floyd' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistNames).toBeDefined();
+      });
+
+      it('should reject empty string in artistNames', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: [''] });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject negative limit', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: ['Pink Floyd'], limit: -1 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should reject limit over 500', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: ['Pink Floyd'], limit: 501 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should reject non-integer limit', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: ['Pink Floyd'], limit: 1.5 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should accept valid similar request', async () => {
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: ['Pink Floyd', 'Led Zeppelin'], limit: 50 });
+
+        // Should pass validation (may fail at service layer)
+        expect(res.body.code).not.toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject more than 200 artist names', async () => {
+        const names = Array.from({ length: 201 }, (_, i) => `Artist ${i}`);
+        const res = await request(app)
+          .post('/api/discover/similar')
+          .send({ artistNames: names });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistNames).toBeDefined();
+      });
+    });
+
+    describe('POST /api/discover/add validation', () => {
+      it('should reject missing artistName', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistName).toBeDefined();
+      });
+
+      it('should reject empty artistName', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: '' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistName).toBeDefined();
+      });
+
+      it('should reject artistName over 500 characters', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'a'.repeat(501) });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artistName).toBeDefined();
+      });
+
+      it('should reject invalid mbid (non-UUID)', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'Pink Floyd', mbid: 'not-a-uuid' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.mbid).toBeDefined();
+      });
+
+      it('should reject non-integer qualityProfileId', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'Pink Floyd', qualityProfileId: 1.5 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.qualityProfileId).toBeDefined();
+      });
+
+      it('should reject negative metadataProfileId', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'Pink Floyd', metadataProfileId: -1 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.metadataProfileId).toBeDefined();
+      });
+
+      it('should reject rootFolderPath over 1000 characters', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'Pink Floyd', rootFolderPath: '/'.repeat(1001) });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.rootFolderPath).toBeDefined();
+      });
+
+      it('should accept valid add request with only required fields', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({ artistName: 'Pink Floyd' });
+
+        // Should pass validation (may fail at service layer)
+        expect(res.body.code).not.toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept valid add request with all fields', async () => {
+        const res = await request(app)
+          .post('/api/discover/add')
+          .send({
+            artistName: 'Pink Floyd',
+            mbid: '83d91898-7763-47d7-b03b-b92132375c47',
+            qualityProfileId: 1,
+            metadataProfileId: 1,
+            rootFolderPath: '/music',
+          });
+
+        // Should pass validation (may fail at service layer)
+        expect(res.body.code).not.toBe('VALIDATION_ERROR');
+      });
+    });
+
+    describe('GET /api/discover/deezer/chart validation', () => {
+      it('should reject non-numeric limit', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/chart')
+          .query({ limit: 'abc' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should accept valid limit', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/chart')
+          .query({ limit: '50' });
+
+        expect(res.status).toBe(200);
+      });
+
+      it('should accept request with no limit', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/chart');
+
+        expect(res.status).toBe(200);
+      });
+    });
+
+    describe('GET /api/discover/deezer/genre/:genreId/artists validation', () => {
+      it('should reject non-numeric genreId', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/genre/abc/artists');
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.genreId).toBeDefined();
+      });
+
+      it('should reject non-numeric limit query', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/genre/1/artists')
+          .query({ limit: 'xyz' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.limit).toBeDefined();
+      });
+
+      it('should accept valid genreId and limit', async () => {
+        const res = await request(app)
+          .get('/api/discover/deezer/genre/132/artists')
+          .query({ limit: '50' });
+
+        expect(res.status).toBe(200);
+      });
     });
   });
 });

@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate.js';
 import { parseIntParam } from '../utils/params.js';
+import {
+  discoverLibraryQuerySchema,
+  discoverSimilarSchema,
+  addArtistSchema,
+  deezerLimitQuerySchema,
+  deezerGenreParamsSchema,
+} from '../schemas/discover.js';
 import { LidarrCache } from '../services/lidarr.js';
 import { skyhookWarmer } from '../services/skyhook-cache-warmer.js';
 import { fetchDeezerArtistImage, getDeezerChartArtists, getDeezerGenres, getDeezerGenreArtists } from '../services/deezer.js';
@@ -31,7 +39,7 @@ const LIBRARY_CACHE_TTL = 60 * 1000; // 1 minute TTL
  * GET /api/discover/library
  * Get paginated Lidarr library for selection
  */
-discoverRouter.get('/library', async (req, res) => {
+discoverRouter.get('/library', validateQuery(discoverLibraryQuerySchema), async (req, res) => {
   try {
     const { page = '1', limit = '500', search, refresh } = req.query;
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
@@ -110,14 +118,9 @@ discoverRouter.get('/library', async (req, res) => {
  * POST /api/discover/similar
  * Get similar artists based on selected artists
  */
-discoverRouter.post('/similar', async (req, res) => {
+discoverRouter.post('/similar', validateBody(discoverSimilarSchema), async (req, res) => {
   try {
     const { artistNames, limit = 100 } = req.body;
-    
-    if (!artistNames || !Array.isArray(artistNames) || artistNames.length === 0) {
-      res.status(400).json({ error: 'At least one artist name required' });
-      return;
-    }
 
     const lastfm = await getLastfmService(req.user!.id);
     if (!lastfm) {
@@ -243,14 +246,9 @@ discoverRouter.post('/similar', async (req, res) => {
  * POST /api/discover/add
  * Add a recommended artist to Lidarr
  */
-discoverRouter.post('/add', async (req, res) => {
+discoverRouter.post('/add', validateBody(addArtistSchema), async (req, res) => {
   try {
     const { artistName, mbid, qualityProfileId, metadataProfileId, rootFolderPath } = req.body;
-    
-    if (!artistName) {
-      res.status(400).json({ error: 'Artist name required' });
-      return;
-    }
 
     const lidarrResult = await getLidarrServiceWithConfig(req.user!.id);
     if (!lidarrResult) {
@@ -448,7 +446,7 @@ discoverRouter.get('/deezer/genres', async (_req, res) => {
 /**
  * Get Deezer chart artists
  */
-discoverRouter.get('/deezer/chart', async (req, res) => {
+discoverRouter.get('/deezer/chart', validateQuery(deezerLimitQuerySchema), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 100);
     const artists = await getDeezerChartArtists(limit);
@@ -467,7 +465,7 @@ discoverRouter.get('/deezer/chart', async (req, res) => {
 /**
  * Get Deezer artists by genre
  */
-discoverRouter.get('/deezer/genre/:genreId/artists', async (req, res) => {
+discoverRouter.get('/deezer/genre/:genreId/artists', validateParams(deezerGenreParamsSchema), validateQuery(deezerLimitQuerySchema), async (req, res) => {
   try {
     const genreId = parseIntParam(req.params.genreId);
     if (genreId === null) {
