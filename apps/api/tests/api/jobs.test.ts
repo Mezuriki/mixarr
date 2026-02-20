@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import express from 'express';
+import request from 'supertest';
 import {
   createMockPrisma,
   createMockUser,
@@ -16,6 +18,45 @@ import {
   createMockSubscription,
   resetIdCounter,
 } from '../utils/fixtures.js';
+
+// ---------------------------------------------------------------------------
+// Mocks required to mount the jobs router in supertest
+// ---------------------------------------------------------------------------
+
+vi.mock('../../src/lib/db.js', () => ({
+  default: {
+    user: { findMany: vi.fn().mockResolvedValue([]) },
+    subscription: { findFirst: vi.fn().mockResolvedValue(null) },
+    importSource: { findFirst: vi.fn().mockResolvedValue(null) },
+    subscriptionRun: { findMany: vi.fn().mockResolvedValue([]) },
+  },
+}));
+
+vi.mock('../../src/jobs/queue.js', () => ({
+  QUEUE_NAMES: { SUBSCRIPTION: 'subscription', IMPORT: 'import' },
+  getJobStatus: vi.fn().mockResolvedValue(null),
+  getRecentJobs: vi.fn().mockResolvedValue([]),
+  scheduleSubscriptionJob: vi.fn().mockResolvedValue({ id: 'mock-job-id' }),
+  scheduleImportJob: vi.fn().mockResolvedValue({ id: 'mock-job-id' }),
+}));
+
+vi.mock('../../src/middleware/auth.js', () => ({
+  requireAuth: (_req: any, _res: any, next: any) => {
+    _req.user = { id: 1, role: 'user', username: 'testuser' };
+    next();
+  },
+}));
+
+vi.mock('../../src/lib/logger.js', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+import { jobsRouter } from '../../src/routes/jobs.js';
 
 describe('Jobs API', () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
@@ -260,6 +301,178 @@ describe('Jobs API', () => {
         expect(progress).toBeGreaterThanOrEqual(0);
         expect(progress).toBeLessThanOrEqual(100);
       });
+    });
+  });
+});
+
+// =============================================================================
+// Input Validation Tests (supertest)
+// =============================================================================
+
+describe('Jobs API - Input Validation', () => {
+  function buildApp() {
+    const app = express();
+    app.use(express.json());
+    app.use('/api/jobs', jobsRouter);
+    return app;
+  }
+
+  describe('GET /api/jobs/status/:queue/:jobId', () => {
+    it('should reject invalid queue name', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/status/invalid-queue/job-123');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.queue).toBeDefined();
+    });
+
+    it('should accept valid subscription queue', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/status/subscription/job-123');
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid import queue', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/status/import/job-456');
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('GET /api/jobs/recent/:queue', () => {
+    it('should reject invalid queue name', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/recent/bad-queue');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.queue).toBeDefined();
+    });
+
+    it('should reject non-numeric limit', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/recent/subscription?limit=abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.limit).toBeDefined();
+    });
+
+    it('should accept valid queue with numeric limit', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/recent/subscription?limit=10');
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid queue without limit (optional)', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/recent/import');
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/jobs/run/subscription/:id', () => {
+    it('should reject non-numeric id', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/subscription/abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.id).toBeDefined();
+    });
+
+    it('should reject negative id', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/subscription/-1');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid numeric id', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/subscription/1');
+
+      // 404 from mock is expected (subscription not found), not a validation error
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/jobs/run/import/:id', () => {
+    it('should reject non-numeric id', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/import/abc')
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.id).toBeDefined();
+    });
+
+    it('should reject invalid mode', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/import/1')
+        .send({ mode: 'invalid-mode' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.mode).toBeDefined();
+    });
+
+    it('should accept valid mode', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/import/1')
+        .send({ mode: 'preview' });
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept slskd result handling modes', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/import/1')
+        .send({ mode: 'slskd_auto' });
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept request without mode (optional)', async () => {
+      const response = await request(buildApp())
+        .post('/api/jobs/run/import/1')
+        .send({});
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('GET /api/jobs/history/subscription/:id', () => {
+    it('should reject non-numeric id', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/history/subscription/abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.id).toBeDefined();
+    });
+
+    it('should reject non-numeric limit', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/history/subscription/1?limit=xyz');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.limit).toBeDefined();
+    });
+
+    it('should accept valid id and limit', async () => {
+      const response = await request(buildApp())
+        .get('/api/jobs/history/subscription/1?limit=5');
+
+      expect(response.body.code).not.toBe('VALIDATION_ERROR');
     });
   });
 });

@@ -172,7 +172,8 @@ describe('Settings API', () => {
         .send({});
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('baseUrl is required');
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.baseUrl).toBeDefined();
     });
 
     it('should reject requests with non-string baseUrl', async () => {
@@ -183,7 +184,82 @@ describe('Settings API', () => {
         .send({ baseUrl: 12345 });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('baseUrl is required');
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.baseUrl).toBeDefined();
+    });
+  });
+
+  describe('POST /api/settings/base-url validation', () => {
+    function buildValidationApp(authState: 'none' | 'user' | 'admin' = 'none') {
+      const app = express();
+      app.use(express.json());
+      app.use((req: any, _res: any, next: any) => {
+        if (authState === 'none') {
+          req.isAuthenticated = () => false;
+        } else {
+          req.isAuthenticated = () => true;
+          req.user = authState === 'admin'
+            ? { id: 1, role: 'admin', username: 'admin' }
+            : { id: 1, role: 'user', username: 'testuser' };
+        }
+        next();
+      });
+      app.use('/', settingsRouter);
+      return app;
+    }
+
+    it('should reject an invalid URL format', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildValidationApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'not-a-url' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.baseUrl).toBeDefined();
+    });
+
+    it('should reject javascript: protocol URLs', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildValidationApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'javascript:alert(1)' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject ftp: protocol URLs', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildValidationApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'ftp://files.example.com' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid http URL', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildValidationApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'http://localhost:3010' });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should accept valid https URL', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0);
+
+      const response = await request(buildValidationApp('none'))
+        .post('/base-url')
+        .send({ baseUrl: 'https://music.example.com' });
+
+      expect(response.status).toBe(200);
     });
   });
 
@@ -459,6 +535,132 @@ describe('Settings API', () => {
 
       expect(ownSettings).toHaveLength(1);
       expect(otherSettings).toHaveLength(0);
+    });
+  });
+
+  describe('Input Validation', () => {
+    /** Build an Express app with auth state for validation tests */
+    function buildApp(authState: 'user' | 'admin' = 'user') {
+      const app = express();
+      app.use(express.json());
+      app.use((req: any, _res: any, next: any) => {
+        req.isAuthenticated = () => true;
+        req.user = authState === 'admin'
+          ? { id: 1, role: 'admin', username: 'admin' }
+          : { id: 1, role: 'user', username: 'testuser' };
+        next();
+      });
+      app.use('/', settingsRouter);
+      return app;
+    }
+
+    describe('PUT / (bulk update) validation', () => {
+      it('should reject when settings field is missing', async () => {
+        const response = await request(buildApp())
+          .put('/')
+          .send({});
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+        expect(response.body.details.settings).toBeDefined();
+      });
+
+      it('should reject when settings is null', async () => {
+        const response = await request(buildApp())
+          .put('/')
+          .send({ settings: null });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject when settings is an array', async () => {
+        const response = await request(buildApp())
+          .put('/')
+          .send({ settings: ['theme', 'dark'] });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject when settings is an empty object', async () => {
+        const response = await request(buildApp())
+          .put('/')
+          .send({ settings: {} });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept valid non-empty settings object', async () => {
+        const response = await request(buildApp())
+          .put('/')
+          .send({ settings: { theme: 'dark' } });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+    });
+
+    describe('PUT /preferences validation', () => {
+      it('should reject when preferences field is missing', async () => {
+        const response = await request(buildApp())
+          .put('/preferences')
+          .send({});
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+        expect(response.body.details.preferences).toBeDefined();
+      });
+
+      it('should reject when preferences is null', async () => {
+        const response = await request(buildApp())
+          .put('/preferences')
+          .send({ preferences: null });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject when preferences is a string', async () => {
+        const response = await request(buildApp())
+          .put('/preferences')
+          .send({ preferences: 'dark' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept valid preferences object', async () => {
+        const response = await request(buildApp())
+          .put('/preferences')
+          .send({ preferences: { theme: 'dark' } });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+    });
+
+    describe('PUT /global/:key validation', () => {
+      it('should reject a key longer than 100 characters', async () => {
+        const longKey = 'a'.repeat(101);
+        const response = await request(buildApp('admin'))
+          .put(`/global/${longKey}`)
+          .send({ value: 'test' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.code).toBe('VALIDATION_ERROR');
+        expect(response.body.details.key).toBeDefined();
+      });
+
+      it('should accept a key within 100 characters', async () => {
+        const response = await request(buildApp('admin'))
+          .put('/global/testKey')
+          .send({ value: 'test' });
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
     });
   });
 });

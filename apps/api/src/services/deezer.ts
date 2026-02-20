@@ -46,13 +46,18 @@ interface DeezerGenreListResponse {
 
 const DEEZER_API_BASE = 'https://api.deezer.com';
 
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
+
 /**
  * Fetch artist image by name (search)
  */
 export async function fetchDeezerArtistImage(artistName: string): Promise<string | undefined> {
   try {
-    const response = await fetch(
-      `${DEEZER_API_BASE}/search/artist?q=${encodeURIComponent(artistName)}`
+    const response = await fetchWithTimeout(
+      `${DEEZER_API_BASE}/search/artist?q=${encodeURIComponent(artistName)}`,
+      { timeout: API_TIMEOUT }
     );
     if (response.ok) {
       const data = await response.json() as DeezerSearchResponse;
@@ -91,7 +96,7 @@ export async function fetchDeezerArtistImages(
  * Get top chart artists (public, no auth required)
  */
 export async function getDeezerChartArtists(limit: number = 100): Promise<DeezerArtist[]> {
-  const response = await fetch(`${DEEZER_API_BASE}/chart/0/artists?limit=${limit}`);
+  const response = await fetchWithTimeout(`${DEEZER_API_BASE}/chart/0/artists?limit=${limit}`, { timeout: API_TIMEOUT });
   if (!response.ok) {
     throw new Error(`Deezer API error: ${response.status}`);
   }
@@ -103,7 +108,7 @@ export async function getDeezerChartArtists(limit: number = 100): Promise<Deezer
  * Get all available genres
  */
 export async function getDeezerGenres(): Promise<DeezerGenre[]> {
-  const response = await fetch(`${DEEZER_API_BASE}/genre`);
+  const response = await fetchWithTimeout(`${DEEZER_API_BASE}/genre`, { timeout: API_TIMEOUT });
   if (!response.ok) {
     throw new Error(`Deezer API error: ${response.status}`);
   }
@@ -115,7 +120,7 @@ export async function getDeezerGenres(): Promise<DeezerGenre[]> {
  * Get artists by genre ID
  */
 export async function getDeezerGenreArtists(genreId: number, limit: number = 100): Promise<DeezerArtist[]> {
-  const response = await fetch(`${DEEZER_API_BASE}/genre/${genreId}/artists?limit=${limit}`);
+  const response = await fetchWithTimeout(`${DEEZER_API_BASE}/genre/${genreId}/artists?limit=${limit}`, { timeout: API_TIMEOUT });
   if (!response.ok) {
     throw new Error(`Deezer API error: ${response.status}`);
   }
@@ -127,8 +132,9 @@ export async function getDeezerGenreArtists(genreId: number, limit: number = 100
  * Search for artists
  */
 export async function searchDeezerArtists(query: string, limit: number = 25): Promise<DeezerArtist[]> {
-  const response = await fetch(
-    `${DEEZER_API_BASE}/search/artist?q=${encodeURIComponent(query)}&limit=${limit}`
+  const response = await fetchWithTimeout(
+    `${DEEZER_API_BASE}/search/artist?q=${encodeURIComponent(query)}&limit=${limit}`,
+    { timeout: API_TIMEOUT }
   );
   if (!response.ok) {
     throw new Error(`Deezer API error: ${response.status}`);
@@ -141,7 +147,7 @@ export async function searchDeezerArtists(query: string, limit: number = 25): Pr
  * Get related artists for an artist ID
  */
 export async function getDeezerRelatedArtists(artistId: number, limit: number = 25): Promise<DeezerArtist[]> {
-  const response = await fetch(`${DEEZER_API_BASE}/artist/${artistId}/related?limit=${limit}`);
+  const response = await fetchWithTimeout(`${DEEZER_API_BASE}/artist/${artistId}/related?limit=${limit}`, { timeout: API_TIMEOUT });
   if (!response.ok) {
     throw new Error(`Deezer API error: ${response.status}`);
   }
@@ -153,7 +159,7 @@ export async function getDeezerRelatedArtists(artistId: number, limit: number = 
  * Get artist details by ID
  */
 export async function getDeezerArtist(artistId: number): Promise<DeezerArtist | null> {
-  const response = await fetch(`${DEEZER_API_BASE}/artist/${artistId}`);
+  const response = await fetchWithTimeout(`${DEEZER_API_BASE}/artist/${artistId}`, { timeout: API_TIMEOUT });
   if (!response.ok) {
     if (response.status === 404) return null;
     throw new Error(`Deezer API error: ${response.status}`);

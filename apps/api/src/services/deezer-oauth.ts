@@ -6,6 +6,9 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
 
 interface DeezerConfig {
   appId: string;
@@ -130,7 +133,7 @@ export class DeezerOAuthService {
       output: 'json',
     });
 
-    const response = await fetch(`https://connect.deezer.com/oauth/access_token.php?${params}`);
+    const response = await fetchWithTimeout(`https://connect.deezer.com/oauth/access_token.php?${params}`, { timeout: API_TIMEOUT });
     
     if (!response.ok) {
       throw new Error('Failed to exchange authorization code');
@@ -168,7 +171,7 @@ export class DeezerOAuthService {
 
     const url = `https://api.deezer.com${endpoint}${endpoint.includes('?') ? '&' : '?'}access_token=${this.tokens.accessToken}`;
     
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, { timeout: API_TIMEOUT });
 
     if (!response.ok) {
       throw new Error(`Deezer API error: ${response.status} ${response.statusText}`);

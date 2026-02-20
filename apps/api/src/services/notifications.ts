@@ -10,9 +10,12 @@
  */
 
 import prisma from '../lib/db.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('Notifications');
+
+const API_TIMEOUT = 15_000;
 
 // Notification event types
 export type NotificationEvent =
@@ -128,7 +131,7 @@ export class NotificationService {
   ): Promise<void> {
     const embed = this.formatDiscordEmbed(event, payload);
 
-    await fetch(config.webhookUrl, {
+    await fetchWithTimeout(config.webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -136,6 +139,7 @@ export class NotificationService {
         avatar_url: config.avatarUrl,
         embeds: [embed],
       }),
+      timeout: API_TIMEOUT,
     });
   }
 
@@ -153,13 +157,14 @@ export class NotificationService {
       ...payload,
     });
 
-    await fetch(config.url, {
+    await fetchWithTimeout(config.url, {
       method: config.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...config.headers,
       },
       body,
+      timeout: API_TIMEOUT,
     });
   }
 

@@ -12,6 +12,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../lib/db.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parseIntParam } from '../utils/params.js';
 import { NotificationEvent } from '../services/notifications.js';
@@ -282,7 +283,7 @@ async function sendTestNotification(channel: any): Promise<void> {
         timestamp: new Date().toISOString(),
       };
 
-      const response = await fetch(config.webhookUrl, {
+      const response = await fetchWithTimeout(config.webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -290,6 +291,7 @@ async function sendTestNotification(channel: any): Promise<void> {
           avatar_url: config.avatarUrl,
           embeds: [embed],
         }),
+        timeout: 15_000,
       });
 
       if (!response.ok) {
@@ -299,7 +301,7 @@ async function sendTestNotification(channel: any): Promise<void> {
     }
     
     case 'webhook': {
-      const response = await fetch(config.url, {
+      const response = await fetchWithTimeout(config.url, {
         method: config.method || 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -311,6 +313,7 @@ async function sendTestNotification(channel: any): Promise<void> {
           message: 'Test notification from Mixarr',
           channel: channel.name,
         }),
+        timeout: 15_000,
       });
 
       if (!response.ok) {

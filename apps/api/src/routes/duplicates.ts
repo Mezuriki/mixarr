@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { validateBody, validateQuery } from '../middleware/validate.js';
 import { 
   detectDuplicates, 
   ArtistInfo,
@@ -8,6 +9,11 @@ import {
 } from '../services/duplicate-detection.js';
 import { createLogger } from '../lib/logger.js';
 import { getLidarrService } from '../lib/connection-resolver.js';
+import {
+  duplicatesQuerySchema,
+  dismissDuplicateBodySchema,
+  guidanceQuerySchema,
+} from '../schemas/duplicates.js';
 
 const logger = createLogger('DuplicatesRoute');
 
@@ -84,7 +90,7 @@ duplicatesRouter.post('/scan', async (req, res) => {
 });
 
 // Get cached duplicates or trigger scan
-duplicatesRouter.get('/', async (req, res) => {
+duplicatesRouter.get('/', validateQuery(duplicatesQuerySchema), async (req, res) => {
   try {
     const minConfidence = req.query.minConfidence as string || 'medium';
     
@@ -130,7 +136,7 @@ duplicatesRouter.get('/', async (req, res) => {
 });
 
 // Dismiss a duplicate candidate
-duplicatesRouter.post('/:id/dismiss', async (req, res) => {
+duplicatesRouter.post('/:id/dismiss', validateBody(dismissDuplicateBodySchema), async (req, res) => {
   try {
     const { mbid1, mbid2 } = req.body;
 
@@ -180,7 +186,7 @@ duplicatesRouter.post('/:id/dismiss', async (req, res) => {
 });
 
 // Get merge guidance for a duplicate pair
-duplicatesRouter.get('/:id/guidance', async (req, res) => {
+duplicatesRouter.get('/:id/guidance', validateQuery(guidanceQuerySchema), async (req, res) => {
   try {
     const { artist1Id, artist2Id } = req.query;
 

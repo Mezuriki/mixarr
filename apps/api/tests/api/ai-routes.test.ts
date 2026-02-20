@@ -17,6 +17,10 @@ vi.mock('../../src/lib/db.js', () => ({
       update: vi.fn(),
       create: vi.fn(),
     },
+    userSetting: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
   },
 }));
 
@@ -327,9 +331,10 @@ describe('AI Routes', () => {
           openaiModel: 'a'.repeat(101), // Too long
         });
 
-      // Should return 400 with clear error message (not silently truncate)
+      // Should return 400 with Zod validation error
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('100 characters');
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+      expect(res.body.details.openaiModel).toBeDefined();
     });
 
     // Security: URL scheme validation (SSRF prevention)
@@ -532,7 +537,8 @@ describe('AI Routes', () => {
         .send({ provider: 'invalid' });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('openai or anthropic');
+      expect(res.body.code).toBe('VALIDATION_ERROR');
+      expect(res.body.details.provider).toBeDefined();
     });
   });
 
@@ -553,6 +559,261 @@ describe('AI Routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.available).toBe(false);
+    });
+  });
+
+  describe('Input Validation', () => {
+    describe('PUT /api/ai/settings validation', () => {
+      it('should reject non-boolean openaiEnabled', async () => {
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ openaiEnabled: 'yes' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.openaiEnabled).toBeDefined();
+      });
+
+      it('should reject invalid openaiStrategy', async () => {
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ openaiStrategy: 'invalid_strategy' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.openaiStrategy).toBeDefined();
+      });
+
+      it('should reject invalid anthropicStrategy', async () => {
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ anthropicStrategy: 'bogus' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.anthropicStrategy).toBeDefined();
+      });
+
+      it('should reject non-string openaiApiKey', async () => {
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ openaiApiKey: 12345 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject non-boolean anthropicEnabled', async () => {
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ anthropicEnabled: 'true' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.anthropicEnabled).toBeDefined();
+      });
+
+      it('should accept valid partial settings update', async () => {
+        vi.mocked(prisma.aISettings.findFirst).mockResolvedValue(null);
+        vi.mocked(prisma.aISettings.create).mockResolvedValue({
+          id: 1,
+          openaiApiKey: null,
+          openaiEnabled: true,
+          openaiStrategy: 'similar',
+          openaiBaseUrl: null,
+          openaiModel: null,
+          anthropicApiKey: null,
+          anthropicEnabled: false,
+          anthropicStrategy: 'similar',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({ openaiEnabled: true });
+
+        expect(res.status).toBe(200);
+      });
+
+      it('should accept empty body for settings update', async () => {
+        vi.mocked(prisma.aISettings.findFirst).mockResolvedValue(null);
+        vi.mocked(prisma.aISettings.create).mockResolvedValue({
+          id: 1,
+          openaiApiKey: null,
+          openaiEnabled: false,
+          openaiStrategy: 'similar',
+          openaiBaseUrl: null,
+          openaiModel: null,
+          anthropicApiKey: null,
+          anthropicEnabled: false,
+          anthropicStrategy: 'similar',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+          .put('/api/ai/settings')
+          .send({});
+
+        expect(res.status).toBe(200);
+      });
+    });
+
+    describe('POST /api/ai/test validation', () => {
+      it('should reject missing provider', async () => {
+        const res = await request(app)
+          .post('/api/ai/test')
+          .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.provider).toBeDefined();
+      });
+
+      it('should reject non-string provider', async () => {
+        const res = await request(app)
+          .post('/api/ai/test')
+          .send({ provider: 123 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+    });
+
+    describe('POST /api/ai/recommendations validation', () => {
+      it('should reject missing artists', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.artists).toBeDefined();
+      });
+
+      it('should reject empty artists array', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: [] });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject non-array artists', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: 'Beatles' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject artists with empty strings', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: [''] });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject negative maxRecommendations', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: ['Beatles'], maxRecommendations: -5 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject maxRecommendations over 50', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: ['Beatles'], maxRecommendations: 51 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject non-integer maxRecommendations', async () => {
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: ['Beatles'], maxRecommendations: 5.5 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept valid recommendations request', async () => {
+        vi.mocked(aiService.getRecommendations).mockResolvedValue([]);
+
+        const res = await request(app)
+          .post('/api/ai/recommendations')
+          .send({ artists: ['The Beatles', 'Pink Floyd'] });
+
+        expect(res.status).toBe(200);
+        expect(res.body.recommendations).toEqual([]);
+      });
+    });
+
+    describe('PUT /api/ai/preferences validation', () => {
+      it('should reject invalid strategy', async () => {
+        const res = await request(app)
+          .put('/api/ai/preferences')
+          .send({ strategy: 'invalid' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+        expect(res.body.details.strategy).toBeDefined();
+      });
+
+      it('should reject non-boolean enabled', async () => {
+        const res = await request(app)
+          .put('/api/ai/preferences')
+          .send({ enabled: 'yes' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject negative maxRecommendations', async () => {
+        const res = await request(app)
+          .put('/api/ai/preferences')
+          .send({ maxRecommendations: -1 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should reject maxRecommendations over 50', async () => {
+        const res = await request(app)
+          .put('/api/ai/preferences')
+          .send({ maxRecommendations: 51 });
+
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      });
+
+      it('should accept valid preferences update', async () => {
+        vi.mocked(prisma.userSetting.findUnique).mockResolvedValue(null);
+        vi.mocked(prisma.userSetting.upsert).mockResolvedValue({
+          id: 1,
+          userId: 1,
+          key: 'ai_preferences',
+          value: { strategy: 'discovery', maxRecommendations: 20, enabled: true },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        const res = await request(app)
+          .put('/api/ai/preferences')
+          .send({ strategy: 'discovery' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+      });
     });
   });
 });

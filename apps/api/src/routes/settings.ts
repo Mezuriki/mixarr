@@ -1,8 +1,16 @@
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
 import { createLogger } from '../lib/logger.js';
 import { SettingsService } from '../services/settings.service.js';
 import prisma from '../lib/db.js';
+import {
+  setBaseUrlSchema,
+  bulkUpdateSettingsSchema,
+  userSettingKeySchema,
+  updatePreferencesSchema,
+  globalSettingKeySchema,
+} from '../schemas/settings.js';
 
 const logger = createLogger('SettingsRoute');
 
@@ -23,7 +31,7 @@ settingsRouter.get('/base-url', async (_req, res) => {
 });
 
 // Set base URL - open during setup (no users), admin-only after setup
-settingsRouter.post('/base-url', async (req, res) => {
+settingsRouter.post('/base-url', validateBody(setBaseUrlSchema), async (req, res) => {
   try {
     // Check if setup is complete (users exist in DB)
     const userCount = await prisma.user.count();
@@ -41,23 +49,6 @@ settingsRouter.post('/base-url', async (req, res) => {
     }
 
     const { baseUrl } = req.body;
-    
-    if (!baseUrl || typeof baseUrl !== 'string') {
-      res.status(400).json({ error: 'baseUrl is required' });
-      return;
-    }
-
-    // Validate URL format to prevent stored XSS/SSRF via javascript: or other schemes
-    try {
-      const parsed = new URL(baseUrl);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        res.status(400).json({ error: 'baseUrl must use http or https protocol' });
-        return;
-      }
-    } catch {
-      res.status(400).json({ error: 'baseUrl must be a valid URL' });
-      return;
-    }
 
     await SettingsService.setBaseUrl(baseUrl);
     
@@ -88,22 +79,11 @@ settingsRouter.get('/', async (req, res) => {
 });
 
 // Bulk update user settings
-settingsRouter.put('/', async (req, res) => {
+settingsRouter.put('/', validateBody(bulkUpdateSettingsSchema), async (req, res) => {
   try {
     const { settings } = req.body;
 
-    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-      res.status(400).json({ error: 'settings must be a non-empty object' });
-      return;
-    }
-
-    const entries = Object.entries(settings);
-    if (entries.length === 0) {
-      res.status(400).json({ error: 'settings must be a non-empty object' });
-      return;
-    }
-
-    for (const [key, value] of entries) {
+    for (const [key, value] of Object.entries(settings)) {
       await SettingsService.setUserSetting(req.user!.id, key, value as any);
     }
 
@@ -114,25 +94,6 @@ settingsRouter.put('/', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ error: 'Failed to save settings' });
-  }
-});
-
-// Update user setting
-settingsRouter.put('/:key', async (req, res) => {
-  const { key } = req.params;
-  try {
-    const { value } = req.body;
-    
-    await SettingsService.setUserSetting(req.user!.id, key, value);
-    
-    res.json({ success: true });
-  } catch (error) {
-    logger.error('Failed to update setting', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      context: { key },
-    });
-    res.status(500).json({ error: 'Failed to update setting' });
   }
 });
 
@@ -151,7 +112,7 @@ settingsRouter.get('/preferences', async (req, res) => {
 });
 
 // Update user preferences
-settingsRouter.put('/preferences', async (req, res) => {
+settingsRouter.put('/preferences', validateBody(updatePreferencesSchema), async (req, res) => {
   try {
     const { preferences } = req.body;
     
@@ -164,6 +125,25 @@ settingsRouter.put('/preferences', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
+// Update user setting (must come after /preferences to avoid shadowing)
+settingsRouter.put('/:key', validateParams(userSettingKeySchema), async (req, res) => {
+  const { key } = req.params;
+  try {
+    const { value } = req.body;
+    
+    await SettingsService.setUserSetting(req.user!.id, key, value);
+    
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Failed to update setting', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      context: { key },
+    });
+    res.status(500).json({ error: 'Failed to update setting' });
   }
 });
 
@@ -182,7 +162,7 @@ settingsRouter.get('/global', requireAdmin, async (_req, res) => {
 });
 
 // Admin: Update global setting
-settingsRouter.put('/global/:key', requireAdmin, async (req, res) => {
+settingsRouter.put('/global/:key', requireAdmin, validateParams(globalSettingKeySchema), async (req, res) => {
   const { key } = req.params;
   try {
     const { value } = req.body;

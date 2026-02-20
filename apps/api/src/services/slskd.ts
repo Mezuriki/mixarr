@@ -6,6 +6,7 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
 import { parseErrorResponse } from './slskd-api-error.js';
 
@@ -222,25 +223,6 @@ export class SlskdService {
     await this.callApi<void>(endpoint, { method: 'DELETE' });
   }
 
-  private async fetchWithTimeout(
-    url: string,
-    options: RequestInit = {},
-    timeoutMs: number = 30000
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      return response;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
-
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -250,13 +232,14 @@ export class SlskdService {
 
     const url = `${this.url}${endpoint}`;
     
-    const response = await this.fetchWithTimeout(url, {
+    const response = await fetchWithTimeout(url, {
       ...options,
       headers: {
         'X-API-Key': this.apiKey,
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      timeout: 60_000,
     });
 
     if (!response.ok) {

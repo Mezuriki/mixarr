@@ -5,6 +5,9 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
 
 interface LastfmConfig {
   apiKey: string;
@@ -46,7 +49,7 @@ export class LastfmService {
       ...params,
     });
 
-    const response = await fetch(`${this.baseUrl}?${searchParams}`);
+    const response = await fetchWithTimeout(`${this.baseUrl}?${searchParams}`, { timeout: API_TIMEOUT });
 
     if (!response.ok) {
       throw new Error(`Last.fm API error: ${response.status} ${response.statusText}`);

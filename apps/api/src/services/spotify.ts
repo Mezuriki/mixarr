@@ -5,6 +5,9 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
 
 interface SpotifyConfig {
   clientId: string;
@@ -101,7 +104,7 @@ export class SpotifyService {
   }
 
   async exchangeCode(code: string, redirectUri: string): Promise<SpotifyTokens> {
-    const response = await fetch('https://accounts.spotify.com/api/token', {
+    const response = await fetchWithTimeout('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -112,6 +115,7 @@ export class SpotifyService {
         code,
         redirect_uri: redirectUri,
       }),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -155,7 +159,7 @@ export class SpotifyService {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch('https://accounts.spotify.com/api/token', {
+    const response = await fetchWithTimeout('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -165,6 +169,7 @@ export class SpotifyService {
         grant_type: 'refresh_token',
         refresh_token: this.tokens.refreshToken,
       }),
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -194,10 +199,11 @@ export class SpotifyService {
 
     await rateLimit('spotify');
 
-    const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+    const response = await fetchWithTimeout(`https://api.spotify.com/v1${endpoint}`, {
       headers: {
         Authorization: `Bearer ${this.tokens.accessToken}`,
       },
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {

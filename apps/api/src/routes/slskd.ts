@@ -17,6 +17,16 @@ import { Prisma } from '@prisma/client';
 import { SlskdService } from '../services/slskd.js';
 import { SlskdOrganizerService } from '../services/slskd-organizer.js';
 import { requireAuth } from '../middleware/auth.js';
+import { validateBody, validateQuery, validateParams } from '../middleware/validate.js';
+import {
+  slskdSearchSchema,
+  slskdSearchIdParamsSchema,
+  slskdDownloadSchema,
+  slskdDownloadsQuerySchema,
+  slskdDownloadIdParamsSchema,
+  slskdDeleteDownloadQuerySchema,
+  slskdWebhookSchema,
+} from '../schemas/slskd.js';
 import { createLogger } from '../lib/logger.js';
 import { enqueueSlskdDownload, SLSKD_QUEUE_NAME } from '../jobs/slskd-operations-queue.js';
 import { isSlskdRateLimitingEnabled } from '../lib/settings.js';
@@ -90,14 +100,9 @@ async function getSlskdService(): Promise<{ service: SlskdService; connectionId:
  * 
  * Returns: SlskdSearch object with id, searchText, state
  */
-router.post('/search', async (req: Request, res: Response) => {
+router.post('/search', validateBody(slskdSearchSchema), async (req: Request, res: Response) => {
   try {
     const { query, options } = req.body;
-
-    if (!query) {
-      res.status(400).json({ error: 'Query is required' });
-      return;
-    }
 
     const slskd = await getSlskdService();
     if (!slskd) {
@@ -121,7 +126,7 @@ router.post('/search', async (req: Request, res: Response) => {
  * 
  * Returns: SlskdSearch object with responses
  */
-router.get('/search/:id', async (req: Request, res: Response) => {
+router.get('/search/:id', validateParams(slskdSearchIdParamsSchema), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -147,7 +152,7 @@ router.get('/search/:id', async (req: Request, res: Response) => {
  * 
  * Returns: { success: true }
  */
-router.delete('/search/:id', async (req: Request, res: Response) => {
+router.delete('/search/:id', validateParams(slskdSearchIdParamsSchema), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -181,14 +186,9 @@ router.delete('/search/:id', async (req: Request, res: Response) => {
  * 
  * Returns: { success: true, downloads: SlskdDownload[] }
  */
-router.post('/download', async (req: Request, res: Response) => {
+router.post('/download', validateBody(slskdDownloadSchema), async (req: Request, res: Response) => {
   try {
     const { username, files, artistName, albumName, albumYear } = req.body;
-
-    if (!username || !files || !Array.isArray(files)) {
-      res.status(400).json({ error: 'Username and files are required' });
-      return;
-    }
 
     const slskd = await getSlskdService();
     if (!slskd) {
@@ -258,9 +258,9 @@ router.post('/download', async (req: Request, res: Response) => {
  * 
  * Returns: Array of SlskdDownload objects, most recent first
  */
-router.get('/downloads', async (req: Request, res: Response) => {
+router.get('/downloads', validateQuery(slskdDownloadsQuerySchema), async (req: Request, res: Response) => {
   try {
-    const { status, limit = '100' } = req.query;
+    const { status, limit } = req.query as { status?: string; limit?: number };
     
     // Build where clause with proper Prisma types
     const where: Prisma.SlskdDownloadWhereInput = {};
@@ -274,11 +274,10 @@ router.get('/downloads', async (req: Request, res: Response) => {
       }
     }
     
-    const MAX_DOWNLOADS_QUERY = 500; // Prevent excessive DB load
     const downloads = await prisma.slskdDownload.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(parseInt(limit as string, 10) || 100, MAX_DOWNLOADS_QUERY),
+      take: limit || 100,
     });
     res.json(serializeForJson(downloads));
   } catch (error) {
@@ -295,9 +294,9 @@ router.get('/downloads', async (req: Request, res: Response) => {
  * 
  * Returns: { success: true, download: SlskdDownload }
  */
-router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
+router.post('/downloads/:id/retry', validateParams(slskdDownloadIdParamsSchema), async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     
     const download = await prisma.slskdDownload.findUnique({ where: { id } });
     
@@ -370,9 +369,9 @@ router.post('/downloads/:id/retry', async (req: Request, res: Response) => {
  * 
  * Returns: { success: true }
  */
-router.delete('/downloads/:id', async (req: Request, res: Response) => {
+router.delete('/downloads/:id', validateParams(slskdDownloadIdParamsSchema), validateQuery(slskdDeleteDownloadQuerySchema), async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = Number(req.params.id);
     const remove = req.query.remove === 'true';
     
     const download = await prisma.slskdDownload.findUnique({ where: { id } });
@@ -429,7 +428,7 @@ const webhookLimiter = rateLimit({
  * 
  * Auth: Protected by router-level requireAuth middleware.
  */
-router.post('/webhook', webhookLimiter, async (req: Request, res: Response) => {
+router.post('/webhook', webhookLimiter, validateBody(slskdWebhookSchema), async (req: Request, res: Response) => {
   try {
     const { event, username, filename, directory } = req.body;
 

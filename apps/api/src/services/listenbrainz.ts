@@ -6,6 +6,7 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 
 // Valid time periods for statistics queries
 export type ListenBrainzPeriod = 'week' | 'month' | 'quarter' | 'half_yearly' | 'year' | 'all_time';
@@ -207,10 +208,7 @@ export class ListenBrainzService {
   /**
    * Create a fetch request with timeout and optional authorization
    */
-  private async fetchWithTimeout(url: string, useAuth: boolean = true): Promise<Response> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-
+  private async fetchRequest(url: string, useAuth: boolean = true): Promise<Response> {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
     };
@@ -219,21 +217,16 @@ export class ListenBrainzService {
       headers['Authorization'] = `Token ${this.token}`;
     }
 
-    try {
-      const response = await fetch(url, { 
-        headers, 
-        signal: controller.signal 
-      });
-      return response;
-    } finally {
-      clearTimeout(timeout);
-    }
+    return fetchWithTimeout(url, {
+      headers,
+      timeout: this.timeoutMs,
+    });
   }
 
   private async request<T>(endpoint: string, useAuth: boolean = true): Promise<T> {
     await rateLimit('listenbrainz');
 
-    const response = await this.fetchWithTimeout(`${this.baseUrl}${endpoint}`, useAuth);
+    const response = await this.fetchRequest(`${this.baseUrl}${endpoint}`, useAuth);
 
     // Handle empty response bodies
     const text = await response.text();
@@ -275,7 +268,7 @@ export class ListenBrainzService {
     // (not in URL to avoid token leakage in logs/caches)
     if (this.token) {
       try {
-        const response = await this.fetchWithTimeout(`${this.baseUrl}/1/validate-token`, true);
+        const response = await this.fetchRequest(`${this.baseUrl}/1/validate-token`, true);
 
         if (!response.ok) {
           return false;
@@ -299,7 +292,7 @@ export class ListenBrainzService {
 
     // Without token, try to access user's public statistics
     try {
-      const response = await this.fetchWithTimeout(
+      const response = await this.fetchRequest(
         `${this.baseUrl}/1/stats/user/${this.username}/artists?range=all_time&count=1`,
         false
       );

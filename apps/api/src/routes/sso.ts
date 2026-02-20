@@ -7,22 +7,22 @@
 
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { SsoProviderService } from '../services/sso-provider.js';
 import prisma from '../lib/db.js';
 import type { SsoProviderType } from '@prisma/client';
 import { createLogger } from '../lib/logger.js';
+import {
+  ssoProviderTypeParamsSchema,
+  upsertSsoProviderBodySchema,
+  toggleSsoProviderBodySchema,
+} from '../schemas/sso.js';
 
 const logger = createLogger('SSORoute');
 
 export const ssoRouter = Router();
 const ssoService = new SsoProviderService(prisma);
-
-// Valid SSO provider types
-const VALID_PROVIDER_TYPES: SsoProviderType[] = ['ldap', 'saml', 'google', 'plex'];
-
-function isValidProviderType(type: string): type is SsoProviderType {
-  return VALID_PROVIDER_TYPES.includes(type as SsoProviderType);
-}
 
 // All routes require admin
 ssoRouter.use(requireAuth, requireAdmin);
@@ -39,13 +39,9 @@ ssoRouter.get('/providers', async (_req, res) => {
 });
 
 // Get single provider
-ssoRouter.get('/providers/:type', async (req, res) => {
+ssoRouter.get('/providers/:type', validateParams(ssoProviderTypeParamsSchema), async (req, res) => {
   try {
-    if (!isValidProviderType(req.params.type)) {
-      res.status(400).json({ error: 'Invalid provider type' });
-      return;
-    }
-    const type = req.params.type;
+    const type = req.params.type as SsoProviderType;
     const provider = await ssoService.getByType(type);
     
     if (!provider) {
@@ -61,19 +57,10 @@ ssoRouter.get('/providers/:type', async (req, res) => {
 });
 
 // Create/update provider
-ssoRouter.put('/providers/:type', async (req, res) => {
+ssoRouter.put('/providers/:type', validateParams(ssoProviderTypeParamsSchema), validateBody(upsertSsoProviderBodySchema), async (req, res) => {
   try {
-    if (!isValidProviderType(req.params.type)) {
-      res.status(400).json({ error: 'Invalid provider type' });
-      return;
-    }
-    const type = req.params.type;
+    const type = req.params.type as SsoProviderType;
     const { name, config, isEnabled } = req.body;
-    
-    if (!name || !config) {
-      res.status(400).json({ error: 'Name and config are required' });
-      return;
-    }
     
     const provider = await ssoService.upsert(type, { name, config, isEnabled });
     res.json({ provider });
@@ -88,13 +75,9 @@ ssoRouter.put('/providers/:type', async (req, res) => {
 });
 
 // Delete provider
-ssoRouter.delete('/providers/:type', async (req, res) => {
+ssoRouter.delete('/providers/:type', validateParams(ssoProviderTypeParamsSchema), async (req, res) => {
   try {
-    if (!isValidProviderType(req.params.type)) {
-      res.status(400).json({ error: 'Invalid provider type' });
-      return;
-    }
-    const type = req.params.type;
+    const type = req.params.type as SsoProviderType;
     const provider = await ssoService.getByType(type);
     if (!provider) {
       res.status(404).json({ error: 'Provider not found' });
@@ -109,19 +92,10 @@ ssoRouter.delete('/providers/:type', async (req, res) => {
 });
 
 // Toggle provider enabled/disabled
-ssoRouter.patch('/providers/:type/toggle', async (req, res) => {
+ssoRouter.patch('/providers/:type/toggle', validateParams(ssoProviderTypeParamsSchema), validateBody(toggleSsoProviderBodySchema), async (req, res) => {
   try {
-    if (!isValidProviderType(req.params.type)) {
-      res.status(400).json({ error: 'Invalid provider type' });
-      return;
-    }
-    const type = req.params.type;
+    const type = req.params.type as SsoProviderType;
     const { isEnabled } = req.body;
-    
-    if (typeof isEnabled !== 'boolean') {
-      res.status(400).json({ error: 'isEnabled must be a boolean' });
-      return;
-    }
     
     const existingProvider = await ssoService.getByType(type);
     if (!existingProvider) {
@@ -138,13 +112,9 @@ ssoRouter.patch('/providers/:type/toggle', async (req, res) => {
 });
 
 // Test connection
-ssoRouter.post('/providers/:type/test', async (req, res) => {
+ssoRouter.post('/providers/:type/test', validateParams(ssoProviderTypeParamsSchema), async (req, res) => {
   try {
-    if (!isValidProviderType(req.params.type)) {
-      res.status(400).json({ success: false, message: 'Invalid provider type' });
-      return;
-    }
-    const type = req.params.type;
+    const type = req.params.type as SsoProviderType;
     
     // Use prisma directly to get unmasked secrets for testing
     const provider = await prisma.ssoProvider.findUnique({
@@ -186,10 +156,7 @@ ssoRouter.post('/providers/:type/test', async (req, res) => {
         if (metadataUrl) {
           // Test metadata URL fetch
           try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(metadataUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            const response = await fetchWithTimeout(metadataUrl, { timeout: 10_000 });
             
             if (!response.ok) {
               res.json({ success: false, message: `Failed to fetch metadata: HTTP ${response.status}` });

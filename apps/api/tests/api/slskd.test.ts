@@ -166,7 +166,8 @@ describe('slskd API Routes', () => {
         .send({});
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Query is required');
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.query).toBeDefined();
     });
 
     it('should pass search options to slskd', async () => {
@@ -332,7 +333,8 @@ describe('slskd API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Username and files are required');
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.username).toBeDefined();
     });
 
     it('should return 400 when files is missing', async () => {
@@ -343,7 +345,8 @@ describe('slskd API Routes', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Username and files are required');
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.files).toBeDefined();
     });
 
     it('should return 400 when no slskd connection exists', async () => {
@@ -647,6 +650,282 @@ describe('slskd API Routes', () => {
         });
 
       expect(response.status).toBe(500);
+    });
+  });
+});
+
+// ============================================================================
+// INPUT VALIDATION TESTS
+// ============================================================================
+
+describe('slskd input validation', () => {
+  let app: express.Express;
+  let mockPrisma: Record<string, Record<string, ReturnType<typeof vi.fn>>>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+
+    global.fetch = vi.fn();
+
+    mockPrisma = {
+      connection: { findFirst: vi.fn() },
+      slskdDownload: {
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+        updateMany: vi.fn(),
+        delete: vi.fn(),
+      },
+    };
+
+    vi.doMock('../../src/lib/db.js', () => ({
+      prisma: mockPrisma,
+      default: mockPrisma,
+    }));
+
+    vi.doMock('../../src/middleware/auth.js', () => ({
+      requireAuth: (_req: express.Request, _res: express.Response, next: express.NextFunction) => {
+        (_req as any).user = { id: 1, username: 'testuser', role: 'user' };
+        next();
+      },
+    }));
+
+    app = express();
+    app.use(express.json());
+    const { default: slskdRouter } = await import('../../src/routes/slskd.js');
+    app.use('/api/slskd', slskdRouter);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  describe('POST /api/slskd/search validation', () => {
+    it('should reject empty query string', async () => {
+      const response = await request(app)
+        .post('/api/slskd/search')
+        .send({ query: '' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.query).toBeDefined();
+    });
+
+    it('should reject query exceeding 500 chars', async () => {
+      const response = await request(app)
+        .post('/api/slskd/search')
+        .send({ query: 'a'.repeat(501) });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.query).toBeDefined();
+    });
+
+    it('should reject non-string query', async () => {
+      const response = await request(app)
+        .post('/api/slskd/search')
+        .send({ query: 123 });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject invalid search options', async () => {
+      const response = await request(app)
+        .post('/api/slskd/search')
+        .send({ query: 'Pink Floyd', options: { searchTimeout: -5 } });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid search with options', async () => {
+      mockPrisma.connection.findFirst.mockResolvedValue({
+        id: 1,
+        type: 'slskd',
+        isActive: true,
+        config: { url: 'http://localhost:5030', apiKey: 'test-key' },
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ id: 's1', searchText: 'Tool', state: 'InProgress' }),
+        text: () => Promise.resolve('{}'),
+      });
+
+      const response = await request(app)
+        .post('/api/slskd/search')
+        .send({ query: 'Tool', options: { searchTimeout: 60, filterResponses: true } });
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('POST /api/slskd/download validation', () => {
+    it('should reject empty files array', async () => {
+      const response = await request(app)
+        .post('/api/slskd/download')
+        .send({ username: 'user1', files: [] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.files).toBeDefined();
+    });
+
+    it('should reject files exceeding max of 100', async () => {
+      const files = Array.from({ length: 101 }, (_, i) => ({ filename: `track${i}.flac`, size: 1000 }));
+      const response = await request(app)
+        .post('/api/slskd/download')
+        .send({ username: 'user1', files });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.files).toBeDefined();
+    });
+
+    it('should reject username exceeding 200 chars', async () => {
+      const response = await request(app)
+        .post('/api/slskd/download')
+        .send({ username: 'u'.repeat(201), files: [{ filename: 'a.flac', size: 100 }] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.username).toBeDefined();
+    });
+
+    it('should reject file with negative size', async () => {
+      const response = await request(app)
+        .post('/api/slskd/download')
+        .send({ username: 'user1', files: [{ filename: 'a.flac', size: -1 }] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject file with empty filename', async () => {
+      const response = await request(app)
+        .post('/api/slskd/download')
+        .send({ username: 'user1', files: [{ filename: '', size: 100 }] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('GET /api/slskd/downloads validation', () => {
+    it('should reject limit exceeding 500', async () => {
+      const response = await request(app)
+        .get('/api/slskd/downloads?limit=501');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject limit of 0', async () => {
+      const response = await request(app)
+        .get('/api/slskd/downloads?limit=0');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid query params', async () => {
+      mockPrisma.slskdDownload.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get('/api/slskd/downloads?status=pending&limit=50');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should default limit to 100', async () => {
+      mockPrisma.slskdDownload.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get('/api/slskd/downloads');
+
+      expect(response.status).toBe(200);
+      // Verify findMany was called with take: 100
+      expect(mockPrisma.slskdDownload.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 100 }),
+      );
+    });
+  });
+
+  describe('POST /api/slskd/webhook validation', () => {
+    it('should reject missing event field', async () => {
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({ username: 'user1' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.event).toBeDefined();
+    });
+
+    it('should reject empty event string', async () => {
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({ event: '' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details.event).toBeDefined();
+    });
+
+    it('should accept valid webhook with minimal fields', async () => {
+      const response = await request(app)
+        .post('/api/slskd/webhook')
+        .send({ event: 'SearchComplete' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.ignored).toBe(true);
+    });
+  });
+
+  describe('DELETE /api/slskd/downloads/:id validation', () => {
+    it('should reject non-numeric id', async () => {
+      const response = await request(app)
+        .delete('/api/slskd/downloads/abc');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should reject negative id', async () => {
+      const response = await request(app)
+        .delete('/api/slskd/downloads/-1');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should accept valid delete with remove=true', async () => {
+      mockPrisma.slskdDownload.findUnique.mockResolvedValue({
+        id: 1,
+        status: 'failed',
+      });
+      mockPrisma.slskdDownload.delete.mockResolvedValue({ id: 1 });
+
+      const response = await request(app)
+        .delete('/api/slskd/downloads/1?remove=true');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('POST /api/slskd/downloads/:id/retry validation', () => {
+    it('should reject non-numeric id', async () => {
+      const response = await request(app)
+        .post('/api/slskd/downloads/abc/retry');
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
     });
   });
 });

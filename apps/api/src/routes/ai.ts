@@ -7,8 +7,15 @@
 import { Router } from 'express';
 import prisma from '../lib/db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validate.js';
 import { aiService } from '../services/ai.js';
 import { createLogger } from '../lib/logger.js';
+import {
+  updateAISettingsSchema,
+  testAISchema,
+  getRecommendationsSchema,
+  updatePreferencesSchema,
+} from '../schemas/ai.js';
 
 const logger = createLogger('AIRoute');
 
@@ -66,7 +73,7 @@ aiRouter.get('/settings', async (req, res) => {
 });
 
 // Update AI settings (admin only)
-aiRouter.put('/settings', requireAdmin, async (req, res) => {
+aiRouter.put('/settings', requireAdmin, validateBody(updateAISettingsSchema), async (req, res) => {
   try {
     const {
       openaiApiKey,
@@ -88,7 +95,7 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     if (typeof openaiEnabled === 'boolean') {
       data.openaiEnabled = openaiEnabled;
     }
-    if (openaiStrategy && ['similar', 'genre_expansion', 'discovery'].includes(openaiStrategy)) {
+    if (openaiStrategy) {
       data.openaiStrategy = openaiStrategy;
     }
     if (openaiApiKey !== undefined) {
@@ -131,12 +138,6 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     if (openaiModel !== undefined) {
       // Allow setting to null/empty to clear, or set new model
       if (openaiModel && typeof openaiModel === 'string') {
-        // Validate length
-        if (openaiModel.length > 100) {
-          logger.warn('Rejected model name: too long', { length: openaiModel.length });
-          res.status(400).json({ error: 'Model name must be 100 characters or less' });
-          return;
-        }
         // Security: Validate model name format to prevent injection
         // Allows alphanumeric, dots, dashes, colons, underscores (covers all known model naming schemes)
         const MODEL_NAME_REGEX = /^[a-zA-Z0-9._:-]+$/;
@@ -154,7 +155,7 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
     if (typeof anthropicEnabled === 'boolean') {
       data.anthropicEnabled = anthropicEnabled;
     }
-    if (anthropicStrategy && ['similar', 'genre_expansion', 'discovery'].includes(anthropicStrategy)) {
+    if (anthropicStrategy) {
       data.anthropicStrategy = anthropicStrategy;
     }
     if (anthropicApiKey !== undefined) {
@@ -206,14 +207,9 @@ aiRouter.put('/settings', requireAdmin, async (req, res) => {
 });
 
 // Test AI connection
-aiRouter.post('/test', requireAdmin, async (req, res) => {
+aiRouter.post('/test', requireAdmin, validateBody(testAISchema), async (req, res) => {
   try {
     const { provider } = req.body;
-
-    if (!provider || !['openai', 'anthropic'].includes(provider)) {
-      res.status(400).json({ error: 'Provider must be openai or anthropic' });
-      return;
-    }
 
     // Reload settings to get latest
     await aiService.loadSettings();
@@ -250,14 +246,9 @@ aiRouter.post('/test', requireAdmin, async (req, res) => {
 });
 
 // Get AI recommendations (for testing/preview)
-aiRouter.post('/recommendations', async (req, res) => {
+aiRouter.post('/recommendations', validateBody(getRecommendationsSchema), async (req, res) => {
   try {
     const { artists, maxRecommendations = 10 } = req.body;
-
-    if (!artists || !Array.isArray(artists) || artists.length === 0) {
-      res.status(400).json({ error: 'Artists array required' });
-      return;
-    }
 
     const recommendations = await aiService.getRecommendations(
       artists,
@@ -324,20 +315,20 @@ aiRouter.get('/preferences', async (req, res) => {
 });
 
 // Update user's AI preferences (per-user settings)
-aiRouter.put('/preferences', async (req, res) => {
+aiRouter.put('/preferences', validateBody(updatePreferencesSchema), async (req, res) => {
   try {
     const userId = req.user!.id;
     const { strategy, maxRecommendations, enabled } = req.body;
 
     const preferences: Record<string, any> = {};
     
-    if (strategy && ['similar', 'genre_expansion', 'discovery'].includes(strategy)) {
+    if (strategy !== undefined) {
       preferences.strategy = strategy;
     }
-    if (typeof maxRecommendations === 'number' && maxRecommendations > 0 && maxRecommendations <= 50) {
+    if (maxRecommendations !== undefined) {
       preferences.maxRecommendations = maxRecommendations;
     }
-    if (typeof enabled === 'boolean') {
+    if (enabled !== undefined) {
       preferences.enabled = enabled;
     }
 

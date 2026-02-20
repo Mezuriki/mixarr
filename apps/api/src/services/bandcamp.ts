@@ -9,6 +9,9 @@
  */
 
 import { rateLimit } from './rate-limiter.js';
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
 
 // Response interfaces from Bandcamp's internal API (v3 discover)
 interface BandcampDiscoverItem {
@@ -125,12 +128,13 @@ export class BandcampService {
     // Parameters: s=sort, p=page, g=genre/tag, f=format, w=location (0=anywhere)
     const url = `${this.baseUrl}/api/discover/3/get_web?s=${sortParam}&p=${page}&g=${encodeURIComponent(tag)}&f=all&w=0`;
     
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
         'Accept': 'application/json',
       },
+      timeout: API_TIMEOUT,
     });
 
     if (!response.ok) {
@@ -174,13 +178,14 @@ export class BandcampService {
     await rateLimit('bandcamp');
 
     const encodedQuery = encodeURIComponent(query);
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${this.baseUrl}/api/fuzzysearch/2/autocomplete?q=${encodedQuery}`,
       {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
+        timeout: API_TIMEOUT,
       }
     );
 

@@ -18,50 +18,32 @@ describe('SlskdService', () => {
     vi.restoreAllMocks();
   });
 
-  describe('fetchWithTimeout', () => {
-    it('should abort request after timeout period', async () => {
+  describe('timeout behavior', () => {
+    it('should pass timeout signal via fetchWithTimeout to API calls', async () => {
       const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
       
-      // Mock fetch that respects the abort signal
-      global.fetch = vi.fn().mockImplementation((_url: string, options?: RequestInit) => {
-        return new Promise((_, reject) => {
-          const signal = options?.signal;
-          if (signal) {
-            signal.addEventListener('abort', () => {
-              const error = new Error('The operation was aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
-          }
-        });
-      });
+      // Mock fetch that resolves successfully
+      global.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ version: '1.0.0', versionCurrent: true }))
+      );
       
-      // Use real timers but short timeout
-      const fetchPromise = slskd['fetchWithTimeout']('/api/test', {}, 50);
+      await slskd.testConnection();
       
-      await expect(fetchPromise).rejects.toThrow(/aborted/i);
-    }, 10000);
-
-    it('should complete normally if response arrives before timeout', async () => {
-      const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
-      
-      // Mock successful fetch
-      global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true })));
-      
-      const result = await slskd['fetchWithTimeout']('/api/test', {}, 30000);
-      
-      expect(result.ok).toBe(true);
+      // Verify fetch was called with a signal (from fetchWithTimeout)
+      expect(global.fetch).toHaveBeenCalledOnce();
+      const callArgs = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(callArgs[1]?.signal).toBeDefined();
     });
 
-    it('should clear timeout after successful response', async () => {
+    it('should handle fetch errors gracefully in testConnection', async () => {
       const slskd = new SlskdService({ url: 'http://localhost:5030', apiKey: 'test-api-key' });
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
       
-      global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true })));
+      // Mock fetch that rejects (e.g., network error or abort)
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
       
-      await slskd['fetchWithTimeout']('/api/test', {}, 30000);
-      
-      expect(clearTimeoutSpy).toHaveBeenCalled();
+      const result = await slskd.testConnection();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 

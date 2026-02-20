@@ -18,6 +18,7 @@ import type { Request } from 'express';
 import { validateBody } from '../middleware/validate.js';
 import { createConnectionSchema, updateConnectionSchema, testConnectionSchema } from '../schemas/connection.js';
 import { createLogger } from '../lib/logger.js';
+import { sanitizeConnectionError } from '../utils/sanitize-error.js';
 
 const logger = createLogger('ConnectionsRoute');
 
@@ -219,10 +220,13 @@ connectionsRouter.post('/test', validateBody(testConnectionSchema), async (req, 
         res.status(400).json({ success: false, error: `Unknown connection type: ${type}` });
     }
   } catch (error) {
-    logger.error('Connection test error', { error });
+    logger.error('Connection test error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Test failed' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -668,12 +672,13 @@ connectionsRouter.post('/:id/test', async (req, res) => {
                 : 'User not found on ListenBrainz. Check the username spelling.',
           };
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          logger.error('ListenBrainz connection test failed', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
           result = {
             success: false,
-            message: errorMessage.includes('timed out')
-              ? 'ListenBrainz API request timed out. Please try again later.'
-              : `ListenBrainz connection failed: ${errorMessage}`,
+            message: sanitizeConnectionError(error),
           };
         }
         break;
@@ -709,7 +714,7 @@ connectionsRouter.post('/:id/test', async (req, res) => {
     });
     res.status(500).json({ 
       success: false, 
-      message: error instanceof Error ? error.message : 'Test failed' 
+      message: sanitizeConnectionError(error) 
     });
   }
 });
@@ -755,9 +760,12 @@ connectionsRouter.get('/:id/lidarr-options', async (req, res) => {
 
     res.json({ qualityProfiles, rootFolders });
   } catch (error) {
-    logger.error('Lidarr options error', { error });
+    logger.error('Lidarr options error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to fetch Lidarr options' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -801,7 +809,7 @@ connectionsRouter.post('/test-lidarr', async (req, res) => {
     });
     res.status(500).json({ 
       success: false, 
-      message: error instanceof Error ? error.message : 'Test failed' 
+      message: sanitizeConnectionError(error) 
     });
   }
 });
@@ -840,7 +848,7 @@ connectionsRouter.post('/test-tautulli', async (req, res) => {
     });
     res.status(500).json({ 
       success: false, 
-      message: error instanceof Error ? error.message : 'Test failed' 
+      message: sanitizeConnectionError(error) 
     });
   }
 });
@@ -865,7 +873,7 @@ connectionsRouter.post('/tautulli/users', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to get users' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -890,7 +898,7 @@ connectionsRouter.post('/tautulli/libraries', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to get libraries' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -940,7 +948,7 @@ connectionsRouter.get('/:id/tautulli/top-artists', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to get top artists' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -966,7 +974,7 @@ connectionsRouter.post('/jellyfin/users', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to get users' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });
@@ -992,7 +1000,7 @@ connectionsRouter.post('/jellyfin/libraries', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to get libraries' 
+      error: sanitizeConnectionError(error) 
     });
   }
 });

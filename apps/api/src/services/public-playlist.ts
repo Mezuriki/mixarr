@@ -4,6 +4,10 @@
  * Fetches public Spotify playlists without authentication using the embed endpoint.
  */
 
+import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+
+const API_TIMEOUT = 15_000;
+
 export interface PlaylistTrack {
   name: string;
   artists: Array<{ name: string }>;
@@ -83,11 +87,12 @@ export async function fetchPublicPlaylist(playlistId: string): Promise<PublicPla
 
   const embedUrl = `https://open.spotify.com/embed/playlist/${playlistId}`;
   
-  const response = await fetch(embedUrl, {
+  const response = await fetchWithTimeout(embedUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml',
     },
+    timeout: API_TIMEOUT,
   });
   
   if (!response.ok) {
