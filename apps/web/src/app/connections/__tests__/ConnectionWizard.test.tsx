@@ -57,7 +57,7 @@ vi.mock('@/lib/api', () => ({
 // Mock the form barrel to provide a controllable dummy form for every type.
 // The mock form exposes a "Fill Form" button so tests can trigger onConfigReady.
 vi.mock('../components/forms', () => {
-  const React = require('react'); // eslint-disable-line @typescript-eslint/no-require-imports
+  const React = require('react'); // eslint-disable-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 
   function MockForm(props: {
     onConfigReady: (c: Record<string, unknown>) => void;
