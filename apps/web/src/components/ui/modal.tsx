@@ -34,9 +34,32 @@ export function Modal({
   const modalRef = React.useRef<HTMLDivElement>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   const previouslyFocusedElement = React.useRef<HTMLElement | null>(null);
+  const [isClosing, setIsClosing] = React.useState(false);
   
   const titleId = React.useId();
   const descriptionId = React.useId();
+
+  const handleClose = React.useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    // Safety fallback in case animationend doesn't fire
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 250);
+  }, [isClosing, onClose]);
+
+  const handleAnimationEnd = React.useCallback(() => {
+    if (isClosing) {
+      setIsClosing(false);
+      onClose();
+    }
+  }, [isClosing, onClose]);
+
+  // Reset isClosing when modal reopens
+  React.useEffect(() => {
+    if (isOpen) setIsClosing(false);
+  }, [isOpen]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -68,7 +91,7 @@ export function Modal({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
         return;
       }
 
@@ -89,7 +112,7 @@ export function Modal({
       }
     };
     
-    if (isOpen) {
+    if (isOpen || isClosing) {
       document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
@@ -98,16 +121,19 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, isClosing, handleClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
+        className={cn(
+          'absolute inset-0 bg-black/50 backdrop-blur-sm',
+          isClosing ? 'animate-fade-out' : 'animate-fade-in'
+        )}
+        onClick={handleClose}
         aria-hidden="true"
       />
       
@@ -119,10 +145,12 @@ export function Modal({
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          'relative z-10 w-full mx-4 bg-card rounded-lg shadow-lg animate-slide-in flex flex-col max-h-[90vh]',
+          'relative z-10 w-full mx-4 bg-card rounded-lg shadow-lg flex flex-col max-h-[90vh]',
+          isClosing ? 'animate-scale-out' : 'animate-scale-in',
           sizeClasses[size]
         )}
         onClick={(e) => e.stopPropagation()}
+        onAnimationEnd={handleAnimationEnd}
       >
         {/* Header */}
         {(title || description) && (
@@ -137,7 +165,7 @@ export function Modal({
             </div>
             <button
               ref={closeButtonRef}
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close"
               className="rounded-lg p-1 hover:bg-accent transition-colors"
             >
@@ -150,7 +178,7 @@ export function Modal({
         {!title && !description && (
           <button
             ref={closeButtonRef}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
             className="absolute top-4 right-4 rounded-lg p-1 hover:bg-accent transition-colors"
           >
