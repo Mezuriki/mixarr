@@ -227,9 +227,9 @@ export default function QueuePage() {
           )}
 
           {filteredItems.map((item) => (
-            <Card key={item.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
+            <Card key={item.id} className="hover:bg-muted/50 transition-colors">
+              <CardContent className="px-4 py-3">
+                <div className={`flex items-center ${statusFilter === 'pending' ? 'gap-4' : 'gap-3'}`}>
                   {statusFilter === 'pending' && (
                     <button
                       onClick={() => toggleSelect(item.id)}
@@ -243,7 +243,7 @@ export default function QueuePage() {
                     </button>
                   )}
 
-                  <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-primary/10">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden bg-muted">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -251,13 +251,13 @@ export default function QueuePage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-primary">
-                        <Music2 className="h-6 w-6 sm:h-7 sm:w-7" />
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        <Music2 className="h-5 w-5" />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold truncate">{item.artistName}</h3>
                       {item.itemType === 'album' && (
@@ -279,7 +279,7 @@ export default function QueuePage() {
                       {item.albumName && ` · ${item.albumName}`}
                       {item.releaseYear && ` (${item.releaseYear})`}
                     </p>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {new Date(item.createdAt).toLocaleDateString()}
