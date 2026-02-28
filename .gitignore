@@ -14,7 +14,7 @@ release.sh
 reset.sh
 start.sh
 .git.*
-
+restart.sh
 
 
 # Environment files
