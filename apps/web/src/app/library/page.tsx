@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ConfirmDialog, Tabs, Tab, Skeleton } from '@/components/ui';
+import { ConfirmDialog, Tabs, Tab, TabPanel, Skeleton } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
@@ -446,23 +446,10 @@ export default function LibraryPage() {
       <Tabs value={activeTab} onChange={(v) => setActiveTab(v as TabType)} className="mb-6">
         <Tab value="health" label="Health Issues" icon={<AlertTriangle className="w-4 h-4" />} />
         <Tab value="duplicates" label="Duplicates" badge={duplicateCount > 0 ? duplicateCount : undefined} icon={<Copy className="w-4 h-4" />} />
-      </Tabs>
-
-      <ConfirmDialog
-        open={confirmFixAll}
-        onClose={() => setConfirmFixAll(false)}
-        onConfirm={confirmFixAllAction}
-        title="Fix metadata?"
-        description={`This will attempt to fix metadata for ${artistsNeedingFix} artists with issues. This may take several minutes and will make requests to Lidarr.`}
-        confirmLabel="Fix Metadata"
-        variant="warning"
-      />
-
-      {/* Tab Content */}
-      {activeTab === 'duplicates' ? (
-        <DuplicatesContent onCountChange={handleDuplicateCountChange} />
-      ) : (
-        <>
+        <TabPanel value="duplicates">
+          <DuplicatesContent onCountChange={handleDuplicateCountChange} />
+        </TabPanel>
+        <TabPanel value="health">
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-5 mb-6">
             <Card>
@@ -655,8 +642,18 @@ export default function LibraryPage() {
           )}
         </CardContent>
       </Card>
-        </>
-      )}
+        </TabPanel>
+      </Tabs>
+
+      <ConfirmDialog
+        open={confirmFixAll}
+        onClose={() => setConfirmFixAll(false)}
+        onConfirm={confirmFixAllAction}
+        title="Fix metadata?"
+        description={`This will attempt to fix metadata for ${artistsNeedingFix} artists with issues. This may take several minutes and will make requests to Lidarr.`}
+        confirmLabel="Fix Metadata"
+        variant="warning"
+      />
     </>
   );
 }

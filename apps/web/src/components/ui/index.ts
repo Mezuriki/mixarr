@@ -31,4 +31,4 @@ export { ConfirmDialog } from './confirm-dialog';
 
 export { Skeleton, SkeletonText, SkeletonCard } from './skeleton';
 export { Switch } from './switch';
-export { Tabs, Tab } from './tabs';
+export { Tabs, Tab, TabPanel } from './tabs';

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, Tab } from '@/components/ui';
+import { Tabs, Tab, TabPanel } from '@/components/ui';
 import { useToast } from '@/components/ui/toast';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
@@ -175,6 +175,121 @@ export default function SubscriptionDetailPage() {
     return <Badge className={colors[status] || 'bg-muted-foreground/20'}>{status}</Badge>;
   };
 
+  const renderResultsContent = (showBackButton: boolean) => (
+    <>
+      {showBackButton && (
+        <Button variant="outline" onClick={() => { setSelectedRun(null); setStatusFilter(''); }}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to runs
+        </Button>
+      )}
+
+      {/* Status filter - show for both All Results and Run Details */}
+      {(() => {
+        // Calculate counts from current results
+        const counts = results.reduce((acc, r) => {
+          acc[r.status] = (acc[r.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        const total = results.length;
+
+        return (
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant={statusFilter === '' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('')}
+            >
+              All ({total})
+            </Button>
+            {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
+              <Button
+                key={status}
+                size="sm"
+                variant={statusFilter === status ? 'default' : 'outline'}
+                onClick={() => setStatusFilter(status)}
+              >
+                {status} ({count})
+              </Button>
+            ))}
+          </div>
+        );
+      })()}
+
+      {(() => {
+        // Filter results by status
+        const filteredResults = statusFilter
+          ? results.filter(r => r.status === statusFilter)
+          : results;
+
+        return filteredResults.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              {statusFilter ? `No ${statusFilter} results found` : 'No results found'}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {filteredResults.map((result) => (
+              <Card key={result.id}>
+                <CardContent className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-muted">
+                      {result.imageUrl ? (
+                        <img
+                          src={result.imageUrl}
+                          alt={result.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Music2 className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{result.name}</p>
+                      {result.skipReason && (
+                        <p className="text-xs text-muted-foreground">{result.skipReason}</p>
+                      )}
+                      <ExternalLinks mbid={result.mbid || undefined} artistName={result.name} size="sm" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getResultStatusBadge(result.status)}
+                    {(result.status === 'pending' || result.status === 'queued') && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleApprove(result.id)}
+                          disabled={processingResultId === result.id}
+                        >
+                          {processingResultId === result.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-status-success" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleReject(result.id)}
+                          disabled={processingResultId === result.id}
+                        >
+                          <XCircle className="h-4 w-4 text-status-error" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+    </>
+  );
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -206,170 +321,65 @@ export default function SubscriptionDetailPage() {
       <Tabs value={activeTab} onChange={(v) => { setActiveTab(v as 'runs' | 'results'); setSelectedRun(null); }} className="mb-6">
         <Tab value="runs" label="Run History" badge={runs.length} />
         <Tab value="results" label="All Results" badge={Object.values(statusCounts).reduce((a, b) => a + b, 0)} />
-      </Tabs>
-
-      {activeTab === 'runs' && !selectedRun && (
-        <div className="space-y-4">
-          {runs.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No runs yet. Click &quot;Run Now&quot; to start.
-              </CardContent>
-            </Card>
-          ) : (
-            runs.map((run) => (
-              <Card 
-                key={run.id} 
-                className={`cursor-pointer hover:bg-muted/50 transition-colors ${loadingRunId === run.id ? 'opacity-70' : ''}`} 
-                onClick={() => !loadingRunId && fetchRunDetails(run.id)}
-              >
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-4">
-                    {loadingRunId === run.id ? (
-                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                    ) : (
-                      getStatusIcon(run.status)
-                    )}
-                    <div>
-                      <p className="font-medium">
-                        {new Date(run.startedAt).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {run.status === 'completed'
-                          ? `Found ${run.resultsCount} artists • Added ${run.addedCount} • Skipped ${run.skippedCount}`
-                          : run.errorMessage || run.status}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {loadingRunId === run.id && (
-                      <span className="text-sm text-muted-foreground">Loading...</span>
-                    )}
-                    <Badge variant={run.status === 'completed' ? 'default' : 'destructive'}>
-                      {run.status}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
-
-      {(activeTab === 'results' || selectedRun) && (
-        <div className="space-y-4">
-          {selectedRun && (
-            <Button variant="outline" onClick={() => { setSelectedRun(null); setStatusFilter(''); }}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to runs
-            </Button>
-          )}
-
-          {/* Status filter - show for both All Results and Run Details */}
-          {(() => {
-            // Calculate counts from current results
-            const counts = results.reduce((acc, r) => {
-              acc[r.status] = (acc[r.status] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
-            const total = results.length;
-            
-            return (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant={statusFilter === '' ? 'default' : 'outline'}
-                  onClick={() => setStatusFilter('')}
-                >
-                  All ({total})
-                </Button>
-                {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
-                  <Button
-                    key={status}
-                    size="sm"
-                    variant={statusFilter === status ? 'default' : 'outline'}
-                    onClick={() => setStatusFilter(status)}
-                  >
-                    {status} ({count})
-                  </Button>
-                ))}
-              </div>
-            );
-          })()}
-
-          {(() => {
-            // Filter results by status
-            const filteredResults = statusFilter 
-              ? results.filter(r => r.status === statusFilter)
-              : results;
-            
-            return filteredResults.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  {statusFilter ? `No ${statusFilter} results found` : 'No results found'}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {filteredResults.map((result) => (
-                <Card key={result.id}>
-                  <CardContent className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-muted">
-                        {result.imageUrl ? (
-                          <img
-                            src={result.imageUrl}
-                            alt={result.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Music2 className="h-6 w-6 sm:h-7 sm:w-7 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{result.name}</p>
-                        {result.skipReason && (
-                          <p className="text-xs text-muted-foreground">{result.skipReason}</p>
-                        )}
-                        <ExternalLinks mbid={result.mbid || undefined} artistName={result.name} size="sm" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getResultStatusBadge(result.status)}
-                      {(result.status === 'pending' || result.status === 'queued') && (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => handleApprove(result.id)}
-                            disabled={processingResultId === result.id}
-                          >
-                            {processingResultId === result.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 text-status-success" />
-                            )}
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => handleReject(result.id)}
-                            disabled={processingResultId === result.id}
-                          >
-                            <XCircle className="h-4 w-4 text-status-error" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+        <TabPanel value="runs">
+          {!selectedRun ? (
+            <div className="space-y-4">
+              {runs.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    No runs yet. Click &quot;Run Now&quot; to start.
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                runs.map((run) => (
+                  <Card 
+                    key={run.id} 
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${loadingRunId === run.id ? 'opacity-70' : ''}`} 
+                    onClick={() => !loadingRunId && fetchRunDetails(run.id)}
+                  >
+                    <CardContent className="flex items-center justify-between py-4">
+                      <div className="flex items-center gap-4">
+                        {loadingRunId === run.id ? (
+                          <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                        ) : (
+                          getStatusIcon(run.status)
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {new Date(run.startedAt).toLocaleString()}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {run.status === 'completed'
+                              ? `Found ${run.resultsCount} artists • Added ${run.addedCount} • Skipped ${run.skippedCount}`
+                              : run.errorMessage || run.status}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {loadingRunId === run.id && (
+                          <span className="text-sm text-muted-foreground">Loading...</span>
+                        )}
+                        <Badge variant={run.status === 'completed' ? 'default' : 'destructive'}>
+                          {run.status}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-          );
-          })()}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4">
+              {renderResultsContent(true)}
+            </div>
+          )}
+        </TabPanel>
+        <TabPanel value="results">
+          <div className="space-y-4">
+            {renderResultsContent(false)}
+          </div>
+        </TabPanel>
+      </Tabs>
     </>
   );
 }
