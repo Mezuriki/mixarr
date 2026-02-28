@@ -10,7 +10,6 @@ import { api } from '@/lib/api';
 import Eye from 'lucide-react/dist/esm/icons/eye';
 import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
-import LogIn from 'lucide-react/dist/esm/icons/log-in';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import MonitorPlay from 'lucide-react/dist/esm/icons/monitor-play';
 import KeyRound from 'lucide-react/dist/esm/icons/key-round';
@@ -94,11 +93,21 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4 relative overflow-hidden">
+      {/* Warm radial gradient background */}
+      <div className="absolute inset-0 bg-gradient-radial from-primary/5 via-transparent to-transparent" aria-hidden="true" />
+      {/* Subtle concentric ring pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 40px, currentColor 40px, currentColor 41px)',
+        }}
+        aria-hidden="true"
+      />
+      <Card className="relative w-full max-w-md border-t-2 border-t-primary">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <LogIn className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
+            M
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>
