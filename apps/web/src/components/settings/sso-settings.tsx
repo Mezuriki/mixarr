@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
@@ -304,10 +305,14 @@ export function SSOSettings() {
                     <p className="text-sm text-muted-foreground">{config.description}</p>
                   </div>
                 </div>
-                <div className="relative" title={!isSaved ? 'Save configuration first to enable' : undefined}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                <div
+                  className="relative"
+                  title={!isSaved ? 'Save configuration first to enable' : undefined}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Switch
+                    checked={isEnabled}
+                    onChange={() => {
                       if (isSaved) {
                         handleToggle(config.type);
                       } else {
@@ -319,16 +324,9 @@ export function SSOSettings() {
                         setExpandedProvider(config.type);
                       }
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isEnabled ? 'bg-primary' : 'bg-muted'
-                    } ${!isSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-foreground transition-transform ${
-                        isEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+                    disabled={!isSaved}
+                    label={`Enable ${config.name}`}
+                  />
                 </div>
               </div>
 

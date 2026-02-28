@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Select } from '@/components/ui/select';
+import { Switch } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { AISettings } from '@/components/settings/ai-settings';
 import { SSOSettings } from '@/components/settings/sso-settings';
@@ -263,18 +264,11 @@ export default function SettingsPage() {
                         />
                       )}
                       {setting.type === 'boolean' && (
-                        <button
-                          onClick={() => handleChange(setting.key, !getValue(setting.key, setting.defaultValue))}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            getValue(setting.key, setting.defaultValue) ? 'bg-primary' : 'bg-muted'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-foreground transition-transform ${
-                              getValue(setting.key, setting.defaultValue) ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
+                        <Switch
+                          checked={getValue(setting.key, setting.defaultValue) as boolean}
+                          onChange={(val) => handleChange(setting.key, val)}
+                          label={setting.label}
+                        />
                       )}
                       {setting.type === 'select' && setting.options && (
                         <Select

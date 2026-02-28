@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import Brain from 'lucide-react/dist/esm/icons/brain';
@@ -145,18 +146,11 @@ export function AISettings() {
                 Use OpenAI, Ollama, LiteLLM, OpenRouter, or other compatible providers
               </p>
             </div>
-            <button
-              onClick={() => handleToggle('openaiEnabled')}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.openaiEnabled ? 'bg-primary' : 'bg-muted'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-foreground transition-transform ${
-                  settings.openaiEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Switch
+              checked={settings.openaiEnabled}
+              onChange={() => handleToggle('openaiEnabled')}
+              label="Enable OpenAI-Compatible"
+            />
           </div>
 
           {settings.openaiEnabled && (
@@ -226,18 +220,11 @@ export function AISettings() {
                 Use Anthropic&apos;s Claude models for recommendations
               </p>
             </div>
-            <button
-              onClick={() => handleToggle('anthropicEnabled')}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                settings.anthropicEnabled ? 'bg-primary' : 'bg-muted'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-foreground transition-transform ${
-                  settings.anthropicEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Switch
+              checked={settings.anthropicEnabled}
+              onChange={() => handleToggle('anthropicEnabled')}
+              label="Enable Anthropic (Claude)"
+            />
           </div>
 
           {settings.anthropicEnabled && (
