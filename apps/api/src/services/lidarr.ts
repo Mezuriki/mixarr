@@ -7,6 +7,7 @@
 import { rateLimit } from './rate-limiter.js';
 import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
+import { validateServiceUrl } from '../lib/validate-service-url.js';
 import { skyhookWarmer } from './skyhook-cache-warmer.js';
 
 const log = createLogger('Lidarr');
@@ -108,7 +109,7 @@ export class LidarrService {
   private baseDelay: number = 1000; // 1 second
 
   constructor(config: LidarrConfig) {
-    this.baseUrl = config.url.replace(/\/$/, '');
+    this.baseUrl = validateServiceUrl(config.url, 'Lidarr');
     this.apiKey = config.apiKey;
   }
 

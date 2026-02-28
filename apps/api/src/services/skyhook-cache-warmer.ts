@@ -32,18 +32,17 @@ export class SkyHookCacheWarmer {
    * Retries with exponential backoff until success or timeout.
    */
   async warmArtist(mbid: string, options: WarmOptions = {}): Promise<WarmResult> {
-    return this.warm(`${SKYHOOK_API}/artist/${mbid}`, mbid, 'artist', options);
+    return this.warm(mbid, 'artist', options);
   }
 
   /**
    * Warm the SkyHook cache for an album/release-group MBID.
    */
   async warmAlbum(mbid: string, options: WarmOptions = {}): Promise<WarmResult> {
-    return this.warm(`${SKYHOOK_API}/album/${mbid}`, mbid, 'album', options);
+    return this.warm(mbid, 'album', options);
   }
 
   private async warm(
-    url: string,
     mbid: string,
     type: 'artist' | 'album',
     options: WarmOptions
@@ -55,6 +54,9 @@ export class SkyHookCacheWarmer {
     if (!UUID_REGEX.test(mbid)) {
       throw new Error(`Invalid MBID format: ${mbid}`);
     }
+
+    // Construct URL from hardcoded base + validated MBID (no user input)
+    const url = `${SKYHOOK_API}/${type}/${mbid}`;
 
     const timeoutMs = options.timeoutMs ?? 30000;
     const initialDelayMs = options.initialDelayMs ?? 1000;

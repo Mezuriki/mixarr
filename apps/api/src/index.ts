@@ -69,10 +69,14 @@ const io = new SocketIOServer(httpServer, {
 // See: https://helmetjs.github.io/
 // Provides: X-Content-Type-Options, X-Frame-Options, HSTS, and more
 app.use(helmet({
-  // Content Security Policy - disabled for API (no HTML content served)
-  // The frontend (Next.js) handles CSP for the actual web pages
-  // lgtm[js/disabling-csp] - API returns JSON only, CSP is handled by Next.js frontend
-  contentSecurityPolicy: false,
+  // Content Security Policy - restrictive policy for JSON-only API
+  // The frontend (Next.js) handles its own CSP for web pages
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
   
   // X-Frame-Options: DENY - API should never be embedded in iframes
   frameguard: { action: 'deny' },

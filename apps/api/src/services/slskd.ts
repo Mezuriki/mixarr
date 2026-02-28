@@ -8,6 +8,7 @@
 import { rateLimit } from './rate-limiter.js';
 import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
+import { validateServiceUrl } from '../lib/validate-service-url.js';
 import { parseErrorResponse } from './slskd-api-error.js';
 
 const log = createLogger('slskd');
@@ -108,8 +109,7 @@ export class SlskdService {
   private apiKey: string;
 
   constructor(config: SlskdConfig) {
-    // Normalize URL (remove trailing slash)
-    this.url = config.url.replace(/\/$/, '');
+    this.url = validateServiceUrl(config.url, 'slskd');
     this.apiKey = config.apiKey;
   }
 

@@ -67,6 +67,17 @@ const queueEvents = new QueueEvents(SLSKD_QUEUE_NAME, {
 // All routes require authentication
 router.use(requireAuth);
 
+// Rate limiter for authenticated API routes
+// Prevents abuse by limiting to 60 requests per minute per user session
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute per IP
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.use(apiLimiter);
+
 /**
  * Helper to get slskd connection and service
  * Returns null if no enabled slskd connection exists
