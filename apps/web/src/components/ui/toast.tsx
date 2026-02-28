@@ -36,28 +36,40 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
-
-  const addToast = React.useCallback((toast: Omit<Toast, 'id'>) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    const newToast = { ...toast, id };
-    setToasts((prev) => [...prev, newToast]);
-
-    const duration = toast.duration ?? 5000;
-    if (duration > 0) {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, duration);
-    }
-  }, []);
+  const [exitingIds, setExitingIds] = React.useState<Set<string>>(new Set());
 
   const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setExitingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+      setExitingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 150);
   }, []);
+
+  const addToast = React.useCallback(
+    (toast: Omit<Toast, 'id'>) => {
+      const id = Math.random().toString(36).substring(2, 9);
+      const newToast = { ...toast, id };
+      setToasts((prev) => [...prev, newToast]);
+
+      const duration = toast.duration ?? 5000;
+      if (duration > 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration);
+      }
+    },
+    [removeToast]
+  );
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <ToastContainer toasts={toasts} exitingIds={exitingIds} onRemove={removeToast} />
     </ToastContext.Provider>
   );
 }
@@ -78,9 +90,11 @@ const iconColors = {
 
 function ToastContainer({
   toasts,
+  exitingIds,
   onRemove,
 }: {
   toasts: Toast[];
+  exitingIds: Set<string>;
   onRemove: (id: string) => void;
 }) {
   return (
@@ -91,7 +105,8 @@ function ToastContainer({
           <div
             key={toast.id}
             className={cn(
-              'flex items-start gap-3 p-4 rounded-lg shadow-lg bg-card border animate-slide-in min-w-[300px] max-w-[400px]'
+              'flex items-start gap-3 p-4 rounded-lg shadow-lg bg-card border min-w-[300px] max-w-[400px]',
+              exitingIds.has(toast.id) ? 'animate-slide-right' : 'animate-fade-in'
             )}
           >
             <Icon className={cn('h-5 w-5 flex-shrink-0 mt-0.5', iconColors[toast.type])} />
