@@ -23,6 +23,7 @@ import TestTube from 'lucide-react/dist/esm/icons/test-tube';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import Webhook from 'lucide-react/dist/esm/icons/webhook';
 import X from 'lucide-react/dist/esm/icons/x';
+import Link from 'next/link';
 
 interface NotificationChannel {
   id: number;
@@ -225,6 +226,13 @@ export default function NotificationsSettingsPage() {
 
   return (
     <>
+      <nav aria-label="Breadcrumb" className="mb-4">
+        <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <li><Link href="/settings" className="hover:text-foreground transition-colors">Settings</Link></li>
+          <li className="text-muted-foreground/50">/</li>
+          <li className="text-foreground font-medium">Notifications</li>
+        </ol>
+      </nav>
       <PageHeader
         title="Notifications"
         description="Configure notification channels for Mixarr events"

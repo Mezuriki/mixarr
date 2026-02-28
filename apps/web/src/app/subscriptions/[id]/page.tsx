@@ -301,20 +301,20 @@ export default function SubscriptionDetailPage() {
 
   return (
     <>
+      <nav aria-label="Breadcrumb" className="mb-4">
+        <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <li><Link href="/subscriptions" className="hover:text-foreground transition-colors">Subscriptions</Link></li>
+          <li className="text-muted-foreground/50">/</li>
+          <li className="text-foreground font-medium truncate">{subscription?.name || 'Loading...'}</li>
+        </ol>
+      </nav>
       <PageHeader
         title={subscription?.name || 'Subscription'}
         description={`Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`}
       >
-        <div className="flex gap-2">
-          <Link href="/subscriptions">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back
-            </Button>
-          </Link>
-          <Button onClick={handleRun}>
-            <Play className="h-4 w-4 mr-2" /> Run Now
-          </Button>
-        </div>
+        <Button onClick={handleRun}>
+          <Play className="h-4 w-4 mr-2" /> Run Now
+        </Button>
       </PageHeader>
 
       {/* Tabs */}
