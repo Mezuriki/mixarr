@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -57,7 +58,7 @@ export default function LogsPage() {
   const [offset, setOffset] = useState(0);
 
   // React Query for logs with caching
-  const { data, isFetching } = useLogs({ 
+  const { data, isFetching, isLoading } = useLogs({ 
     level, 
     category, 
     search, 
@@ -139,7 +140,21 @@ export default function LogsPage() {
       </Card>
 
       {/* Logs List */}
-      {logs.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="space-y-1 p-2">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-12 rounded-full" />
+                  <Skeleton className="h-3 flex-1" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : logs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
