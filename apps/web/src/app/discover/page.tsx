@@ -661,7 +661,7 @@ export default function DiscoverPage() {
                   {recommendations.map((rec, idx) => (
                     <div
                       key={idx}
-                      className={`flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors ${
                         selectedRecs.has(rec.name) && !rec.inLibrary ? 'bg-primary/10' : ''
                       }`}
                     >
@@ -678,8 +678,8 @@ export default function DiscoverPage() {
                           )}
                         </button>
                       )}
-                      {/* Artist Image - larger size */}
-                      <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-md overflow-hidden bg-muted">
+                      {/* Artist Image */}
+                      <div className="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden bg-muted">
                         {rec.imageUrl ? (
                           <img
                             src={rec.imageUrl}
@@ -688,21 +688,21 @@ export default function DiscoverPage() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Music2 className="h-8 w-8 text-muted-foreground" />
+                            <Music2 className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <p className="font-medium truncate">{rec.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           Similar to: {rec.matchedFrom.slice(0, 3).join(', ')}
                           {rec.matchedFrom.length > 3 && ` +${rec.matchedFrom.length - 3} more`}
                         </p>
                         {rec.genres && rec.genres.length > 0 && (
-                          <GenrePills genres={rec.genres} maxDisplay={3} size="sm" className="mt-1" />
+                          <GenrePills genres={rec.genres} maxDisplay={3} size="sm" />
                         )}
                         {/* External links */}
-                        <div className="flex gap-1 mt-1">
+                        <div className="flex gap-1">
                           {rec.url && (
                             <a
                               href={rec.url}
@@ -729,44 +729,46 @@ export default function DiscoverPage() {
                           )}
                         </div>
                       </div>
-                      <Badge variant="outline" className="flex-shrink-0">
-                        {rec.matchCount} match{rec.matchCount > 1 ? 'es' : ''}
-                      </Badge>
-                      {rec.inLibrary ? (
-                        <Button size="sm" variant="outline" disabled>
-                          <Check className="h-4 w-4 mr-1" />
-                          Added
-                        </Button>
-                      ) : (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            onClick={() => addToLidarr(rec)}
-                            disabled={addingArtist === rec.name}
-                            title="Add to Lidarr"
-                          >
-                            {addingArtist === rec.name ? (
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Plus className="h-4 w-4 mr-1" />
-                                Add
-                              </>
-                            )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Badge variant="outline">
+                          {rec.matchCount} match{rec.matchCount > 1 ? 'es' : ''}
+                        </Badge>
+                        {rec.inLibrary ? (
+                          <Button size="sm" variant="outline" disabled>
+                            <Check className="h-4 w-4 mr-1" />
+                            Added
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSlskdSearchArtist({ name: rec.name, image: rec.imageUrl });
-                              setSlskdModalOpen(true);
-                            }}
-                            title="Search on Soulseek"
-                          >
-                            <Search className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => addToLidarr(rec)}
+                              disabled={addingArtist === rec.name}
+                              title="Add to Lidarr"
+                            >
+                              {addingArtist === rec.name ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSlskdSearchArtist({ name: rec.name, image: rec.imageUrl });
+                                setSlskdModalOpen(true);
+                              }}
+                              title="Search on Soulseek"
+                            >
+                              <Search className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {recommendations.length === 0 && !isLoadingRecs && (
