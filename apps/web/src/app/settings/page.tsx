@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui';
+import { Skeleton, Switch } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { AISettings } from '@/components/settings/ai-settings';
 import { SSOSettings } from '@/components/settings/sso-settings';
@@ -182,8 +182,31 @@ export default function SettingsPage() {
     return settings[key] ?? defaultValue;
   };
 
+  // Show skeleton while auth is loading
+  if (authLoading) {
+    return (
+      <div className="space-y-8 max-w-4xl">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg border bg-card p-6 space-y-4">
+            <Skeleton className="h-5 w-32" />
+            {Array.from({ length: 3 }).map((_, j) => (
+              <div key={j} className="flex items-center justify-between">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-6 w-11 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   // Don't render anything for non-admin users (they'll be redirected)
-  if (authLoading || !user || !isAdmin) {
+  if (!user || !isAdmin) {
     return null;
   }
 

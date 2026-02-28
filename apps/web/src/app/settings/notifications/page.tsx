@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ConfirmDialog, EmptyState } from '@/components/ui';
+import { ConfirmDialog, EmptyState, Skeleton } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { Select } from '@/components/ui/select';
@@ -245,7 +245,17 @@ export default function NotificationsSettingsPage() {
 
       <div className="p-6 space-y-6">
         {loading ? (
-          <div className="text-muted-foreground text-center py-12">Loading...</div>
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-6 w-11 rounded-full" />
+              </div>
+            ))}
+          </div>
         ) : channels.length === 0 ? (
           <EmptyState
             icon={Bell}
