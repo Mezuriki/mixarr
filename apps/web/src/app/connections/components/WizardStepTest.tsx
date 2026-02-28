@@ -90,8 +90,8 @@ export function WizardStepTest({
 
       {phase === 'success' && (
         <>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-            <Check className="h-6 w-6 text-green-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-success/10">
+            <Check className="h-6 w-6 text-status-success" />
           </div>
           <p className="font-medium">
             {editingId ? 'Connection saved and tested!' : 'Connection saved!'}
@@ -102,8 +102,8 @@ export function WizardStepTest({
 
       {phase === 'save-failed' && (
         <>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-            <X className="h-6 w-6 text-red-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-error/10">
+            <X className="h-6 w-6 text-status-error" />
           </div>
           <p className="font-medium">Failed to save connection</p>
           <div className="flex gap-2">
@@ -119,8 +119,8 @@ export function WizardStepTest({
 
       {phase === 'test-failed' && (
         <>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
-            <X className="h-6 w-6 text-yellow-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-warning/10">
+            <X className="h-6 w-6 text-status-warning" />
           </div>
           <p className="font-medium">Connection saved but test failed</p>
           <div className="flex gap-2">

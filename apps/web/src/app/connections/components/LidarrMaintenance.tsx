@@ -161,8 +161,8 @@ export function LidarrMaintenance({ connectionId }: LidarrMaintenanceProps) {
                 <span
                   className={
                     stats.issueStats.noAlbums > 0
-                      ? 'text-yellow-500 font-medium'
-                      : 'text-green-500'
+                      ? 'text-status-warning font-medium'
+                      : 'text-status-success'
                   }
                 >
                   {stats.issueStats.noAlbums}
@@ -173,8 +173,8 @@ export function LidarrMaintenance({ connectionId }: LidarrMaintenanceProps) {
                 <span
                   className={
                     stats.issueStats.noPoster > 0
-                      ? 'text-yellow-500 font-medium'
-                      : 'text-green-500'
+                      ? 'text-status-warning font-medium'
+                      : 'text-status-success'
                   }
                 >
                   {stats.issueStats.noPoster}
@@ -185,8 +185,8 @@ export function LidarrMaintenance({ connectionId }: LidarrMaintenanceProps) {
                 <span
                   className={
                     stats.issueStats.noOverview > 0
-                      ? 'text-yellow-500 font-medium'
-                      : 'text-green-500'
+                      ? 'text-status-warning font-medium'
+                      : 'text-status-success'
                   }
                 >
                   {stats.issueStats.noOverview}
@@ -197,8 +197,8 @@ export function LidarrMaintenance({ connectionId }: LidarrMaintenanceProps) {
                 <span
                   className={
                     stats.issueStats.noGenres > 0
-                      ? 'text-yellow-500 font-medium'
-                      : 'text-green-500'
+                      ? 'text-status-warning font-medium'
+                      : 'text-status-success'
                   }
                 >
                   {stats.issueStats.noGenres}

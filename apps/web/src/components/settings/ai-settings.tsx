@@ -205,7 +205,7 @@ export function AISettings() {
               </div>
 
               {settings.openaiConfigured && (
-                <p className="text-xs text-green-600">✓ OpenAI-compatible provider configured</p>
+                <p className="text-xs text-status-success">✓ OpenAI-compatible provider configured</p>
               )}
             </>
           )}
@@ -248,7 +248,7 @@ export function AISettings() {
                   </button>
                 </div>
                 {settings.anthropicConfigured && (
-                  <p className="text-xs text-green-600">✓ API key configured</p>
+                  <p className="text-xs text-status-success">✓ API key configured</p>
                 )}
               </div>
             </>

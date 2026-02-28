@@ -82,9 +82,9 @@ export function ConnectionCard({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {conn.isActive ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-status-success" />
                     ) : (
-                      <X className="h-4 w-4 text-red-500" />
+                      <X className="h-4 w-4 text-status-error" />
                     )}
                     <span className="font-medium">{conn.name}</span>
                     {/* Owner badges visible to admins */}

@@ -52,7 +52,7 @@ export function OAuthButtons({ type, connectionId, onPreview }: OAuthButtonsProp
         </Button>
       ) : (
         <>
-          <Badge variant="default" className="text-xs bg-green-600">
+          <Badge variant="default" className="text-xs bg-status-success">
             Authorized
           </Badge>
 
