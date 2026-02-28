@@ -76,16 +76,16 @@ function DownloadCard({
   const folder = download.filename.split('/').slice(0, -1).join('/');
   
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
+    <Card className="overflow-hidden hover:bg-muted/50 transition-colors">
+      <CardContent className="px-4 py-3">
+        <div className="flex items-center gap-3">
           {/* Icon */}
-          <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center">
-            <Music className="h-6 w-6 text-muted-foreground" />
+          <div className="flex-shrink-0 w-10 h-10 rounded-md bg-muted flex items-center justify-center">
+            <Music className="h-5 w-5 text-muted-foreground" />
           </div>
           
           {/* Content */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold truncate">{download.artistName}</h3>
@@ -99,7 +99,7 @@ function DownloadCard({
             </div>
             
             {/* File info */}
-            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+            <div className="space-y-1 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <File className="h-3 w-3" />
                 <span className="truncate">{filename}</span>
@@ -143,7 +143,7 @@ function DownloadCard({
           </div>
           
           {/* Actions */}
-          <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1">
             {download.status === 'failed' && (
               <Button 
                 size="sm" 
