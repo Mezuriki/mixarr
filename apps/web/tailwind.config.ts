@@ -59,11 +59,16 @@ const config: Config = {
       },
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out',
+        'fade-out': 'fadeOut 0.2s ease-in forwards',
         'slide-in': 'slideIn 0.2s ease-out',
         'slide-out': 'slideOut 0.2s ease-in',
         'spin-slow': 'spin 2s linear infinite',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'slide-up': 'slideUp 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out',
+        'scale-out': 'scaleOut 0.2s ease-in forwards',
+        'slide-down': 'slideDown 0.2s ease-in forwards',
+        'slide-right': 'slideRight 0.15s ease-in forwards',
       },
       keyframes: {
         fadeIn: {
@@ -81,6 +86,26 @@ const config: Config = {
         slideUp: {
           '0%': { transform: 'translateY(100%)' },
           '100%': { transform: 'translateY(0)' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        scaleOut: {
+          '0%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0', transform: 'scale(0.95)' },
+        },
+        slideDown: {
+          '0%': { transform: 'translateY(0)' },
+          '100%': { transform: 'translateY(100%)' },
+        },
+        slideRight: {
+          '0%': { opacity: '1', transform: 'translateX(0)' },
+          '100%': { opacity: '0', transform: 'translateX(100%)' },
         },
       },
       fontFamily: {
@@ -101,6 +126,9 @@ const config: Config = {
         'glow-sm': '0 0 12px rgba(191, 122, 86, 0.2)',
         'glow-md': '0 4px 16px rgba(191, 122, 86, 0.3)',
         'glow-primary': '0 4px 20px rgba(191, 122, 86, 0.25), 0 0 0 1px rgba(191, 122, 86, 0.1)',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
     },
   },
