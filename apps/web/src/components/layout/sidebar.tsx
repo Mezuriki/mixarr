@@ -140,9 +140,14 @@ export function Sidebar() {
       >
         {/* Header */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          {!collapsed && (
-            <span className="text-lg font-semibold truncate">Mixarr</span>
-          )}
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm flex-shrink-0">
+              M
+            </span>
+            {!collapsed && (
+              <span className="text-lg font-semibold truncate">Mixarr</span>
+            )}
+          </Link>
           <div className="flex items-center gap-1">
             {/* Theme picker */}
             <ThemePicker />
@@ -173,7 +178,9 @@ export function Sidebar() {
                 </h3>
               )}
               {group.items.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href === '/'
+                  ? pathname === '/'
+                  : pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
