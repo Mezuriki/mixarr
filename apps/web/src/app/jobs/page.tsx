@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui';
 import { PageHeader } from '@/components/layout/page-header';
 import { api } from '@/lib/api';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
@@ -183,8 +184,17 @@ export default function JobsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+                  <Skeleton className="w-8 h-8 rounded-md" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : jobs.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">No jobs found</p>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
-import { Loading } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/modal';
 import { PageHeader } from '@/components/layout/page-header';
 import { ReleaseTypeFilter, useReleaseTypeFilter } from '@/components/ReleaseTypeFilter';
@@ -501,8 +501,14 @@ export default function DiscoverPage() {
               {/* Artist List */}
               <div className="relative min-h-[300px] max-h-[600px] overflow-y-auto border rounded-lg">
                 {isLoadingLibrary && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-                    <Loading text="Loading library..." />
+                  <div className="divide-y">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3">
+                        <Skeleton className="w-5 h-5 rounded" />
+                        <Skeleton className="h-4 flex-1 max-w-[200px]" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div className="divide-y">
@@ -653,8 +659,17 @@ export default function DiscoverPage() {
               {/* Recommendations List */}
               <div className="relative min-h-[300px] max-h-[500px] overflow-y-auto border rounded-lg">
                 {isLoadingRecs && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-                    <Loading text="Finding recommendations..." />
+                  <div className="divide-y">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3">
+                        <Skeleton className="w-10 h-10 rounded-md" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </div>
+                    ))}
                   </div>
                 )}
                 <div className="divide-y">

@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { DashboardTiles } from '@/components/feed/DashboardTiles';
 import { StatsBar } from '@/components/feed/StatsBar';
 import { FeedGrid } from '@/components/feed/FeedGrid';
-import { Loading } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui';
 import { useToast } from '@/components/ui/toast';
 import { useFeed, useApproveFeedItem, useDismissFeedItem } from '@/lib/hooks';
 
@@ -99,8 +99,16 @@ export default function Home() {
     return (
       <>
         <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
-        <div className="flex justify-center py-20">
-          <Loading size="lg" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+              <Skeleton className="aspect-square w-full" />
+              <div className="p-3 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
       </>
     );
