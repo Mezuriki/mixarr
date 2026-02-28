@@ -34,8 +34,8 @@
   --muted: 30 5% 22%; /* slightly lighter than card */
   --muted-foreground: 40 10% 65%; /* dimmed cream */
 
-  /* Accent - Same as primary for consistency */
-  --accent: 22 45% 54%; /* #bf7a56 */
+  /* Accent - Subtle hover surface (distinct from primary) */
+  --accent: 22 30% 22%; /* Warm dark copper tint — subtle hover bg */
   --accent-foreground: 40 16% 95%; /* light cream */
 
   /* Destructive */
@@ -91,9 +91,9 @@
   --muted: 36 15% 92%; /* light warm gray */
   --muted-foreground: 40 5% 45%; /* dimmed warm black */
 
-  /* Accent - Same as primary for consistency */
-  --accent: 22 50% 48%; /* darker copper */
-  --accent-foreground: 0 0% 100%; /* white */
+  /* Accent - Subtle hover surface (distinct from primary) */
+  --accent: 22 25% 92%; /* Warm light copper tint — subtle hover bg */
+  --accent-foreground: 22 50% 30%;
 
   /* Destructive */
   --destructive: 8 55% 48%; /* adjusted error for light mode */
@@ -150,9 +150,9 @@
     --muted: 36 15% 92%; /* light warm gray */
     --muted-foreground: 40 5% 45%; /* dimmed warm black */
 
-    /* Accent - Same as primary for consistency */
-    --accent: 22 50% 48%; /* darker copper */
-    --accent-foreground: 0 0% 100%; /* white */
+    /* Accent - Subtle hover surface (distinct from primary) */
+    --accent: 22 25% 92%; /* Warm light copper tint — subtle hover bg */
+    --accent-foreground: 22 50% 30%;
 
     /* Destructive */
     --destructive: 8 55% 48%; /* adjusted error for light mode */
