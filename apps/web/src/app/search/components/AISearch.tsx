@@ -73,14 +73,14 @@ export function AISearch({
   return (
     <>
       {/* AI Recommendations Banner */}
-      <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4 mb-4">
+      <div className="bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/20 rounded-lg p-4 mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-400" />
-          <span className="text-purple-400 font-medium">AI Recommendations for:</span>
-          <span className="text-zinc-300">&quot;{aiPrompt}&quot;</span>
+          <Sparkles className="h-5 w-5 text-secondary" />
+          <span className="text-secondary font-medium">AI Recommendations for:</span>
+          <span className="text-foreground">&quot;{aiPrompt}&quot;</span>
         </div>
         {aiProviders.length > 0 && (
-          <p className="text-zinc-500 text-sm mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Powered by {aiProviders.join(' & ')}
           </p>
         )}
