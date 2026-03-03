@@ -13,7 +13,7 @@ export function WizardStepType({ onSelectType }: WizardStepTypeProps) {
         <button
           key={ct.value}
           onClick={() => onSelectType(ct.value)}
-          className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-accent transition-colors text-center"
+          className="flex flex-col items-center gap-2 rounded-container border p-4 hover:bg-accent transition-colors text-center"
           data-testid={`type-card-${ct.value}`}
         >
           <div

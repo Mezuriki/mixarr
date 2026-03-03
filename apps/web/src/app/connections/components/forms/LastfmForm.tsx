@@ -29,7 +29,7 @@ export function LastfmForm({
 
   return (
     <>
-      <div className="p-3 bg-muted/50 rounded-lg border">
+      <div className="p-3 bg-muted/50 rounded-container border">
         <p className="text-sm font-medium mb-1">Last.fm API Setup</p>
         <p className="text-xs text-muted-foreground mb-2">
           Create an API account to get your API key.

@@ -419,7 +419,7 @@ export function SubscriptionFormModal({
                 <button
                   key={preset.id}
                   onClick={() => selectPreset(preset)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors text-left"
+                  className="w-full flex items-center justify-between p-3 rounded-container border hover:bg-accent transition-colors text-left"
                 >
                   <div>
                     <p className="font-medium">{preset.name}</p>
@@ -620,7 +620,7 @@ export function SubscriptionFormModal({
                   <p className="text-xs text-destructive mt-1">{validationErrors.publicPlaylistUrl}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-container">
                 <input
                   type="checkbox"
                   id="discoverAlbums"
@@ -636,7 +636,7 @@ export function SubscriptionFormModal({
                 </label>
               </div>
               {!form.discoverAlbums && (
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-container">
                   <input
                     type="checkbox"
                     id="includeAllArtists"

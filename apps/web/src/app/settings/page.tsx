@@ -191,7 +191,7 @@ export default function SettingsPage() {
           <Skeleton className="h-4 w-96" />
         </div>
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-lg border bg-card p-6 space-y-4">
+          <div key={i} className="rounded-container border bg-card p-6 space-y-4">
             <Skeleton className="h-5 w-32" />
             {Array.from({ length: 3 }).map((_, j) => (
               <div key={j} className="flex items-center justify-between">
@@ -234,7 +234,7 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2 text-primary">
+              <div className="rounded-container bg-primary/10 p-2 text-primary">
                 <Shield className="h-5 w-5" />
               </div>
               <div>
@@ -254,7 +254,7 @@ export default function SettingsPage() {
             <Card key={group.key}>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <div className="rounded-container bg-primary/10 p-2 text-primary">
                     <GroupIcon className="h-5 w-5" />
                   </div>
                   <div>
@@ -306,7 +306,7 @@ export default function SettingsPage() {
                 {group.key === 'notifications' && (
                   <Link 
                     href="/settings/notifications"
-                    className="flex items-center justify-between py-3 px-4 -mx-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors mt-4"
+                    className="flex items-center justify-between py-3 px-4 -mx-4 bg-muted/50 rounded-container hover:bg-muted transition-colors mt-4"
                   >
                     <div>
                       <div className="font-medium">Notification Channels</div>
@@ -327,7 +327,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                <div className="rounded-container bg-primary/10 p-2 text-primary">
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>

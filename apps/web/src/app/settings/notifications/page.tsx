@@ -247,7 +247,7 @@ export default function NotificationsSettingsPage() {
         {loading ? (
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+              <div key={i} className="flex items-center justify-between p-4 rounded-container border bg-card">
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-1/4" />
                   <Skeleton className="h-3 w-1/2" />
@@ -271,7 +271,7 @@ export default function NotificationsSettingsPage() {
                 <Card key={channel.id} className={!channel.isActive ? 'opacity-60' : ''}>
                   <CardContent className="flex items-center justify-between py-4">
                     <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-primary/10">
+                      <div className="p-2 rounded-container bg-primary/10">
                         <Icon className="w-5 h-5 text-primary" />
                       </div>
                       <div>
@@ -431,7 +431,7 @@ export default function NotificationsSettingsPage() {
           {/* Events */}
           <div>
             <label className="text-sm font-medium mb-2 block">Events to Notify</label>
-            <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+            <div className="space-y-2 bg-muted/50 rounded-container p-3">
               {events.map(event => (
                 <label key={event.value} className="flex items-start gap-3 cursor-pointer">
                   <Checkbox

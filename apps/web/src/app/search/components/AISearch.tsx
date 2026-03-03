@@ -73,7 +73,7 @@ export function AISearch({
   return (
     <>
       {/* AI Recommendations Banner */}
-      <div className="bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/20 rounded-lg p-4 mb-4">
+      <div className="bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/20 rounded-container p-4 mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-secondary" />
           <span className="text-secondary font-medium">AI Recommendations for:</span>

@@ -304,7 +304,7 @@ export function SlskdSearchModal({ isOpen, onClose, artistName, artistImage }: S
     >
       {/* Header with artist info */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+        <div className="relative w-16 h-16 rounded-container overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
           {artistImage ? (
             <Image src={artistImage} alt={artistName} fill className="object-cover" unoptimized />
           ) : (
@@ -415,7 +415,7 @@ export function SlskdSearchModal({ isOpen, onClose, artistName, artistImage }: S
                 return (
                   <div
                     key={displayIdx}
-                    className="border rounded-lg p-4 hover:border-primary transition-colors"
+                    className="border rounded-container p-4 hover:border-primary transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       {/* Checkbox */}

@@ -28,7 +28,7 @@ function StatTile({ icon, value, label, colorClass, iconBgClass }: StatTileProps
         </div>
         
         {/* Icon */}
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBgClass}`}>
+        <div className={`w-10 h-10 rounded-container flex items-center justify-center ${iconBgClass}`}>
           {icon}
         </div>
       </div>
@@ -44,7 +44,7 @@ function StatTileSkeleton() {
           <div className="h-7 w-12 bg-muted rounded mb-1" />
           <div className="h-3 w-20 bg-muted rounded" />
         </div>
-        <div className="w-10 h-10 rounded-lg bg-muted" />
+        <div className="w-10 h-10 rounded-container bg-muted" />
       </div>
     </div>
   );

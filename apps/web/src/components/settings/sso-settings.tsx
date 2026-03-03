@@ -245,7 +245,7 @@ export function SSOSettings() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <div className="rounded-container bg-primary/10 p-2 text-primary">
               <Shield className="h-5 w-5" />
             </div>
             <div>
@@ -262,7 +262,7 @@ export function SSOSettings() {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+          <div className="rounded-container bg-primary/10 p-2 text-primary">
             <Shield className="h-5 w-5" />
           </div>
           <div>
@@ -281,7 +281,7 @@ export function SSOSettings() {
           const isSaved = !!provider;
 
           return (
-            <div key={config.type} className="rounded-lg border">
+            <div key={config.type} className="rounded-container border">
               {/* Accordion Header */}
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -383,7 +383,7 @@ export function SSOSettings() {
 
                   {/* Google OAuth Callback URL Info */}
                   {config.type === 'google' && (
-                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-sm">
+                    <div className="rounded-container bg-amber-50 dark:bg-amber-950/50 p-3 text-sm">
                       <p className="font-medium text-amber-900 dark:text-amber-100">OAuth Redirect URI</p>
                       <p className="mt-1 text-amber-800 dark:text-amber-200">
                         Add this redirect URI in your{' '}
@@ -404,7 +404,7 @@ export function SSOSettings() {
 
                   {/* SAML Callback URL Info */}
                   {config.type === 'saml' && (
-                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-sm">
+                    <div className="rounded-container bg-amber-50 dark:bg-amber-950/50 p-3 text-sm">
                       <p className="font-medium text-amber-900 dark:text-amber-100">SAML Assertion Consumer Service URL</p>
                       <p className="mt-1 text-amber-800 dark:text-amber-200">
                         Configure this ACS URL in your Identity Provider:
@@ -450,7 +450,7 @@ export function SSOSettings() {
         })}
 
         {/* Info Box */}
-        <div className="rounded-lg bg-status-info/10 p-4 text-sm">
+        <div className="rounded-container bg-status-info/10 p-4 text-sm">
           <p className="font-medium text-status-info">About Single Sign-On</p>
           <p className="mt-1 text-status-info">
             SSO allows users to authenticate using external identity providers. Enable a provider and configure its settings to allow users to sign in with their existing credentials.

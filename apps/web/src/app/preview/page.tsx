@@ -262,7 +262,7 @@ export default function PreviewPage() {
                     <div
                       key={artist.id || artist.name}
                       onClick={() => toggleArtist(artist.name)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-container border cursor-pointer transition-colors ${
                         selectedArtists.has(artist.name)
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
@@ -315,7 +315,7 @@ export default function PreviewPage() {
                     <div
                       key={artist.name}
                       onClick={() => toggleArtist(artist.name)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-container border cursor-pointer transition-colors ${
                         selectedArtists.has(artist.name)
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
@@ -356,7 +356,7 @@ export default function PreviewPage() {
                     <div
                       key={rec.name}
                       onClick={() => toggleArtist(rec.name)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-container border cursor-pointer transition-colors ${
                         selectedArtists.has(rec.name)
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'

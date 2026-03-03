@@ -37,7 +37,7 @@ export function MbidSelectionModal({
         {candidates?.map((candidate) => (
           <button
             key={candidate.id}
-            className="w-full p-3 text-left rounded-lg border hover:bg-muted/50 transition-colors"
+            className="w-full p-3 text-left rounded-container border hover:bg-muted/50 transition-colors"
             onClick={() => onSelect(candidate.id)}
           >
             <div className="font-medium">{candidate.name}</div>

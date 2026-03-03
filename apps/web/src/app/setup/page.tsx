@@ -200,7 +200,7 @@ function SetupPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg bg-muted p-4 text-sm">
+              <div className="rounded-container bg-muted p-4 text-sm">
                 <p className="font-medium mb-3">What Mixarr can do:</p>
                 <ul className="space-y-2 text-muted-foreground">
                   <li className="flex items-start gap-2">
@@ -244,7 +244,7 @@ function SetupPageContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-container bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
@@ -310,7 +310,7 @@ function SetupPageContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               {error && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="rounded-container bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
@@ -328,7 +328,7 @@ function SetupPageContent() {
               </div>
 
               {!baseUrl.startsWith('https://') && (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-sm">
+                <div className="rounded-container bg-amber-500/10 border border-amber-500/20 p-3 text-sm">
                   <p className="font-medium text-amber-600 dark:text-amber-400">HTTPS Recommended</p>
                   <p className="text-muted-foreground mt-1">
                     Spotify integration requires HTTPS. Use port 3443 for built-in HTTPS or configure a reverse proxy.

@@ -180,7 +180,7 @@ export default function LogsPage() {
                     onClick={() => setExpandedId(isExpanded ? null : log.id)}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`rounded-lg p-2 ${config.bg} ${config.color}`}>
+                      <div className={`rounded-container p-2 ${config.bg} ${config.color}`}>
                         <LevelIcon className="h-4 w-4" />
                       </div>
                       
@@ -202,7 +202,7 @@ export default function LogsPage() {
                         </p>
 
                         {isExpanded && log.metadata && (
-                          <pre className="mt-3 p-3 rounded-lg bg-muted text-xs overflow-x-auto">
+                          <pre className="mt-3 p-3 rounded-container bg-muted text-xs overflow-x-auto">
                             {JSON.stringify(log.metadata, null, 2)}
                           </pre>
                         )}

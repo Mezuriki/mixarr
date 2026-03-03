@@ -32,7 +32,7 @@ export function SpotifyForm({
   return (
     <>
       {/* Redirect URI info box */}
-      <div className="p-3 bg-muted/50 rounded-lg border">
+      <div className="p-3 bg-muted/50 rounded-container border">
         <p className="text-sm font-medium mb-1">Spotify App Setup</p>
         <p className="text-xs text-muted-foreground mb-2">
           Add this Redirect URI to your Spotify app settings:

@@ -34,7 +34,7 @@ export function SlskdForm({
 
   return (
     <>
-      <div className="p-3 bg-muted/50 rounded-lg border">
+      <div className="p-3 bg-muted/50 rounded-container border">
         <p className="text-sm font-medium mb-1">slskd Setup</p>
         <p className="text-xs text-muted-foreground mb-2">
           Connect to your slskd instance for Soulseek downloads. Get your API key from slskd

@@ -342,7 +342,7 @@ export function DuplicatesContent({ onCountChange }: DuplicatesContentProps) {
                       ) : candidateGuidance ? (
                         <div className="space-y-4">
                           {/* Recommendation */}
-                          <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-container">
                             <AlertTriangle className="w-5 h-5 text-status-warning mt-0.5" />
                             <div>
                               <div className="font-medium">Recommendation</div>

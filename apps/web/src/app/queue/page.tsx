@@ -135,7 +135,7 @@ export default function QueuePage() {
         </div>
 
         {/* Item type filter */}
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <div className="flex gap-1 bg-muted rounded-container p-1">
           <Button
             variant={itemTypeFilter === undefined ? 'secondary' : 'ghost'}
             size="sm"
@@ -192,7 +192,7 @@ export default function QueuePage() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+            <div key={i} className="flex items-center gap-4 p-4 rounded-container border bg-card">
               <Skeleton className="w-12 h-12 rounded-md" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-1/4" />
@@ -212,7 +212,7 @@ export default function QueuePage() {
         <div className="space-y-2">
           {/* Select all header */}
           {statusFilter === 'pending' && filteredItems.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-container">
               <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
                 {selectedIds.size === filteredItems.length ? (
                   <CheckSquare className="h-5 w-5" />

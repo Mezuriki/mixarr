@@ -241,7 +241,7 @@ export default function UsersPage() {
             {isLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-container border bg-card">
                     <Skeleton className="w-8 h-8 rounded-full" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-1/4" />
@@ -258,7 +258,7 @@ export default function UsersPage() {
                 {users.map((u) => (
                   <div
                     key={u.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${!u.isActive ? 'opacity-60 bg-muted/50' : ''}`}
+                    className={`flex items-center justify-between p-4 rounded-container border ${!u.isActive ? 'opacity-60 bg-muted/50' : ''}`}
                   >
                     <div className="flex items-center gap-4">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center ${u.isActive ? 'bg-primary/10' : 'bg-muted'}`}>

@@ -101,7 +101,7 @@ export default function Home() {
         <PageHeader title="Discovery Feed" description="Review and approve artist recommendations" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+            <div key={i} className="rounded-container border bg-card overflow-hidden">
               <Skeleton className="aspect-square w-full" />
               <div className="p-3 space-y-2">
                 <Skeleton className="h-4 w-3/4" />
@@ -122,7 +122,7 @@ export default function Home() {
           <p className="text-destructive mb-4">Failed to load feed. Please try again.</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-container transition-colors"
           >
             Retry
           </button>

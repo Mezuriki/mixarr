@@ -186,7 +186,7 @@ export default function JobsPage() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+                <div key={i} className="flex items-center gap-4 p-4 rounded-container border bg-card">
                   <Skeleton className="w-8 h-8 rounded-md" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-1/3" />
@@ -205,7 +205,7 @@ export default function JobsPage() {
                 return (
                   <div
                     key={job.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex items-center justify-between p-4 border rounded-container"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">

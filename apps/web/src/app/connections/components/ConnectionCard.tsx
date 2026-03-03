@@ -78,7 +78,7 @@ export function ConnectionCard({
         ) : (
           <div className="space-y-2">
             {connections.map((conn) => (
-              <div key={conn.id} className="p-3 rounded-lg border space-y-2">
+              <div key={conn.id} className="p-3 rounded-container border space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {conn.isActive ? (

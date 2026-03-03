@@ -103,7 +103,7 @@ export function AISettings() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <div className="rounded-container bg-primary/10 p-2 text-primary">
               <Brain className="h-5 w-5" />
             </div>
             <div>
@@ -121,7 +121,7 @@ export function AISettings() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <div className="rounded-container bg-primary/10 p-2 text-primary">
               <Brain className="h-5 w-5" />
             </div>
             <div>
@@ -138,7 +138,7 @@ export function AISettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* OpenAI Section */}
-        <div className="rounded-lg border p-4 space-y-4">
+        <div className="rounded-container border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">OpenAI-Compatible</h3>
@@ -212,7 +212,7 @@ export function AISettings() {
         </div>
 
         {/* Anthropic Section */}
-        <div className="rounded-lg border p-4 space-y-4">
+        <div className="rounded-container border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold">Anthropic (Claude)</h3>
@@ -256,7 +256,7 @@ export function AISettings() {
         </div>
 
         {/* Info */}
-        <div className="rounded-lg bg-status-info/10 p-4 text-sm">
+        <div className="rounded-container bg-status-info/10 p-4 text-sm">
           <p className="font-medium text-status-info">About AI Recommendations</p>
           <p className="mt-1 text-status-info">
             AI recommendations analyze your library and listening patterns to suggest new artists.

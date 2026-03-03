@@ -26,7 +26,7 @@ export function DiscogsForm({
 
   return (
     <>
-      <div className="p-3 bg-muted/50 rounded-lg border">
+      <div className="p-3 bg-muted/50 rounded-container border">
         <p className="text-sm font-medium mb-1">Discogs Setup</p>
         <p className="text-xs text-muted-foreground mb-2">
           Generate a personal access token from your Discogs developer settings.

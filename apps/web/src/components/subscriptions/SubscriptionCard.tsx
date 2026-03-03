@@ -114,7 +114,7 @@ export function SubscriptionCard({
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           {/* Icon */}
-          <div className="rounded-lg bg-primary/10 p-3 text-primary">
+          <div className="rounded-container bg-primary/10 p-3 text-primary">
             <SubIcon className="h-5 w-5" />
           </div>
 

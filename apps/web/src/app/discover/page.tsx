@@ -474,7 +474,7 @@ export default function DiscoverPage() {
 
               {/* Selected Artists Panel (Collapsible) */}
               {showSelectedPanel && selectedArtists.size > 0 && (
-                <div className="border rounded-lg p-3 bg-muted/30 max-h-40 overflow-y-auto">
+                <div className="border rounded-container p-3 bg-muted/30 max-h-40 overflow-y-auto">
                   <div className="flex flex-wrap gap-2">
                     {Array.from(selectedArtists).sort().map((name) => (
                       <Badge 
@@ -499,7 +499,7 @@ export default function DiscoverPage() {
               )}
 
               {/* Artist List */}
-              <div className="relative min-h-[300px] max-h-[600px] overflow-y-auto border rounded-lg">
+              <div className="relative min-h-[300px] max-h-[600px] overflow-y-auto border rounded-container">
                 {isLoadingLibrary && (
                   <div className="divide-y">
                     {Array.from({ length: 4 }).map((_, i) => (
@@ -634,7 +634,7 @@ export default function DiscoverPage() {
 
               {/* Profile Selection */}
               {profiles && (
-                <div className="grid grid-cols-1 gap-3 p-3 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-1 gap-3 p-3 bg-muted/50 rounded-container">
                   <div className="text-sm font-medium">Add Settings</div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <Select
@@ -657,7 +657,7 @@ export default function DiscoverPage() {
               )}
 
               {/* Recommendations List */}
-              <div className="relative min-h-[300px] max-h-[500px] overflow-y-auto border rounded-lg">
+              <div className="relative min-h-[300px] max-h-[500px] overflow-y-auto border rounded-container">
                 {isLoadingRecs && (
                   <div className="divide-y">
                     {Array.from({ length: 4 }).map((_, i) => (

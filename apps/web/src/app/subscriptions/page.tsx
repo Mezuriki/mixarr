@@ -166,7 +166,7 @@ export default function SubscriptionsPage() {
       {isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+            <div key={i} className="flex items-center gap-4 p-4 rounded-container border bg-card">
               <Skeleton className="w-10 h-10 rounded-md" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-1/4" />

@@ -29,7 +29,7 @@ export function ListenBrainzForm({
 
   return (
     <>
-      <div className="p-3 bg-muted/50 rounded-lg border">
+      <div className="p-3 bg-muted/50 rounded-container border">
         <p className="text-sm font-medium mb-1">ListenBrainz Setup</p>
         <p className="text-xs text-muted-foreground mb-2">
           Get your user token from your profile settings.
