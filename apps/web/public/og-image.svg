@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#1c1b19"/>
+  <text x="600" y="280" text-anchor="middle" fill="#ebe7df" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" letter-spacing="-0.02em">Mixarr</text>
+  <rect x="500" y="304" width="200" height="3" rx="2" fill="#bf7a56"/>
+  <text x="600" y="352" text-anchor="middle" fill="#8a857d" font-family="system-ui, -apple-system, sans-serif" font-size="24">Music discovery and import tool for Lidarr</text>
+</svg>

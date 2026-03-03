@@ -32,6 +32,26 @@ export const metadata: Metadata = {
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
+  openGraph: {
+    title: 'Mixarr',
+    description: 'Music discovery and import tool for Lidarr',
+    siteName: 'Mixarr',
+    type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Mixarr - Music discovery and import tool for Lidarr',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mixarr',
+    description: 'Music discovery and import tool for Lidarr',
+    images: ['/og-image.png'],
+  },
 };
 
 export const viewport: Viewport = {
