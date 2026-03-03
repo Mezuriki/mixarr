@@ -71,32 +71,32 @@ export function DashboardTiles() {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <StatTile
-        icon={<RefreshCw className="w-5 h-5 text-blue-400" />}
+        icon={<RefreshCw className="w-5 h-5 text-primary" />}
         value={stats.activeSubscriptions}
         label="Active Subscriptions"
-        colorClass="bg-gradient-to-r from-blue-500 to-cyan-500"
-        iconBgClass="bg-blue-500/10"
+        colorClass="bg-primary"
+        iconBgClass="bg-primary/10"
       />
       <StatTile
-        icon={<Users className="w-5 h-5 text-pink-400" />}
+        icon={<Users className="w-5 h-5 text-secondary" />}
         value={stats.artistsAdded}
         label="Artists Added (30d)"
-        colorClass="bg-gradient-to-r from-pink-500 to-violet-500"
-        iconBgClass="bg-pink-500/10"
+        colorClass="bg-secondary"
+        iconBgClass="bg-secondary/10"
       />
       <StatTile
-        icon={<Clock className="w-5 h-5 text-cyan-400" />}
+        icon={<Clock className="w-5 h-5 text-status-warning" />}
         value={stats.pendingReviews}
         label="Pending Reviews"
-        colorClass="bg-gradient-to-r from-cyan-500 to-blue-500"
-        iconBgClass="bg-cyan-500/10"
+        colorClass="bg-status-warning"
+        iconBgClass="bg-status-warning/10"
       />
       <StatTile
-        icon={<Link2 className="w-5 h-5 text-green-400" />}
+        icon={<Link2 className="w-5 h-5 text-status-success" />}
         value={stats.activeConnections}
         label="Active Connections"
-        colorClass="bg-gradient-to-r from-green-500 to-cyan-500"
-        iconBgClass="bg-green-500/10"
+        colorClass="bg-status-success"
+        iconBgClass="bg-status-success/10"
       />
     </div>
   );
