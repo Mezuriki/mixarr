@@ -113,8 +113,9 @@ const config: Config = {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       borderRadius: {
-        'card': '1.25rem',    // 20px - generous card rounding
-        'button': '0.625rem', // 10px - pill-ish buttons
+        'card': '1.25rem',       // 20px - generous card rounding
+        'container': '0.75rem',  // 12px - list items, inner containers, banners
+        'button': '0.625rem',    // 10px - pill-ish buttons
       },
       boxShadow: {
         // Elevation system
