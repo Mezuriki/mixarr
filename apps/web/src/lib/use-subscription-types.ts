@@ -7,12 +7,15 @@
 
 import { useState, useEffect } from 'react';
 import Brain from 'lucide-react/dist/esm/icons/brain';
+import Compass from 'lucide-react/dist/esm/icons/compass';
 import Disc from 'lucide-react/dist/esm/icons/disc';
+import GitFork from 'lucide-react/dist/esm/icons/git-fork';
 import Globe from 'lucide-react/dist/esm/icons/globe';
 import Headphones from 'lucide-react/dist/esm/icons/headphones';
 import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Radio from 'lucide-react/dist/esm/icons/radio';
 import ShoppingBag from 'lucide-react/dist/esm/icons/shopping-bag';
-import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Shuffle from 'lucide-react/dist/esm/icons/shuffle';
 import Tag from 'lucide-react/dist/esm/icons/tag';
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 import type { LucideIcon } from 'lucide-react';
@@ -53,12 +56,15 @@ export interface SubscriptionTypeConfig {
  */
 const ICON_MAP: Record<string, LucideIcon> = {
   Brain,
+  Compass,
   Disc,
+  GitFork,
   Globe,
   Headphones,
   Music2,
+  Radio,
   ShoppingBag,
-  Sparkles,
+  Shuffle,
   Tag,
   TrendingUp,
 };
