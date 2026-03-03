@@ -33,6 +33,7 @@ export interface CreateSubscriptionInput {
   config?: Prisma.JsonValue;
   schedule?: string | null;
   resultHandling?: ResultHandling;
+  resultLimit?: number;
   isActive?: boolean;
 }
 
@@ -44,6 +45,7 @@ export interface UpdateSubscriptionInput {
   config?: Prisma.JsonValue;
   schedule?: string | null;
   resultHandling?: ResultHandling;
+  resultLimit?: number;
   isActive?: boolean;
 }
 
@@ -105,6 +107,7 @@ export class SubscriptionService {
         config: input.config || {},
         schedule: input.schedule,
         resultHandling: input.resultHandling || 'preview',
+        resultLimit: input.resultLimit ?? 50,
         isActive: input.isActive !== false,
       },
     });
@@ -142,6 +145,7 @@ export class SubscriptionService {
         ...(input.config && { config: input.config }),
         ...(input.schedule !== undefined && { schedule: input.schedule }),
         ...(input.resultHandling && { resultHandling: input.resultHandling }),
+        ...(typeof input.resultLimit === 'number' && { resultLimit: input.resultLimit }),
         ...(typeof input.isActive === 'boolean' && { isActive: input.isActive }),
       },
     });

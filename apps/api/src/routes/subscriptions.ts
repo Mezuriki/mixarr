@@ -59,7 +59,6 @@ subscriptionsRouter.get('/:id/results', async (req, res) => {
       res.status(400).json({ error: 'Invalid subscription ID' });
       return;
     }
-    const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
     const status = req.query.status as string;
 
@@ -71,6 +70,9 @@ subscriptionsRouter.get('/:id/results', async (req, res) => {
       res.status(404).json({ error: 'Subscription not found' });
       return;
     }
+
+    // Use query param if provided, otherwise fall back to subscription's configured limit
+    const limit = parseInt(req.query.limit as string) || subscription.resultLimit || 50;
 
     const whereClause: any = { subscriptionId: id };
     if (status) {

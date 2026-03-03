@@ -27,6 +27,7 @@ interface Subscription {
   config: Record<string, any>;
   schedule: string | null;
   resultHandling: string;
+  resultLimit: number;
   isActive: boolean;
   lastRun: string | null;
 }
@@ -82,7 +83,10 @@ export default function SubscriptionDetailPage() {
   };
 
   const fetchResults = async () => {
-    const params = statusFilter ? `?status=${statusFilter}` : '';
+    const queryParams = new URLSearchParams();
+    if (statusFilter) queryParams.set('status', statusFilter);
+    if (subscription?.resultLimit) queryParams.set('limit', String(subscription.resultLimit));
+    const params = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const { data } = await api.get<{ results: SubscriptionResult[]; statusCounts: Record<string, number> }>(
       `/api/subscriptions/${subscriptionId}/results${params}`
     );

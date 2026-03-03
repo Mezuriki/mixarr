@@ -154,6 +154,7 @@ describe('SubscriptionService', () => {
           config: input.config,
           schedule: input.schedule,
           resultHandling: input.resultHandling,
+          resultLimit: 50,
           isActive: input.isActive,
         },
       });
