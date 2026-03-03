@@ -362,7 +362,7 @@ export default function PreviewPage() {
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-secondary to-primary flex items-center justify-center">
                         <Sparkles className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
