@@ -6,12 +6,15 @@
  */
 
 import Brain from 'lucide-react/dist/esm/icons/brain';
+import Compass from 'lucide-react/dist/esm/icons/compass';
 import Disc from 'lucide-react/dist/esm/icons/disc';
+import GitFork from 'lucide-react/dist/esm/icons/git-fork';
 import Globe from 'lucide-react/dist/esm/icons/globe';
 import Headphones from 'lucide-react/dist/esm/icons/headphones';
 import Music2 from 'lucide-react/dist/esm/icons/music-2';
+import Radio from 'lucide-react/dist/esm/icons/radio';
 import ShoppingBag from 'lucide-react/dist/esm/icons/shopping-bag';
-import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Shuffle from 'lucide-react/dist/esm/icons/shuffle';
 import Tag from 'lucide-react/dist/esm/icons/tag';
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
 import type { LucideIcon } from 'lucide-react';
@@ -93,7 +96,7 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
   { value: 'lastfm_tag', label: 'Last.fm Tag', icon: Tag, description: 'Artists by genre/tag' },
   { value: 'lastfm_geo', label: 'Last.fm Geo', icon: Globe, description: 'Top artists by location' },
   { value: 'lastfm_library', label: 'Last.fm Library', icon: TrendingUp, description: 'Your top artists from scrobbles' },
-  { value: 'lastfm_similar', label: 'Last.fm Similar', icon: Sparkles, description: 'Artists similar to your top artists' },
+  { value: 'lastfm_similar', label: 'Last.fm Similar', icon: GitFork, description: 'Artists similar to your top artists' },
 
   // ListenBrainz
   { value: 'listenbrainz_top', label: 'ListenBrainz Top', icon: Headphones, description: 'Your top artists from listening history' },
@@ -128,7 +131,7 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
   { value: 'deezer_search', label: 'Deezer Search', icon: Music2, description: 'Search for artists (no login required)' },
   { value: 'deezer_favorites', label: 'Deezer Favorites', icon: Music2, description: 'Your favorite tracks', warning: 'Requires Deezer OAuth app (currently unavailable)' },
   { value: 'deezer_history', label: 'Deezer History', icon: Music2, description: 'Your listening history', warning: 'Requires Deezer OAuth app (currently unavailable)' },
-  { value: 'deezer_flow', label: 'Deezer Flow', icon: Sparkles, description: 'Your personalized Flow', warning: 'Requires Deezer OAuth app (currently unavailable)' },
+  { value: 'deezer_flow', label: 'Deezer Flow', icon: Radio, description: 'Your personalized Flow', warning: 'Requires Deezer OAuth app (currently unavailable)' },
   { value: 'deezer_playlist', label: 'Deezer Playlist', icon: Music2, description: 'Artists from a playlist', warning: 'Requires Deezer OAuth app (currently unavailable)' },
   { value: 'deezer_playlists', label: 'Deezer Playlists', icon: Music2, description: 'All your playlists', warning: 'Requires Deezer OAuth app (currently unavailable)' },
 
@@ -137,9 +140,9 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
   { value: 'tidal_followed_artists', label: 'TIDAL Followed', icon: Music2, description: 'Your followed artists' },
   { value: 'tidal_playlist', label: 'TIDAL Playlist', icon: Music2, description: 'Artists from a playlist' },
   { value: 'tidal_playlists', label: 'TIDAL Playlists', icon: Music2, description: 'All your playlists' },
-  { value: 'tidal_discovery', label: 'TIDAL Discovery', icon: Sparkles, description: 'Your discovery mix' },
+  { value: 'tidal_discovery', label: 'TIDAL Discovery', icon: Compass, description: 'Your discovery mix' },
   { value: 'tidal_new_arrivals', label: 'TIDAL New Arrivals', icon: Music2, description: 'New arrival recommendations' },
-  { value: 'tidal_mix', label: 'TIDAL My Mixes', icon: Sparkles, description: 'Your personalized mixes' },
+  { value: 'tidal_mix', label: 'TIDAL My Mixes', icon: Shuffle, description: 'Your personalized mixes' },
 
   // Discogs
   { value: 'discogs_label', label: 'Discogs Label', icon: Disc, description: 'Artists from a record label' },
@@ -151,8 +154,8 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
 
   // AI & Media Servers
   { value: 'ai_recommendation', label: 'AI Recommendations', icon: Brain, description: 'AI-powered artist discovery' },
-  { value: 'tautulli_similar', label: 'Plex Similar', icon: Sparkles, description: 'Artists similar to your Plex listening history' },
-  { value: 'jellyfin_similar', label: 'Jellyfin Similar', icon: Sparkles, description: 'Artists similar to your Jellyfin listening history' },
+  { value: 'tautulli_similar', label: 'Plex Similar', icon: GitFork, description: 'Artists similar to your Plex listening history' },
+  { value: 'jellyfin_similar', label: 'Jellyfin Similar', icon: GitFork, description: 'Artists similar to your Jellyfin listening history' },
 ];
 
 // ============================================================================
@@ -173,7 +176,7 @@ export const presetCategories: PresetCategory[] = [
   { id: 'discogs', label: 'Discogs', icon: Disc },
   { id: 'bandcamp', label: 'Bandcamp', icon: ShoppingBag },
   { id: 'library', label: 'My Library', icon: Music2 },
-  { id: 'musicbrainz', label: 'MusicBrainz', icon: Sparkles },
+  { id: 'musicbrainz', label: 'MusicBrainz', icon: Music2 },
   { id: 'ai', label: 'AI', icon: Brain },
 ];
 
