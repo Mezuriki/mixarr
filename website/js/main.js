@@ -242,22 +242,4 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-
-  // ========================================
-  // Navbar Background on Scroll
-  // ========================================
-  const navbar = document.querySelector('.navbar');
-  
-  if (navbar) {
-    const updateNavbar = () => {
-      if (window.scrollY > 50) {
-        navbar.style.background = 'rgba(26, 26, 46, 0.98)';
-      } else {
-        navbar.style.background = 'rgba(26, 26, 46, 0.95)';
-      }
-    };
-
-    window.addEventListener('scroll', updateNavbar, { passive: true });
-    updateNavbar();
-  }
 });
