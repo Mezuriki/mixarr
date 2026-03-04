@@ -16,6 +16,7 @@ import {
 } from '@/lib/subscription-constants';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Pencil from 'lucide-react/dist/esm/icons/pencil';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 
 // ============================================================================
@@ -206,6 +207,9 @@ export function SubscriptionFormModal({
   const [isSearchingArtist, setIsSearchingArtist] = useState(false);
   const [showArtistDropdown, setShowArtistDropdown] = useState(false);
 
+  // Name editing state (for edit mode pencil-to-unlock)
+  const [isNameEditing, setIsNameEditing] = useState(false);
+
   // Compute derived values
   const resultHandlingOptions = getResultHandlingOptions(hasLidarr);
   const typeConfig = getSubscriptionTypeConfig(form.type);
@@ -229,6 +233,7 @@ export function SubscriptionFormModal({
       setArtistSearch('');
       setArtistResults([]);
       setShowArtistDropdown(false);
+      setIsNameEditing(false);
     }
   }, [isOpen, editingSubscription]);
 
@@ -261,6 +266,16 @@ export function SubscriptionFormModal({
   // Validation
   const validateForm = (): Record<string, string> => {
     const errors: Record<string, string> = {};
+
+    // Validate name
+    const trimmedName = (form.name || '').trim();
+    if (trimmedName.length === 0) {
+      errors.name = 'Name is required';
+    } else if (trimmedName.length > 255) {
+      errors.name = 'Name must be 255 characters or less';
+    }
+
+    // Validate type-specific required fields
     const requiredFields = REQUIRED_FIELDS[form.type] || [];
 
     for (const { field, label } of requiredFields) {
@@ -343,7 +358,7 @@ export function SubscriptionFormModal({
     setValidationErrors({});
 
     const config = buildConfig();
-    const name = form.name || subscriptionTypes.find((t) => t.value === form.type)?.label || form.type;
+    const name = (form.name || subscriptionTypes.find((t) => t.value === form.type)?.label || form.type).trim();
 
     await onSave({
       id: editingSubscription?.id,
@@ -370,7 +385,8 @@ export function SubscriptionFormModal({
   };
 
   const handleTypeChange = (newType: string) => {
-    setForm({ ...form, type: newType });
+    const newTypeLabel = subscriptionTypes.find((t) => t.value === newType)?.label || newType;
+    setForm({ ...form, type: newType, name: newTypeLabel });
     setValidationErrors({});
     setArtistSearch('');
     setArtistResults([]);
@@ -484,10 +500,39 @@ export function SubscriptionFormModal({
             )}
           </div>
 
-          {/* Name (read-only, derived from type) */}
+          {/* Name */}
           <div>
             <label className="text-sm font-medium">Name</label>
-            <Input value={form.name || typeConfig?.label || ''} readOnly className="bg-muted cursor-not-allowed" />
+            {editingSubscription && !isNameEditing ? (
+              <div className="flex gap-2">
+                <Input
+                  value={form.name || typeConfig?.label || ''}
+                  readOnly
+                  className="bg-muted cursor-not-allowed flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsNameEditing(true)}
+                  title="Rename subscription"
+                  className="shrink-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Input
+                value={form.name || (editingSubscription ? '' : typeConfig?.label || '')}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Enter subscription name"
+                autoFocus={isNameEditing}
+                maxLength={255}
+              />
+            )}
+            {validationErrors.name && (
+              <p className="text-xs text-destructive mt-1">{validationErrors.name}</p>
+            )}
           </div>
 
           {/* Schedule */}
@@ -590,17 +635,6 @@ export function SubscriptionFormModal({
           {/* Spotify Public Playlist */}
           {form.type === 'spotify_public_playlist' && (
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Subscription Name</label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g., Release Radar, Discover Weekly"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Optional — helps distinguish between multiple playlist subscriptions
-                </p>
-              </div>
               <div>
                 <label className="text-sm font-medium">
                   Playlist URL
