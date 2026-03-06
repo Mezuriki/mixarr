@@ -893,3 +893,110 @@ Only 5 frontend test files exist compared to 102 API test files. Critical UI com
 **Estimated Effort:** 3-5 days
 
 ---
+
+## 🎯 FEATURE BACKLOG (Competitive — from Aurral Analysis)
+
+> Items identified from competitive analysis against [Aurral](https://github.com/lklynet/aurral) (March 2026).
+> These are features where Aurral has a clear UX or capability advantage.
+
+### FB-001: Weekly Flow / Playlist Generation Pipeline
+
+**Priority:** High  
+**Created:** March 3, 2026  
+**Status:** Backlog  
+**Origin:** Aurral competitive analysis — their "killer feature"
+
+**Problem:**
+Mixarr discovers artists and adds them to Lidarr, but stops there. Aurral generates weekly playlists from discovery recommendations, downloads actual tracks via a built-in Soulseek client, organizes them into a dedicated folder, and creates Navidrome smart playlists — essentially a self-hosted "Discover Weekly" experience with real audio files.
+
+Mixarr already has slskd integration for downloading, but it's a rudimentary per-track queue — not a curated playlist workflow.
+
+**Proposed Solution:**
+- Build a "Flow" system that generates playlists from subscription results (recommended artists → top tracks → download queue)
+- Configurable mix modes: discovery, trending, deep dive, tag-based
+- Multiple flows per user with adjustable track count and refresh schedule
+- Download pipeline leveraging existing slskd integration
+- Navidrome integration: create libraries, write smart playlist files (.nsp), trigger scans
+- WebSocket-driven progress tracking (queued → downloading → processing → complete/failed)
+
+**Complexity:** High (1-2 weeks)
+
+---
+
+### FB-002: Tag/Genre-Based Discovery UI
+
+**Priority:** Medium  
+**Created:** March 3, 2026  
+**Status:** Backlog  
+**Origin:** Aurral competitive analysis — Discover page UX
+
+**Problem:**
+Mixarr has Last.fm tag subscriptions (data source exists) but no browsable tag/genre discovery experience. Aurral's Discover page features "Because You Like [genre]" sections with artists grouped by tag, clickable genre pills, and a tag search scope toggle (recommended vs. all artists). This makes discovery feel exploratory rather than subscription-configuration-driven.
+
+**Proposed Solution:**
+- Add a tag-based discovery section to the Mixarr dashboard/discover page
+- Show "Because You Like [tag]" sections derived from the user's library genres
+- Clickable tag pills that navigate to filtered artist results
+- Tag search with scope toggle (recommended vs. all)
+- Pull genre data from Last.fm, Spotify, and MusicBrainz to build user's tag profile
+
+**Files Likely Affected:**
+- `apps/web/src/app/discover/` — new discovery sections
+- `apps/api/src/routes/discover.ts` — tag aggregation endpoint
+- `apps/api/src/services/` — tag profile builder using existing service connections
+
+**Complexity:** Medium (3-5 days)
+
+---
+
+### FB-003: Artist Audio Preview
+
+**Priority:** Medium  
+**Created:** March 3, 2026  
+**Status:** Backlog  
+**Origin:** Aurral competitive analysis — artist detail UX
+
+**Problem:**
+When users discover a new artist in Mixarr, they have no way to preview what the artist sounds like without leaving the app. Aurral provides inline audio previews via Deezer top tracks (30-second samples) and Navidrome streaming for library tracks. This dramatically improves the "should I add this?" decision quality.
+
+**Proposed Solution:**
+- Add a preview player component to artist search results and the review queue
+- Source previews from Deezer (30-second samples, no auth required for previews) as primary source
+- Optional Navidrome/Jellyfin streaming for artists already in the user's library
+- Minimal player UI: play/pause, progress bar, track name — inline, not a modal
+- Preload next track for smooth sequential listening
+
+**Files Likely Affected:**
+- `apps/web/src/components/` — new `PreviewPlayer` component
+- `apps/api/src/routes/` — preview proxy endpoint (Deezer top tracks API)
+- `apps/web/src/app/discover/` and `apps/web/src/app/queue/` — integrate player
+
+**Complexity:** Medium (2-3 days)
+
+---
+
+### FB-004: Recently Added & Upcoming Releases on Dashboard
+
+**Priority:** Low-Medium  
+**Created:** March 3, 2026  
+**Status:** Backlog  
+**Origin:** Aurral competitive analysis — Discover page immediate value
+
+**Problem:**
+Aurral's Discover page prominently shows "Recently Added" artists and "Recent & Upcoming Releases" sections, giving users immediate value even before recommendations kick in. Mixarr's dashboard shows stats but doesn't highlight what's new in the library or what's coming up.
+
+**Proposed Solution:**
+- Add "Recently Added" section to dashboard showing last N artists added to Lidarr (with album art)
+- Add "Upcoming Releases" section showing future release dates for monitored artists
+- Data sourced from Lidarr API (`/api/v1/album?includeArtist=true&sort=releaseDate&order=desc`)
+- Clickable cards that link to artist detail or Lidarr
+- Both sections visible without any subscriptions configured (immediate first-run value)
+
+**Files Likely Affected:**
+- `apps/web/src/app/dashboard/` or `apps/web/src/app/discover/` — new sections
+- `apps/api/src/routes/dashboard.ts` or new route — Lidarr recent/upcoming queries
+- `apps/api/src/services/lidarr.ts` — new methods for recent albums and upcoming releases
+
+**Complexity:** Low-Medium (1-2 days)
+
+---
