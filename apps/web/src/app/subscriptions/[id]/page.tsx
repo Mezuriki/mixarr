@@ -19,6 +19,8 @@ import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ExternalLinks } from '@/components/ExternalLinks';
+import { subscriptionTypes } from '@/lib/subscription-constants';
+import { buildSubscriptionDescriptor, isDefaultName } from '@/lib/subscription-descriptor';
 
 interface Subscription {
   id: number;
@@ -317,18 +319,27 @@ export default function SubscriptionDetailPage() {
     );
   }
 
+  const typeLabel = subscriptionTypes.find(t => t.value === subscription?.type)?.label || subscription?.type || '';
+  const descriptor = subscription
+    ? buildSubscriptionDescriptor(subscription.type, subscription.config, typeLabel)
+    : 'Subscription';
+  const showCustomName = subscription?.name && !isDefaultName(subscription.name, typeLabel, descriptor);
+
   return (
     <>
       <nav aria-label="Breadcrumb" className="mb-4">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <li><Link href="/subscriptions" className="hover:text-foreground transition-colors">Subscriptions</Link></li>
           <li className="text-muted-foreground/50">/</li>
-          <li className="text-foreground font-medium truncate">{subscription?.name || 'Loading...'}</li>
+          <li className="text-foreground font-medium truncate">{descriptor || 'Loading...'}</li>
         </ol>
       </nav>
       <PageHeader
-        title={subscription?.name || 'Subscription'}
-        description={`Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`}
+        title={descriptor}
+        description={showCustomName
+          ? `${subscription.name} · Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`
+          : `Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`
+        }
       >
         <Button onClick={handleRun}>
           <Play className="h-4 w-4 mr-2" /> Run Now
