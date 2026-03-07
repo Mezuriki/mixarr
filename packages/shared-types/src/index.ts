@@ -102,6 +102,11 @@ export type SubscriptionType =
   | 'lastfm_geo'
   | 'lastfm_library'
   | 'lastfm_similar'
+  | 'lastfm_tag_albums'
+  | 'lastfm_tag_similar'
+  | 'lastfm_user_albums'
+  | 'lastfm_weekly_artists'
+  | 'lastfm_weekly_albums'
   // Spotify
   | 'spotify_playlist'
   | 'spotify_followed'

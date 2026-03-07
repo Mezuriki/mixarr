@@ -31,6 +31,11 @@ export const SUBSCRIPTION_TYPES = {
   LASTFM_GEO: 'lastfm_geo',
   LASTFM_LIBRARY: 'lastfm_library',
   LASTFM_SIMILAR: 'lastfm_similar',
+  LASTFM_TAG_ALBUMS: 'lastfm_tag_albums',
+  LASTFM_TAG_SIMILAR: 'lastfm_tag_similar',
+  LASTFM_USER_ALBUMS: 'lastfm_user_albums',
+  LASTFM_WEEKLY_ARTISTS: 'lastfm_weekly_artists',
+  LASTFM_WEEKLY_ALBUMS: 'lastfm_weekly_albums',
 
   // ListenBrainz
   LISTENBRAINZ_TOP: 'listenbrainz_top',
