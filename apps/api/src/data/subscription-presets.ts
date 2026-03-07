@@ -218,6 +218,56 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       config: { tag: 'k-pop', limit: 50 },
     },
 
+    // TAG ALBUMS & RELATED TAGS (discover via album charts and adjacent genres)
+    {
+      id: 'tag-albums-rock',
+      name: 'Top Rock Albums → Artists',
+      description: 'Artists from the most popular rock albums — different results than top artists by tag',
+      type: 'lastfm_tag_albums',
+      category: 'genre',
+      config: { tag: 'rock', limit: 50 },
+    },
+    {
+      id: 'tag-albums-electronic',
+      name: 'Top Electronic Albums → Artists',
+      description: 'Artists from the most popular electronic albums',
+      type: 'lastfm_tag_albums',
+      category: 'genre',
+      config: { tag: 'electronic', limit: 50 },
+    },
+    {
+      id: 'tag-albums-hiphop',
+      name: 'Top Hip-Hop Albums → Artists',
+      description: 'Artists from the most popular hip-hop albums',
+      type: 'lastfm_tag_albums',
+      category: 'genre',
+      config: { tag: 'hip-hop', limit: 50 },
+    },
+    {
+      id: 'related-tags-indie',
+      name: 'Genres Related to Indie',
+      description: 'Artists from genres adjacent to indie (e.g. dream pop, shoegaze, lo-fi)',
+      type: 'lastfm_tag_similar',
+      category: 'genre',
+      config: { tag: 'indie', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
+    },
+    {
+      id: 'related-tags-electronic',
+      name: 'Genres Related to Electronic',
+      description: 'Artists from genres adjacent to electronic (e.g. ambient, IDM, techno)',
+      type: 'lastfm_tag_similar',
+      category: 'genre',
+      config: { tag: 'electronic', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
+    },
+    {
+      id: 'related-tags-metal',
+      name: 'Genres Related to Metal',
+      description: 'Artists from genres adjacent to metal (e.g. doom, stoner, sludge)',
+      type: 'lastfm_tag_similar',
+      category: 'genre',
+      config: { tag: 'metal', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
+    },
+
     // GEOGRAPHIC
     {
       id: 'usa-top-artists',
@@ -559,7 +609,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       description: 'Artists similar to your all-time top scrobbled artists',
       type: 'lastfm_similar',
       category: 'library',
-      config: { period: 'overall', topArtistsLimit: 20, similarPerArtist: 10, limit: 100 },
+      config: { period: 'overall', topArtistsLimit: 20, similarPerArtist: 25, limit: 100 },
     },
     {
       id: 'lastfm-similar-year',
@@ -567,7 +617,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       description: 'Artists similar to your top artists from the past year',
       type: 'lastfm_similar',
       category: 'library',
-      config: { period: '12month', topArtistsLimit: 15, similarPerArtist: 10, limit: 75 },
+      config: { period: '12month', topArtistsLimit: 15, similarPerArtist: 25, limit: 75 },
     },
     {
       id: 'lastfm-similar-recent',
@@ -575,7 +625,39 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       description: 'Artists similar to what you\'ve been listening to recently',
       type: 'lastfm_similar',
       category: 'library',
-      config: { period: '1month', topArtistsLimit: 10, similarPerArtist: 10, limit: 50 },
+      config: { period: '1month', topArtistsLimit: 10, similarPerArtist: 25, limit: 50 },
+    },
+    {
+      id: 'lastfm-user-albums-overall',
+      name: 'My Last.fm Top Albums (All Time)',
+      description: 'Artists from your most scrobbled albums of all time',
+      type: 'lastfm_user_albums',
+      category: 'library',
+      config: { period: 'overall', limit: 100 },
+    },
+    {
+      id: 'lastfm-user-albums-year',
+      name: 'My Last.fm Top Albums (12 Months)',
+      description: 'Artists from your most scrobbled albums this year',
+      type: 'lastfm_user_albums',
+      category: 'library',
+      config: { period: '12month', limit: 50 },
+    },
+    {
+      id: 'lastfm-weekly-artists',
+      name: 'Last.fm Weekly Artists',
+      description: 'Your most-played artists this week — stays fresh on a weekly schedule',
+      type: 'lastfm_weekly_artists',
+      category: 'library',
+      config: { limit: 50 },
+    },
+    {
+      id: 'lastfm-weekly-albums',
+      name: 'Last.fm Weekly Albums',
+      description: 'Artists from your most-played albums this week',
+      type: 'lastfm_weekly_albums',
+      category: 'library',
+      config: { limit: 50 },
     },
 
     // AI RECOMMENDATIONS
