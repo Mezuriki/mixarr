@@ -294,4 +294,55 @@ export class LastfmService {
       total: parseInt(response.topartists['@attr'].total, 10),
     };
   }
+
+  async getTagTopAlbums(tag: string, limit: number = 50, page: number = 1): Promise<{
+    albums: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string }>;
+    total: number;
+  }> {
+    const response = await this.request<{
+      albums: { album: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string }>; '@attr': { total: string } };
+    }>('tag.gettopalbums', { tag, limit: limit.toString(), page: page.toString() });
+    return {
+      albums: response.albums.album,
+      total: parseInt(response.albums['@attr'].total, 10),
+    };
+  }
+
+  async getTagSimilar(tag: string): Promise<Array<{ name: string; url: string }>> {
+    const response = await this.request<{
+      similartags: { tag: Array<{ name: string; url: string }> };
+    }>('tag.getsimilar', { tag });
+    return response.similartags.tag || [];
+  }
+
+  async getUserTopAlbums(username: string, period: string = 'overall', limit: number = 100): Promise<{
+    albums: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string; playcount?: string }>;
+    total: number;
+  }> {
+    const response = await this.request<{
+      topalbums: { album: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string; playcount?: string }>; '@attr': { total: string } };
+    }>('user.gettopalbums', { user: username, period, limit: limit.toString() });
+    return {
+      albums: response.topalbums.album,
+      total: parseInt(response.topalbums['@attr'].total, 10),
+    };
+  }
+
+  async getUserWeeklyArtistChart(username: string): Promise<{
+    artists: LastfmArtist[];
+  }> {
+    const response = await this.request<{
+      weeklyartistchart: { artist: LastfmArtist[] };
+    }>('user.getweeklyartistchart', { user: username });
+    return { artists: response.weeklyartistchart.artist || [] };
+  }
+
+  async getUserWeeklyAlbumChart(username: string): Promise<{
+    albums: Array<{ name: string; artist: { '#text': string; mbid?: string }; mbid?: string; playcount?: string }>;
+  }> {
+    const response = await this.request<{
+      weeklyalbumchart: { album: Array<{ name: string; artist: { '#text': string; mbid?: string }; mbid?: string; playcount?: string }> };
+    }>('user.getweeklyalbumchart', { user: username });
+    return { albums: response.weeklyalbumchart.album || [] };
+  }
 }
