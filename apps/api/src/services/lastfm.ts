@@ -303,8 +303,8 @@ export class LastfmService {
       albums: { album: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string }>; '@attr': { total: string } };
     }>('tag.gettopalbums', { tag, limit: limit.toString(), page: page.toString() });
     return {
-      albums: response.albums.album,
-      total: parseInt(response.albums['@attr'].total, 10),
+      albums: response.albums.album || [],
+      total: parseInt(response.albums['@attr']?.total ?? '0', 10),
     };
   }
 
@@ -323,8 +323,8 @@ export class LastfmService {
       topalbums: { album: Array<{ name: string; artist: { name: string; mbid?: string }; mbid?: string; playcount?: string }>; '@attr': { total: string } };
     }>('user.gettopalbums', { user: username, period, limit: limit.toString() });
     return {
-      albums: response.topalbums.album,
-      total: parseInt(response.topalbums['@attr'].total, 10),
+      albums: response.topalbums.album || [],
+      total: parseInt(response.topalbums['@attr']?.total ?? '0', 10),
     };
   }
 

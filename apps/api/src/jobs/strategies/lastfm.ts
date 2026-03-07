@@ -210,8 +210,8 @@ const lastfmTagSimilar: SubscriptionStrategy = {
     const lastfm = getLastfmService(context);
     const tag = context.config.tag;
     if (!tag) throw new Error('Missing required config: tag');
-    const relatedTagLimit = context.config.relatedTagLimit || 5;
-    const limitPerTag = context.config.limitPerTag || 30;
+    const relatedTagLimit = Math.min(context.config.relatedTagLimit || 5, 15);
+    const limitPerTag = Math.min(context.config.limitPerTag || 30, 50);
 
     // Get related tags
     const relatedTags = await lastfm.getTagSimilar(tag);
@@ -287,9 +287,10 @@ const lastfmWeeklyArtists: SubscriptionStrategy = {
   async execute(context) {
     const lastfm = getLastfmService(context);
     const username = getLastfmUsername(context);
+    const limit = context.config.limit || 100;
     const result = await lastfm.getUserWeeklyArtistChart(username);
     return artistResult(
-      result.artists.map(a => ({
+      result.artists.slice(0, limit).map(a => ({
         name: a.name,
         mbid: a.mbid,
         source: 'lastfm-weekly-artists',
@@ -303,6 +304,7 @@ const lastfmWeeklyAlbums: SubscriptionStrategy = {
   async execute(context) {
     const lastfm = getLastfmService(context);
     const username = getLastfmUsername(context);
+    const limit = context.config.limit || 100;
     const result = await lastfm.getUserWeeklyAlbumChart(username);
     // Extract and deduplicate artists — weekly album chart uses '#text' for artist name
     const artistMap = new Map<string, { name: string; mbid?: string }>();
@@ -314,7 +316,7 @@ const lastfmWeeklyAlbums: SubscriptionStrategy = {
       }
     }
     return artistResult(
-      Array.from(artistMap.values()).map(a => ({
+      Array.from(artistMap.values()).slice(0, limit).map(a => ({
         name: a.name,
         mbid: a.mbid,
         source: 'lastfm-weekly-albums',
