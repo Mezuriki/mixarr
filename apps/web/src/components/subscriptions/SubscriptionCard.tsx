@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { subscriptionTypes, scheduleOptions } from '@/lib/subscription-constants';
+import { buildSubscriptionDescriptor, isDefaultName } from '@/lib/subscription-descriptor';
 
 // ============================================================================
 // Type Definitions
@@ -100,14 +101,9 @@ export function SubscriptionCard({
   // Get the schedule label
   const scheduleLabel = scheduleOptions.find(s => s.value === sub.schedule)?.label || sub.schedule;
 
-  // Build additional info string (country, tag)
-  const additionalInfo: string[] = [];
-  if (typeof sub.config.country === 'string' && sub.config.country !== 'global') {
-    additionalInfo.push(sub.config.country);
-  }
-  if (typeof sub.config.tag === 'string') {
-    additionalInfo.push(sub.config.tag);
-  }
+  // Build the computed descriptor from type + config
+  const descriptor = buildSubscriptionDescriptor(sub.type, sub.config, typeLabel || sub.type);
+  const showCustomName = sub.name && !isDefaultName(sub.name, typeLabel || sub.type, descriptor);
 
   return (
     <Card>
@@ -123,7 +119,7 @@ export function SubscriptionCard({
             {/* Header row with name and badges */}
             <div className="flex items-center gap-2">
               <h3 className="font-semibold truncate">
-                {sub.name}
+                {descriptor}
               </h3>
               <Badge variant={sub.isActive ? 'success' : 'secondary'}>
                 {sub.isActive ? 'Active' : 'Paused'}
@@ -154,11 +150,12 @@ export function SubscriptionCard({
               )}
             </div>
 
-            {/* Type and additional info */}
-            <p className="text-sm text-muted-foreground">
-              {typeLabel}
-              {additionalInfo.length > 0 && ` · ${additionalInfo.join(' · ')}`}
-            </p>
+            {/* Custom name (only shown when user set a non-default name) */}
+            {showCustomName && (
+              <p className="text-sm text-muted-foreground truncate">
+                {sub.name}
+              </p>
+            )}
 
             {/* Schedule and last run */}
             <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
