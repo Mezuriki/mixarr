@@ -20,7 +20,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Global Top 50 Artists',
       description: 'Global top 50 artists from Last.fm charts',
       type: 'lastfm_chart',
-      category: 'lastfm',
+      category: 'charts',
       config: { limit: 50 },
     },
     {
@@ -28,7 +28,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Global Top 100 Artists',
       description: 'Global top 100 artists from Last.fm charts',
       type: 'lastfm_chart',
-      category: 'lastfm',
+      category: 'charts',
       config: { limit: 100 },
     },
 
@@ -274,7 +274,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'USA Top Artists',
       description: 'Top artists in the United States',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'united states', limit: 50 },
     },
     {
@@ -282,7 +282,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'UK Top Artists',
       description: 'Top artists in the United Kingdom',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'united kingdom', limit: 50 },
     },
     {
@@ -290,7 +290,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Germany Top Artists',
       description: 'Top artists in Germany',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'germany', limit: 50 },
     },
     {
@@ -298,7 +298,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'France Top Artists',
       description: 'Top artists in France',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'france', limit: 50 },
     },
     {
@@ -306,7 +306,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Japan Top Artists',
       description: 'Top artists in Japan',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'japan', limit: 50 },
     },
     {
@@ -314,7 +314,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Australia Top Artists',
       description: 'Top artists in Australia',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'australia', limit: 50 },
     },
     {
@@ -322,7 +322,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Canada Top Artists',
       description: 'Top artists in Canada',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'canada', limit: 50 },
     },
     {
@@ -330,7 +330,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Brazil Top Artists',
       description: 'Top artists in Brazil',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'brazil', limit: 50 },
     },
     {
@@ -338,7 +338,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Mexico Top Artists',
       description: 'Top artists in Mexico',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'mexico', limit: 50 },
     },
     {
@@ -346,7 +346,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Spain Top Artists',
       description: 'Top artists in Spain',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'spain', limit: 50 },
     },
     {
@@ -354,7 +354,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Italy Top Artists',
       description: 'Top artists in Italy',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'italy', limit: 50 },
     },
     {
@@ -362,7 +362,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Netherlands Top Artists',
       description: 'Top artists in Netherlands',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'netherlands', limit: 50 },
     },
     {
@@ -370,7 +370,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Sweden Top Artists',
       description: 'Top artists in Sweden',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'sweden', limit: 50 },
     },
     {
@@ -378,7 +378,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'South Korea Top Artists',
       description: 'Top artists in South Korea',
       type: 'lastfm_geo',
-      category: 'lastfm',
+      category: 'geographic',
       config: { country: 'south korea', limit: 50 },
     },
 

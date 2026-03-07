@@ -172,6 +172,8 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
  */
 export const presetCategories: PresetCategory[] = [
   { id: 'lastfm', label: 'Last.fm', icon: Radio },
+  { id: 'charts', label: 'Global Charts', icon: TrendingUp },
+  { id: 'geographic', label: 'Geographic', icon: Globe },
   { id: 'spotify', label: 'Spotify', icon: Music2 },
   { id: 'deezer', label: 'Deezer', icon: Music2 },
   { id: 'tidal', label: 'TIDAL', icon: Music2 },
