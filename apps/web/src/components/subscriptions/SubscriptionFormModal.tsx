@@ -503,7 +503,7 @@ export function SubscriptionFormModal({
             )}
           </div>
 
-          {/* Name */}
+          {/* Display Label */}
           <div>
             <label className="text-sm font-medium">Display Label</label>
             {editingSubscription && !isNameEditing ? (

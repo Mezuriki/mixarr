@@ -337,8 +337,8 @@ export default function SubscriptionDetailPage() {
       <PageHeader
         title={descriptor}
         description={showCustomName
-          ? `${subscription.name} · Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`
-          : `Type: ${subscription?.type} | Result handling: ${subscription?.resultHandling}`
+          ? `${subscription.name} · Type: ${typeLabel} | Result handling: ${subscription?.resultHandling}`
+          : `Type: ${typeLabel} | Result handling: ${subscription?.resultHandling}`
         }
       >
         <Button onClick={handleRun}>

@@ -29,8 +29,9 @@ function getConfigDetail(type: string, config: Record<string, unknown>): string 
   switch (type) {
     // Tag-based types
     case 'lastfm_tag':
-    case 'spotify_category':
       return getString(config, 'tag');
+    case 'spotify_category':
+      return getString(config, 'categoryId');
 
     // Country/location types
     case 'lastfm_chart':
@@ -47,25 +48,25 @@ function getConfigDetail(type: string, config: Record<string, unknown>): string 
 
     // Public playlist URL
     case 'spotify_public_playlist':
-      return truncate(getString(config, 'publicPlaylistUrl'), 40);
+      return truncate(getString(config, 'playlistUrl'), 40);
 
     // Discogs
     case 'discogs_label':
       return getString(config, 'labelName') || truncate(getString(config, 'labelId'), 16);
     case 'discogs_style':
-      return getString(config, 'discogsStyle');
+      return getString(config, 'style');
 
     // Bandcamp
     case 'bandcamp_tag':
     case 'bandcamp_new':
-      return getString(config, 'bandcampTag');
+      return getString(config, 'tag');
 
     // ListenBrainz
     case 'listenbrainz_playlist':
-      return truncate(getString(config, 'listenbrainzPlaylistId'), 16);
+      return truncate(getString(config, 'playlistId'), 16);
     case 'listenbrainz_radio':
-      return getString(config, 'listenbrainzRadioMode')
-        || truncate(getString(config, 'listenbrainzSeedMbid'), 16);
+      return getString(config, 'mode')
+        || truncate(getString(config, 'seedMbid'), 16);
 
     // All other types are singletons — type label alone is sufficient
     default:

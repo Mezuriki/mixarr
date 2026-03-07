@@ -92,11 +92,10 @@ export function SubscriptionCard({
   onEdit,
   onDelete,
 }: SubscriptionCardProps) {
-  // Get the icon for this subscription type
-  const SubIcon = subscriptionTypes.find(t => t.value === sub.type)?.icon || TrendingUp;
-
-  // Get the type label
-  const typeLabel = subscriptionTypes.find(t => t.value === sub.type)?.label;
+  // Get the type config for icon and label
+  const typeConfig = subscriptionTypes.find(t => t.value === sub.type);
+  const SubIcon = typeConfig?.icon || TrendingUp;
+  const typeLabel = typeConfig?.label;
 
   // Get the schedule label
   const scheduleLabel = scheduleOptions.find(s => s.value === sub.schedule)?.label || sub.schedule;
