@@ -171,9 +171,7 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
  * Categories for grouping presets in the UI
  */
 export const presetCategories: PresetCategory[] = [
-  { id: 'charts', label: 'Global Charts', icon: TrendingUp },
-  { id: 'genre', label: 'Genre Tags', icon: Tag },
-  { id: 'geographic', label: 'Geographic', icon: Globe },
+  { id: 'lastfm', label: 'Last.fm', icon: Radio },
   { id: 'spotify', label: 'Spotify', icon: Music2 },
   { id: 'deezer', label: 'Deezer', icon: Music2 },
   { id: 'tidal', label: 'TIDAL', icon: Music2 },

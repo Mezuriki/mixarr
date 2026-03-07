@@ -20,7 +20,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Global Top 50 Artists',
       description: 'Global top 50 artists from Last.fm charts',
       type: 'lastfm_chart',
-      category: 'charts',
+      category: 'lastfm',
       config: { limit: 50 },
     },
     {
@@ -28,7 +28,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Global Top 100 Artists',
       description: 'Global top 100 artists from Last.fm charts',
       type: 'lastfm_chart',
-      category: 'charts',
+      category: 'lastfm',
       config: { limit: 100 },
     },
 
@@ -38,7 +38,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Rock Artists',
       description: 'Top rock artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'rock', limit: 50 },
     },
     {
@@ -46,7 +46,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Alternative Artists',
       description: 'Top alternative artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'alternative', limit: 50 },
     },
     {
@@ -54,7 +54,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Indie Artists',
       description: 'Top indie artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'indie', limit: 50 },
     },
     {
@@ -62,7 +62,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Pop Artists',
       description: 'Top pop artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'pop', limit: 50 },
     },
     {
@@ -70,7 +70,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Hip-Hop Artists',
       description: 'Top hip-hop artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'hip-hop', limit: 50 },
     },
     {
@@ -78,7 +78,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Rap Artists',
       description: 'Top rap artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'rap', limit: 50 },
     },
     {
@@ -86,7 +86,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Electronic Artists',
       description: 'Top electronic artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'electronic', limit: 50 },
     },
     {
@@ -94,7 +94,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Dance Artists',
       description: 'Top dance artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'dance', limit: 50 },
     },
     {
@@ -102,7 +102,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top House Artists',
       description: 'Top house music artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'house', limit: 50 },
     },
     {
@@ -110,7 +110,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Techno Artists',
       description: 'Top techno artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'techno', limit: 50 },
     },
     {
@@ -118,7 +118,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Metal Artists',
       description: 'Top metal artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'metal', limit: 50 },
     },
     {
@@ -126,7 +126,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Punk Artists',
       description: 'Top punk artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'punk', limit: 50 },
     },
     {
@@ -134,7 +134,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Jazz Artists',
       description: 'Top jazz artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'jazz', limit: 50 },
     },
     {
@@ -142,7 +142,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Blues Artists',
       description: 'Top blues artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'blues', limit: 50 },
     },
     {
@@ -150,7 +150,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Soul Artists',
       description: 'Top soul artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'soul', limit: 50 },
     },
     {
@@ -158,7 +158,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top R&B Artists',
       description: 'Top R&B artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'rnb', limit: 50 },
     },
     {
@@ -166,7 +166,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Country Artists',
       description: 'Top country artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'country', limit: 50 },
     },
     {
@@ -174,7 +174,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Folk Artists',
       description: 'Top folk artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'folk', limit: 50 },
     },
     {
@@ -182,7 +182,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Classical Artists',
       description: 'Top classical artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'classical', limit: 50 },
     },
     {
@@ -190,7 +190,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Ambient Artists',
       description: 'Top ambient artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'ambient', limit: 50 },
     },
     {
@@ -198,7 +198,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Reggae Artists',
       description: 'Top reggae artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'reggae', limit: 50 },
     },
     {
@@ -206,7 +206,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Latin Artists',
       description: 'Top latin artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'latin', limit: 50 },
     },
     {
@@ -214,7 +214,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top K-Pop Artists',
       description: 'Top K-Pop artists from Last.fm',
       type: 'lastfm_tag',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'k-pop', limit: 50 },
     },
 
@@ -224,7 +224,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Rock Albums → Artists',
       description: 'Artists from the most popular rock albums — different results than top artists by tag',
       type: 'lastfm_tag_albums',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'rock', limit: 50 },
     },
     {
@@ -232,7 +232,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Electronic Albums → Artists',
       description: 'Artists from the most popular electronic albums',
       type: 'lastfm_tag_albums',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'electronic', limit: 50 },
     },
     {
@@ -240,7 +240,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Top Hip-Hop Albums → Artists',
       description: 'Artists from the most popular hip-hop albums',
       type: 'lastfm_tag_albums',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'hip-hop', limit: 50 },
     },
     {
@@ -248,7 +248,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Genres Related to Indie',
       description: 'Artists from genres adjacent to indie (e.g. dream pop, shoegaze, lo-fi)',
       type: 'lastfm_tag_similar',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'indie', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
     },
     {
@@ -256,7 +256,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Genres Related to Electronic',
       description: 'Artists from genres adjacent to electronic (e.g. ambient, IDM, techno)',
       type: 'lastfm_tag_similar',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'electronic', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
     },
     {
@@ -264,7 +264,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Genres Related to Metal',
       description: 'Artists from genres adjacent to metal (e.g. doom, stoner, sludge)',
       type: 'lastfm_tag_similar',
-      category: 'genre',
+      category: 'lastfm',
       config: { tag: 'metal', relatedTagLimit: 5, limitPerTag: 30, limit: 100 },
     },
 
@@ -274,7 +274,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'USA Top Artists',
       description: 'Top artists in the United States',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'united states', limit: 50 },
     },
     {
@@ -282,7 +282,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'UK Top Artists',
       description: 'Top artists in the United Kingdom',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'united kingdom', limit: 50 },
     },
     {
@@ -290,7 +290,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Germany Top Artists',
       description: 'Top artists in Germany',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'germany', limit: 50 },
     },
     {
@@ -298,7 +298,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'France Top Artists',
       description: 'Top artists in France',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'france', limit: 50 },
     },
     {
@@ -306,7 +306,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Japan Top Artists',
       description: 'Top artists in Japan',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'japan', limit: 50 },
     },
     {
@@ -314,7 +314,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Australia Top Artists',
       description: 'Top artists in Australia',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'australia', limit: 50 },
     },
     {
@@ -322,7 +322,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Canada Top Artists',
       description: 'Top artists in Canada',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'canada', limit: 50 },
     },
     {
@@ -330,7 +330,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Brazil Top Artists',
       description: 'Top artists in Brazil',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'brazil', limit: 50 },
     },
     {
@@ -338,7 +338,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Mexico Top Artists',
       description: 'Top artists in Mexico',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'mexico', limit: 50 },
     },
     {
@@ -346,7 +346,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Spain Top Artists',
       description: 'Top artists in Spain',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'spain', limit: 50 },
     },
     {
@@ -354,7 +354,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Italy Top Artists',
       description: 'Top artists in Italy',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'italy', limit: 50 },
     },
     {
@@ -362,7 +362,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Netherlands Top Artists',
       description: 'Top artists in Netherlands',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'netherlands', limit: 50 },
     },
     {
@@ -370,7 +370,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Sweden Top Artists',
       description: 'Top artists in Sweden',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'sweden', limit: 50 },
     },
     {
@@ -378,7 +378,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'South Korea Top Artists',
       description: 'Top artists in South Korea',
       type: 'lastfm_geo',
-      category: 'geographic',
+      category: 'lastfm',
       config: { country: 'south korea', limit: 50 },
     },
 
@@ -584,7 +584,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'My Last.fm Top Artists (All Time)',
       description: 'Your most listened artists from all time',
       type: 'lastfm_library',
-      category: 'library',
+      category: 'lastfm',
       config: { period: 'overall', limit: 100 },
     },
     {
@@ -592,7 +592,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'My Last.fm Top Artists (12 Months)',
       description: 'Your most listened artists from the past year',
       type: 'lastfm_library',
-      category: 'library',
+      category: 'lastfm',
       config: { period: '12month', limit: 50 },
     },
     {
@@ -600,7 +600,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'My Last.fm Top Artists (Last Month)',
       description: 'Your most listened artists from the past month',
       type: 'lastfm_library',
-      category: 'library',
+      category: 'lastfm',
       config: { period: '1month', limit: 50 },
     },
     {
@@ -608,7 +608,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Last.fm Similar Artists (All Time)',
       description: 'Artists similar to your all-time top scrobbled artists',
       type: 'lastfm_similar',
-      category: 'library',
+      category: 'lastfm',
       config: { period: 'overall', topArtistsLimit: 20, similarPerArtist: 25, limit: 100 },
     },
     {
@@ -616,7 +616,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Last.fm Similar Artists (12 Months)',
       description: 'Artists similar to your top artists from the past year',
       type: 'lastfm_similar',
-      category: 'library',
+      category: 'lastfm',
       config: { period: '12month', topArtistsLimit: 15, similarPerArtist: 25, limit: 75 },
     },
     {
@@ -624,7 +624,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Last.fm Similar Artists (Last Month)',
       description: 'Artists similar to what you\'ve been listening to recently',
       type: 'lastfm_similar',
-      category: 'library',
+      category: 'lastfm',
       config: { period: '1month', topArtistsLimit: 10, similarPerArtist: 25, limit: 50 },
     },
     {
@@ -632,7 +632,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'My Last.fm Top Albums (All Time)',
       description: 'Artists from your most scrobbled albums of all time',
       type: 'lastfm_user_albums',
-      category: 'library',
+      category: 'lastfm',
       config: { period: 'overall', limit: 100 },
     },
     {
@@ -640,7 +640,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'My Last.fm Top Albums (12 Months)',
       description: 'Artists from your most scrobbled albums this year',
       type: 'lastfm_user_albums',
-      category: 'library',
+      category: 'lastfm',
       config: { period: '12month', limit: 50 },
     },
     {
@@ -648,7 +648,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Last.fm Weekly Artists',
       description: 'Your most-played artists this week — stays fresh on a weekly schedule',
       type: 'lastfm_weekly_artists',
-      category: 'library',
+      category: 'lastfm',
       config: { limit: 50 },
     },
     {
@@ -656,7 +656,7 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       name: 'Last.fm Weekly Albums',
       description: 'Artists from your most-played albums this week',
       type: 'lastfm_weekly_albums',
-      category: 'library',
+      category: 'lastfm',
       config: { limit: 50 },
     },
 
