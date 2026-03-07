@@ -29,6 +29,8 @@ function getConfigDetail(type: string, config: Record<string, unknown>): string 
   switch (type) {
     // Tag-based types
     case 'lastfm_tag':
+    case 'lastfm_tag_albums':
+    case 'lastfm_tag_similar':
       return getString(config, 'tag');
     case 'spotify_category':
       return getString(config, 'categoryId');

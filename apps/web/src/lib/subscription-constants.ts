@@ -97,6 +97,11 @@ export const subscriptionTypes: SubscriptionTypeConfig[] = [
   { value: 'lastfm_geo', label: 'Last.fm Geo', icon: Globe, description: 'Top artists by location' },
   { value: 'lastfm_library', label: 'Last.fm Library', icon: TrendingUp, description: 'Your top artists from scrobbles' },
   { value: 'lastfm_similar', label: 'Last.fm Similar', icon: GitFork, description: 'Artists similar to your top artists' },
+  { value: 'lastfm_tag_albums', label: 'Last.fm Tag Albums', icon: Tag, description: 'Artists from top albums in a genre/tag' },
+  { value: 'lastfm_tag_similar', label: 'Last.fm Related Tags', icon: GitFork, description: 'Artists from genres related to a seed tag' },
+  { value: 'lastfm_user_albums', label: 'Last.fm User Albums', icon: TrendingUp, description: 'Artists from your top scrobbled albums' },
+  { value: 'lastfm_weekly_artists', label: 'Last.fm Weekly Artists', icon: TrendingUp, description: 'Your most-played artists this week' },
+  { value: 'lastfm_weekly_albums', label: 'Last.fm Weekly Albums', icon: TrendingUp, description: 'Artists from your most-played albums this week' },
 
   // ListenBrainz
   { value: 'listenbrainz_top', label: 'ListenBrainz Top', icon: Headphones, description: 'Your top artists from listening history' },
@@ -210,6 +215,8 @@ export const REQUIRED_FIELDS: Record<string, RequiredField[]> = {
   spotify_public_playlist: [{ field: 'publicPlaylistUrl', label: 'Playlist URL' }],
   spotify_category: [{ field: 'tag', label: 'Category' }],
   lastfm_tag: [{ field: 'tag', label: 'Tag' }],
+  lastfm_tag_albums: [{ field: 'tag', label: 'Tag' }],
+  lastfm_tag_similar: [{ field: 'tag', label: 'Tag' }],
   discogs_label: [{ field: 'labelId', label: 'Label ID' }],
   discogs_style: [{ field: 'discogsStyle', label: 'Style' }],
   bandcamp_tag: [{ field: 'bandcampTag', label: 'Tag' }],

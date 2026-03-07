@@ -296,7 +296,7 @@ export function SubscriptionFormModal({
     if (form.type === 'lastfm_chart' || form.type === 'lastfm_geo') {
       config.country = form.country || 'global';
     }
-    if (form.type === 'lastfm_tag') {
+    if (form.type === 'lastfm_tag' || form.type === 'lastfm_tag_albums' || form.type === 'lastfm_tag_similar') {
       config.tag = form.tag;
     }
     if (form.type === 'spotify_category') {
@@ -598,7 +598,7 @@ export function SubscriptionFormModal({
           )}
 
           {/* Last.fm Tag */}
-          {form.type === 'lastfm_tag' && (
+          {(form.type === 'lastfm_tag' || form.type === 'lastfm_tag_albums' || form.type === 'lastfm_tag_similar') && (
             <div>
               <label className="text-sm font-medium">
                 Tag
