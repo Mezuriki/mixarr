@@ -14,6 +14,7 @@ import {
   getResultHandlingOptions,
   getSubscriptionTypeConfig,
 } from '@/lib/subscription-constants';
+import { buildSubscriptionDescriptor } from '@/lib/subscription-descriptor';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
 import Pencil from 'lucide-react/dist/esm/icons/pencil';
@@ -348,6 +349,8 @@ export function SubscriptionFormModal({
     return config;
   };
 
+  const descriptorPreview = buildSubscriptionDescriptor(form.type, buildConfig(), typeConfig?.label || form.type);
+
   // Handlers
   const handleSave = async () => {
     const errors = validateForm();
@@ -502,11 +505,11 @@ export function SubscriptionFormModal({
 
           {/* Name */}
           <div>
-            <label className="text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">Display Label</label>
             {editingSubscription && !isNameEditing ? (
               <div className="flex gap-2">
                 <Input
-                  value={form.name || typeConfig?.label || ''}
+                  value={form.name || descriptorPreview || typeConfig?.label || ''}
                   readOnly
                   className="bg-muted cursor-not-allowed flex-1"
                 />
@@ -525,7 +528,7 @@ export function SubscriptionFormModal({
               <Input
                 value={form.name || (editingSubscription ? '' : typeConfig?.label || '')}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Enter subscription name"
+                placeholder={descriptorPreview}
                 autoFocus={isNameEditing}
                 maxLength={255}
               />
