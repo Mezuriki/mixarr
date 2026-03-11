@@ -443,6 +443,9 @@ export function SubscriptionFormModal({
                   <div>
                     <p className="font-medium">{preset.name}</p>
                     <p className="text-sm text-muted-foreground">{preset.description}</p>
+                    {typeof preset.config.tag === 'string' && preset.config.tag && (
+                      <p className="text-xs text-muted-foreground/70 mt-0.5 italic">Tag can be changed to any genre</p>
+                    )}
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -611,6 +614,9 @@ export function SubscriptionFormModal({
                 onChange={(e) => setForm({ ...form, tag: e.target.value })}
                 placeholder="e.g., rock, metal, jazz"
               />
+              {selectedFromPreset && form.tag && (
+                <p className="text-xs text-muted-foreground mt-1">Pre-filled from preset — change to any tag you like</p>
+              )}
               {validationErrors.tag && <p className="text-xs text-destructive mt-1">{validationErrors.tag}</p>}
             </div>
           )}
