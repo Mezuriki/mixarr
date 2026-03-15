@@ -14,7 +14,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue?style=flat-square" alt="License"></a>
 </p>
 
-Mixarr is a free, self-hosted music discovery companion for your *arr stack. It connects to Spotify, TIDAL, Last.fm, Deezer, Plex, and more to automatically discover new artists and add them to Lidarr. Deploy with Docker in minutes. Review queue, automated subscriptions, and AI-powered recommendations included.
+Mixarr is a self-hosted music discovery companion for Lidarr. It connects to Spotify, TIDAL, Last.fm, Deezer, ListenBrainz, Plex, Jellyfin, Discogs, Bandcamp, and MusicBrainz to automatically discover new artists and add them to your library. 56 subscription types, a review queue, and optional AI recommendations. Deploy with Docker in minutes.
 
 ![Mixarr Dashboard](website/img/mixarr-dashboard.png)
 
@@ -112,34 +112,40 @@ docker run -d \
 
 ## Features
 
-*   **No-Miss Lidarr Adds**: SkyHook cache warming ensures artist adds succeed the first time. No more 503 errors or missing metadata.
-*   **Review Queue**: Discovered artists sit in a queue for your approval. No more junk in your library.
-*   **Automated Subscriptions**: Sync standard playlists (Top 50), dynamic lists (Discover Weekly), or charts from Last.fm.
-*   **Multi-Service Support**: 
-    *   **Spotify & Tidal**: Full integration (Playlists, New Releases, Followed Artists).
-    *   **Last.fm**: Charts, Tag/Genre feeds, User Library.
-    *   **Plex & Jellyfin**: Recommendations based on listening history.
-    *   **MusicBrainz & ListenBrainz**: Metadata and listening habits.
-    *   **Discogs & Deezer**: Libraries, Playlists, and User Collections.
-*   **AI Recommendations**: OpenAI, Anthropic, or Ollama integration for "smart" suggestions based on your existing library.
-*   **Library Health**: Tools to analyze and repair your Lidarr library. Fix missing metadata with one click.
+*   **56 Subscription Types** across 12 services — playlists, charts, tags, recommendations, user libraries, followed artists, and more. Set them to run on a schedule and forget about it.
+*   **Review Queue** — discovered artists land in a queue for approval before anything gets added to Lidarr.
+*   **SkyHook Cache Warming** — pre-warms MusicBrainz metadata so Lidarr adds don't fail with 503 errors.
+*   **Multi-Service Support**:
+    *   **Spotify** — playlists, new releases, saved albums/tracks, followed artists, top artists, recommendations, search
+    *   **TIDAL** — playlists, favorites, followed artists, discovery mixes, new arrivals
+    *   **Last.fm** — charts, tags, similar artists, user library, weekly charts, related tags
+    *   **ListenBrainz** — top listens, similar users, recommendations, fresh releases, weekly jams, playlists, radio
+    *   **Deezer** — playlists, charts, editorial picks, user favorites, flow, recommendations
+    *   **Discogs** — collection, wantlist
+    *   **Plex & Jellyfin** — recommendations based on listening history
+    *   **MusicBrainz** — tag-based discovery
+    *   **Bandcamp** — tag and search discovery
+*   **AI Recommendations** — OpenAI, Anthropic, Google Gemini, or local Ollama. Analyzes your library and suggests what's missing.
+*   **Library Health** — tools to analyze and repair your Lidarr library. Fix missing metadata with one click.
 
 ---
 
 ## AI Configuration
 
-### Using Ollama or Custom OpenAI Providers
+### Using Ollama or Custom Providers
 
-Mixarr supports any OpenAI-compatible API endpoint:
+Mixarr supports any OpenAI-compatible API endpoint, plus native Anthropic and Google Gemini:
 
 | Provider | Base URL | Model Example |
 |----------|----------|---------------|
-| OpenAI (default) | _(leave empty)_ | `gpt-3.5-turbo` |
+| OpenAI (default) | _(leave empty)_ | `gpt-4o-mini` |
+| Anthropic | _(leave empty, select Anthropic provider)_ | `claude-sonnet-4-20250514` |
+| Google Gemini | _(leave empty, select Gemini provider)_ | `gemini-2.0-flash` |
 | Ollama | `http://localhost:11434/v1` | `llama3.2` |
 | LiteLLM | `http://localhost:4000/v1` | `gpt-4` |
 | OpenRouter | `https://openrouter.ai/api/v1` | `meta-llama/llama-3-8b` |
 
-**Note**: For local Ollama, no API key is required. For cloud providers, enter your API key.
+**Note**: For local Ollama, no API key is required.
 
 Configure these in **Settings → AI**.
 
@@ -167,7 +173,7 @@ Configure these in **Settings → AI**.
 
 | Path | Description |
 |------|-------------|
-| `/data` | Stores SQLite database, Redis persistence, and logs. |
+| `/data` | Stores MariaDB database, Redis persistence, Caddy certs, and logs. |
 
 ---
 

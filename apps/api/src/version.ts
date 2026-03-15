@@ -3,7 +3,7 @@
  * Update VERSION when releasing new versions (keep in sync with CHANGELOG.md)
  */
 
-export const VERSION = '2.0.0';
+export const VERSION = '2.1.0';
 export const LICENSE = 'GPL-3.0';
 export const PRODUCT = 'Mixarr';
 
