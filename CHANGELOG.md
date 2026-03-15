@@ -7,7 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.3.0] - Unreleased
+## [v2.1.0] - 2026-03-15
+
+### New Subscription Types
+- **5 new Last.fm strategies**: Tag Albums, Related Tags, User Albums, Weekly Artists, Weekly Albums
+- **10 new Last.fm presets** organized into Charts & Tags, Personal Library, and Similar & Discovery categories
+- Total subscription types: **56** (up from 51)
+
+### UI/UX Overhaul (Phase 2)
+- **Component architecture rewrite**: Connections page (1,325 → 199 lines), Search page (903 → 143 lines)
+- **ConnectionWizard**: 3-step modal replaces monolithic form
+- **Search tabs**: Extracted SearchBar, BulkActionBar, 5 tab components, MbidModal, LabelArtistsModal
+- **Subscription descriptors**: Smart auto-generated names (e.g. "Last.fm Tag: electronic" instead of "Last.fm Tag")
+- **Subscription rename**: Pencil-to-unlock UX for custom names
+- Breadcrumb navigation on detail pages
+- Brand lettermark in sidebar with active state indicator
+- Brand illustration on login page
+- StatsBar upgraded to pill badges with icons
+- Skeleton loading states on all data pages
+- BottomSheet component for mobile nav
+
+### Design System
+- Semantic color tokens replace all hardcoded colors
+- `rounded-container` design token for consistent border radius
+- Differentiated accent vs primary color tokens
+- Exit animations on Modal, BottomSheet, and Toast
+- Staggered fade-in on feed cards, interactive hover on connection cards
+- Accessible Switch component replaces inline toggles
+- ConfirmDialog replaces `window.confirm` across all pages
+- Tabs component with ARIA, keyboard nav, and TabPanel
+- OpenGraph and Twitter card metadata
+
+### Security
+- Redis session store replaces in-memory MemoryStore
+- Deactivated users rejected in `deserializeUser`
+- Path traversal validation on slskd poll job
+- Connection test endpoint requires auth after setup
+- Notification secrets masked in API responses
+- `hashPassword` utility with cost 12 in admin routes
+- 15-second timeout on Plex auth fetch calls
+- `POST /api/settings/base-url` restricted to setup-only
+- Connection test errors sanitized to prevent info leakage
+- Dependabot and CodeQL alerts resolved
+- SECURITY.md vulnerability disclosure policy
+
+### Reliability & Validation
+- Zod schemas on all API routes (AI, settings, SSO, slskd, discover, imports, jobs, duplicates)
+- `fetchWithTimeout` wrapper on all external API calls
+- `unhandledRejection` and `uncaughtException` handlers
+- Logging added to all previously silent catch blocks
+- Graceful error when slskd connection missing
+
+### Architecture
+- **Strategy pattern**: Subscription worker refactored from monolithic switch to 14 strategy modules
+- `withTypedConnection` middleware applied to 13 connection routes
+- Connection test handlers extracted to strategy map
+- Bulk PUT endpoint for global settings
+- Subscription `resultLimit` persisted and used (was hard-coded to 50)
+- Non-root user in unified Docker image
+- DB credentials randomized on first boot
+
+### Fixed
+- slskd router not mounted (404 on all Soulseek endpoints)
+- 50-item cap on subscription results display
+- Config key mismatches in subscription descriptor
+- Last.fm extended strategies hardened against edge cases
+- ESLint errors breaking Next.js production build
+- SSO emoji icons replaced with Lucide icons
+- Toast positioning on mobile
+
+---
+
+## [v2.0.0] - 2026-02-01
 
 ### SkyHook Cache Warmer (No-Miss Lidarr Adds)
 - **New Feature**: Pre-flight SkyHookcache warming eliminates failed artist adds
@@ -278,7 +349,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[v1.2.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.2...dev
+[v2.1.0]: https://github.com/aquantumofdonuts/mixarr/compare/v2.0.0...dev
+[v2.0.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.2.1...v2.0.0
+[v1.2.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.2...v1.2.0
 [v1.1.2]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.1...v1.1.2
 [v1.1.1]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.0.0...v1.1.0
