@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { createLogger } from './lib/logger.js';
 import { printBanner } from './version.js';
+import { startUpdateChecker } from './services/update-checker.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { connectionsRouter } from './routes/connections.js';
@@ -42,6 +43,9 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Print startup banner
 printBanner();
+
+// Start background update checker (first check 30s after boot)
+startUpdateChecker();
 
 // Validate required environment variables in production
 const sessionSecret = process.env.SESSION_SECRET;

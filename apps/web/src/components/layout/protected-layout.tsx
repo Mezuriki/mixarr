@@ -4,8 +4,10 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Sidebar } from './sidebar';
 import { LoadingPage } from '@/components/ui/loading';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/components/ui/toast';
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -18,8 +20,36 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const { isLoading, isAuthenticated, setupRequired, apiError } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { addToast } = useToast();
+  const [updateToastShown, setUpdateToastShown] = useState(false);
 
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+
+  // Fetch version/update status when authenticated
+  const { data: healthData } = useQuery<{
+    version?: string;
+    update?: { latest: string; url: string } | null;
+  }>({
+    queryKey: ['health-live'],
+    queryFn: async () => {
+      const res = await fetch('/api/health/live');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: isAuthenticated,
+  });
+
+  // Show update toast once per session
+  useEffect(() => {
+    if (healthData?.update && !updateToastShown) {
+      setUpdateToastShown(true);
+      addToast({
+        type: 'info',
+        title: `Mixarr v${healthData.update.latest} available`,
+        message: 'Visit GitHub to download the latest release.',
+      });
+    }
+  }, [healthData, updateToastShown, addToast]);
 
   useEffect(() => {
     if (isLoading) return;

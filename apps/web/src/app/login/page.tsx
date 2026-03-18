@@ -14,6 +14,7 @@ import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import MonitorPlay from 'lucide-react/dist/esm/icons/monitor-play';
 import KeyRound from 'lucide-react/dist/esm/icons/key-round';
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import { APP_VERSION } from '@/lib/constants';
 
 function LoginPageContent() {
   const [username, setUsername] = useState('');
@@ -212,6 +213,9 @@ function LoginPageContent() {
             </div>
           )}
         </CardContent>
+        <div className="pb-4 text-center">
+          <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
+        </div>
       </Card>
     </div>
   );

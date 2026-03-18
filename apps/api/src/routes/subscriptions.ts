@@ -229,11 +229,25 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
 
     // Add to Lidarr
     try {
-      const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
-        lidarr.getQualityProfiles(),
-        lidarr.getMetadataProfiles(),
-        lidarr.getRootFolders(),
-      ]);
+      // Use connection config for profiles/folders, fall back to fetching first available
+      let qpId = lidarrConfig.qualityProfileId;
+      let mpId = lidarrConfig.metadataProfileId;
+      let rfPath = lidarrConfig.rootFolderPath;
+
+      if (!qpId || !mpId || !rfPath) {
+        const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
+          !qpId ? lidarr.getQualityProfiles() : Promise.resolve([]),
+          !mpId ? lidarr.getMetadataProfiles() : Promise.resolve([]),
+          !rfPath ? lidarr.getRootFolders() : Promise.resolve([]),
+        ]);
+        if (!qpId) qpId = qualityProfiles[0]?.id;
+        if (!mpId) mpId = metadataProfiles[0]?.id;
+        if (!rfPath) rfPath = rootFolders[0]?.path;
+      }
+
+      if (!qpId || !mpId || !rfPath) {
+        throw new Error('Missing Lidarr configuration (profiles/folders). Please configure profiles in Lidarr connection settings.');
+      }
 
       // Check if this is an album item - use addAlbumWithCacheWarm for targeted download
       const isAlbumItem = result.itemType === 'album' && result.albumMbid;
@@ -243,9 +257,9 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
         await lidarr.addAlbumWithCacheWarm(
           mbid,
           result.albumMbid!,
-          qualityProfiles[0].id,
-          metadataProfiles[0].id,
-          rootFolders[0].path
+          qpId,
+          mpId,
+          rfPath
         );
 
         // Log success
@@ -262,9 +276,9 @@ subscriptionsRouter.post('/:id/results/:resultId/approve', async (req, res) => {
         // Use monitorOption from connection config (defaults to 'all' if not set)
         await lidarr.addArtistWithCacheWarm(
           mbid,
-          qualityProfiles[0].id,
-          metadataProfiles[0].id,
-          rootFolders[0].path,
+          qpId,
+          mpId,
+          rfPath,
           true,  // monitored
           true,  // searchForMissingAlbums
           false, // waitForRefresh (deprecated)
