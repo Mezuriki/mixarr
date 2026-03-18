@@ -11,7 +11,7 @@ healthRouter.get('/live', async (_req, res) => {
   res.json({
     status: 'alive',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '2.1.0',
+    version: process.env.npm_package_version || '2.1.1',
     update: update?.available ? { latest: update.latest, url: update.url } : null,
   });
 });

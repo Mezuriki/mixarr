@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v2.1.1] - 2026-03-18
+
+### Added
+- **Update checker**: Background service checks GitHub Releases every 6 hours, logs to console when a new version is available
+- **Version display**: Shown in sidebar footer, login page, and Settings > About section
+- **Update toast**: Notification on login when a newer release is available
+- **Metadata profile selector**: Lidarr connection form now includes a Metadata Profile dropdown (fixes #40)
+- **Preset tag hints**: Tag-based subscription presets show "Tag can be changed to any genre" in the UI
+
+### Fixed
+- **Metadata Profile: None** (#40): Artists were added to Lidarr with metadata profile "None" because the subscription approve route always picked the first profile from the API (typically "None") instead of using the connection config. Now respects saved connection settings with proper fallback.
+- **Theme picker overflow**: Light/dark/system toggle no longer overlaps the Mixarr logo when the sidebar is collapsed. Moved to the user menu dropdown.
+
 ## [v2.1.0] - 2026-03-15
 
 ### New Subscription Types
@@ -349,7 +362,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[v2.1.0]: https://github.com/aquantumofdonuts/mixarr/compare/v2.0.0...dev
+[v2.1.1]: https://github.com/aquantumofdonuts/mixarr/compare/v2.1.0...v2.1.1
+[v2.1.0]: https://github.com/aquantumofdonuts/mixarr/compare/v2.0.0...v2.1.0
 [v2.0.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.2.1...v2.0.0
 [v1.2.0]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.2...v1.2.0
 [v1.1.2]: https://github.com/aquantumofdonuts/mixarr/compare/v1.1.1...v1.1.2
