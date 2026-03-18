@@ -21,6 +21,9 @@ export function LidarrForm({
   const [qualityProfileId, setQualityProfileId] = useState<string>(
     initialConfig?.qualityProfileId != null ? String(initialConfig.qualityProfileId) : ''
   );
+  const [metadataProfileId, setMetadataProfileId] = useState<string>(
+    initialConfig?.metadataProfileId != null ? String(initialConfig.metadataProfileId) : ''
+  );
   const [rootFolderPath, setRootFolderPath] = useState(initialConfig?.rootFolderPath ?? '');
   const [monitorOption, setMonitorOption] = useState(initialConfig?.monitorOption ?? 'all');
   const [monitorNewItems, setMonitorNewItems] = useState(initialConfig?.monitorNewItems ?? 'all');
@@ -30,6 +33,7 @@ export function LidarrForm({
 
   const [lidarrData, setLidarrData] = useState<{
     qualityProfiles: Array<{ id: number; name: string }>;
+    metadataProfiles: Array<{ id: number; name: string }>;
     rootFolders: Array<{ id: number; path: string }>;
   } | null>(null);
 
@@ -47,6 +51,7 @@ export function LidarrForm({
       if (existingConnectionId) {
         const { data } = await api.get<{
           qualityProfiles: Array<{ id: number; name: string }>;
+          metadataProfiles: Array<{ id: number; name: string }>;
           rootFolders: Array<{ id: number; path: string }>;
         }>(`/api/connections/${existingConnectionId}/lidarr-options`);
         if (data) setLidarrData(data);
@@ -54,11 +59,13 @@ export function LidarrForm({
         const { data } = await api.post<{
           success: boolean;
           qualityProfiles?: Array<{ id: number; name: string }>;
+          metadataProfiles?: Array<{ id: number; name: string }>;
           rootFolders?: Array<{ id: number; path: string }>;
         }>('/api/connections/test-lidarr', { url, apiKey });
         if (data?.success) {
           setLidarrData({
             qualityProfiles: data.qualityProfiles || [],
+            metadataProfiles: data.metadataProfiles || [],
             rootFolders: data.rootFolders || [],
           });
         }
@@ -75,6 +82,7 @@ export function LidarrForm({
         url,
         apiKey,
         qualityProfileId: qualityProfileId ? parseInt(qualityProfileId, 10) : undefined,
+        metadataProfileId: metadataProfileId ? parseInt(metadataProfileId, 10) : undefined,
         rootFolderPath,
         monitorOption,
         monitorNewItems,
@@ -85,7 +93,7 @@ export function LidarrForm({
       onConfigInvalid();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, apiKey, qualityProfileId, rootFolderPath, monitorOption, monitorNewItems, searchOnAdd]);
+  }, [url, apiKey, qualityProfileId, metadataProfileId, rootFolderPath, monitorOption, monitorNewItems, searchOnAdd]);
 
   return (
     <>
@@ -150,6 +158,22 @@ export function LidarrForm({
               ]}
             />
             <p className="text-xs text-muted-foreground mt-1">Quality profile for new artists</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Metadata Profile</label>
+            <Select
+              value={metadataProfileId}
+              onChange={(e) => setMetadataProfileId(e.target.value)}
+              options={[
+                { value: '', label: 'Select a metadata profile...' },
+                ...(lidarrData?.metadataProfiles?.map((p) => ({
+                  value: String(p.id),
+                  label: p.name,
+                })) || []),
+              ]}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Metadata profile for new artists</p>
           </div>
 
           <div>

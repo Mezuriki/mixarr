@@ -20,7 +20,10 @@ import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Save from 'lucide-react/dist/esm/icons/save';
 import SettingsIcon from 'lucide-react/dist/esm/icons/settings';
 import Shield from 'lucide-react/dist/esm/icons/shield';
+import Info from 'lucide-react/dist/esm/icons/info';
 import { useAuth } from '@/lib/auth';
+import { useQuery } from '@tanstack/react-query';
+import { APP_VERSION } from '@/lib/constants';
 
 interface SettingGroup {
   key: string;
@@ -104,6 +107,19 @@ export default function SettingsPage() {
   const { addToast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const isAdmin = user?.role === 'admin';
+
+  // Fetch version and update status
+  const { data: healthData } = useQuery<{
+    version?: string;
+    update?: { latest: string; url: string } | null;
+  }>({
+    queryKey: ['health-live'],
+    queryFn: async () => {
+      const res = await fetch('/api/health/live');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Redirect non-admin users
   useEffect(() => {
@@ -361,6 +377,39 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* About */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-container bg-primary/10 p-2 text-primary">
+                <Info className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">About Mixarr</CardTitle>
+                <CardDescription>Version and update information</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2">
+              <div>
+                <p className="font-medium">Version</p>
+                <p className="text-sm text-muted-foreground">v{healthData?.version || APP_VERSION}</p>
+              </div>
+              {healthData?.update && (
+                <a
+                  href={healthData.update.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                >
+                  v{healthData.update.latest} available →
+                </a>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </>
   );

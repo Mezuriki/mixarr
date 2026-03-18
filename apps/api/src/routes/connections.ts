@@ -725,12 +725,13 @@ connectionsRouter.get('/:id/lidarr-options', withTypedConnection('lidarr'), asyn
       apiKey: config.apiKey,
     });
 
-    const [qualityProfiles, rootFolders] = await Promise.all([
+    const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
       service.getQualityProfiles(),
+      service.getMetadataProfiles(),
       service.getRootFolders(),
     ]);
 
-    res.json({ qualityProfiles, rootFolders });
+    res.json({ qualityProfiles, metadataProfiles, rootFolders });
   } catch (error) {
     logger.error('Lidarr options error', {
       error: error instanceof Error ? error.message : String(error),
@@ -763,8 +764,9 @@ connectionsRouter.post('/test-lidarr', async (req, res) => {
       return;
     }
 
-    const [qualityProfiles, rootFolders] = await Promise.all([
+    const [qualityProfiles, metadataProfiles, rootFolders] = await Promise.all([
       service.getQualityProfiles(),
+      service.getMetadataProfiles(),
       service.getRootFolders(),
     ]);
 
@@ -772,6 +774,7 @@ connectionsRouter.post('/test-lidarr', async (req, res) => {
       success: true, 
       message: `Connected to Lidarr v${testResult.version}`,
       qualityProfiles, 
+      metadataProfiles,
       rootFolders 
     });
   } catch (error) {

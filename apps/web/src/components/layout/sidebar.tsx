@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
@@ -79,6 +80,20 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
+  // Fetch version and update status
+  const { data: healthData } = useQuery<{
+    version?: string;
+    update?: { latest: string; url: string } | null;
+  }>({
+    queryKey: ['health-live'],
+    queryFn: async () => {
+      const res = await fetch('/api/health/live');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 6 * 60 * 60 * 1000,
+  });
+
   // Filter nav groups based on user role
   const visibleNavGroups = navGroups
     .filter(group => !group.adminOnly || user?.role === 'admin')
@@ -149,8 +164,6 @@ export function Sidebar() {
             )}
           </Link>
           <div className="flex items-center gap-1">
-            {/* Theme picker */}
-            <ThemePicker />
             {/* Collapse toggle */}
             <button
               onClick={() => mobileOpen ? setMobileOpen(false) : toggleCollapsed()}
@@ -226,6 +239,30 @@ export function Sidebar() {
             )}
           </button>
 
+          {/* Version */}
+          {healthData?.version && (
+            <div className={cn('px-3 py-1', collapsed && 'text-center')}>
+              {healthData.update ? (
+                <a
+                  href={healthData.update.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  title={`Update available: v${healthData.update.latest}`}
+                >
+                  {collapsed
+                    ? <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                    : <>v{healthData.version} · update ↑</>
+                  }
+                </a>
+              ) : (
+                !collapsed && (
+                  <span className="text-xs text-muted-foreground">v{healthData.version}</span>
+                )
+              )}
+            </div>
+          )}
+
           {/* User dropdown menu */}
           {userMenuOpen && (
             <div className={cn(
@@ -243,6 +280,12 @@ export function Sidebar() {
                   <Settings className="h-4 w-4" />
                   {user?.role === 'admin' ? 'Settings' : 'My Profile'}
                 </button>
+                <div className="border-t my-1" />
+                <div className="px-3 py-2">
+                  <p className="text-xs text-muted-foreground mb-1.5">Theme</p>
+                  <ThemePicker />
+                </div>
+                <div className="border-t my-1" />
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);
