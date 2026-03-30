@@ -49,6 +49,7 @@ export function ConnectionWizard({
       setIsGlobal(editingConnection.userId === null);
       setConfig(null);
       setConfigValid(false);
+      setInitialConfig(undefined);
 
       // Fetch config for the connection being edited
       api
@@ -149,6 +150,7 @@ export function ConnectionWizard({
 
       {step === 2 && selectedType && (
         <WizardStepConfigure
+          key={`${editingConnection?.id ?? 'new'}-${initialConfig ? 'config-loaded' : 'config-loading'}`}
           type={selectedType}
           connectionName={connectionName}
           onConnectionNameChange={setConnectionName}
