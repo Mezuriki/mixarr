@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v2.1.3] - 2026-03-30
+
+### Fixed
+- **Docker build failure**: Removed broken `COPY --from=builder-api /app/apps/api/node_modules` line in `docker/Dockerfile.unified` — this path does not exist since npm workspaces hoists all dependencies to the root `node_modules`
+- **CI latest tag**: Fixed `latest` Docker tag not being published after the workflow trigger was changed from `release` events to tag pushes
+
+---
+
 ## [v2.1.2] - 2026-03-30
 
 ### Fixed
