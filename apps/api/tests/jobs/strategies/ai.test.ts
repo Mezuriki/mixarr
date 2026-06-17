@@ -26,6 +26,16 @@ vi.mock('../../../src/services/lastfm.js', () => ({
   },
 }));
 
+const mockGetArtists = vi.fn();
+
+vi.mock('../../../src/services/lidarr.js', () => ({
+  LidarrService: function MockLidarrService() {
+    return {
+      getArtists: mockGetArtists,
+    };
+  },
+}));
+
 const mockLoadSettings = vi.fn();
 const mockGetRecommendationsWithStrategy = vi.fn();
 
@@ -42,6 +52,7 @@ vi.mock('../../../src/services/ai.js', () => ({
 vi.mock('../../../src/types/connections.js', () => ({
   isSpotifyConfig: vi.fn().mockReturnValue(true),
   isLastFMConfig: vi.fn().mockReturnValue(true),
+  isLidarrConfig: vi.fn().mockReturnValue(true),
 }));
 
 // Import AFTER mocks are set up (vi.mock is hoisted)
@@ -65,6 +76,11 @@ function makeContext(config: Record<string, unknown> = {}): StrategyContext {
         id: 2,
         type: 'lastfm',
         config: { apiKey: 'test-key' },
+      }],
+      ['lidarr', {
+        id: 3,
+        type: 'lidarr',
+        config: { url: 'http://localhost:8686', apiKey: 'lidarr-key' },
       }],
     ]),
   };
@@ -93,6 +109,25 @@ function makeLastfmContext(config: Record<string, unknown> = {}): StrategyContex
         id: 2,
         type: 'lastfm',
         config: { apiKey: 'test-key' },
+      }],
+      ['lidarr', {
+        id: 3,
+        type: 'lidarr',
+        config: { url: 'http://localhost:8686', apiKey: 'lidarr-key' },
+      }],
+    ]),
+  };
+}
+
+/** Build a context with only a Lidarr connection. */
+function makeLidarrContext(config: Record<string, unknown> = {}): StrategyContext {
+  return {
+    config,
+    connections: new Map([
+      ['lidarr', {
+        id: 3,
+        type: 'lidarr',
+        config: { url: 'http://localhost:8686', apiKey: 'lidarr-key' },
       }],
     ]),
   };
@@ -219,6 +254,70 @@ describe('AI recommendation strategy', () => {
       await expect(
         strategy.execute(makeContext({ source: 'lastfm' })),
       ).rejects.toThrow('No artists found in lastfm library');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Lidarr source
+  // -----------------------------------------------------------------------
+  describe('source = lidarr', () => {
+    it('fetches library artists and returns AI recommendations', async () => {
+      mockGetArtists.mockResolvedValue([
+        { artistName: 'Lidarr Seed A' },
+        { artistName: 'Lidarr Seed B' },
+        { artistName: 'Lidarr Seed C' },
+      ]);
+      mockGetRecommendationsWithStrategy.mockResolvedValue([
+        { name: 'Lidarr Rec 1' },
+        { name: 'Lidarr Rec 2' },
+      ]);
+
+      const strategy = getStrategy('ai_recommendation')!;
+      const result = await strategy.execute(
+        makeContext({ source: 'lidarr', strategy: 'genre_expansion', limit: 15 }),
+      );
+
+      expect(mockGetArtists).toHaveBeenCalled();
+      expect(mockLoadSettings).toHaveBeenCalled();
+      expect(mockGetRecommendationsWithStrategy).toHaveBeenCalledWith(
+        ['Lidarr Seed A', 'Lidarr Seed B', 'Lidarr Seed C'],
+        'genre_expansion',
+        15,
+      );
+      expect(result.artists).toHaveLength(2);
+      expect(result.artists[0]).toEqual({ name: 'Lidarr Rec 1', source: 'ai-lidarr-genre_expansion' });
+      expect(result.artists[1]).toEqual({ name: 'Lidarr Rec 2', source: 'ai-lidarr-genre_expansion' });
+      expect(result.albums).toHaveLength(0);
+    });
+
+    it('sends all Lidarr artists as seeds (no artificial cap)', async () => {
+      const artists = Array.from({ length: 50 }, (_, i) => ({ artistName: 'Library Artist ' + i }));
+      mockGetArtists.mockResolvedValue(artists);
+      mockGetRecommendationsWithStrategy.mockResolvedValue([]);
+
+      const strategy = getStrategy('ai_recommendation')!;
+      await strategy.execute(makeContext({ source: 'lidarr' }));
+
+      const seeds = mockGetRecommendationsWithStrategy.mock.calls[0][0] as string[];
+      expect(seeds).toHaveLength(50);
+      expect(seeds[0]).toBe('Library Artist 0');
+      expect(seeds[49]).toBe('Library Artist 49');
+    });
+
+    it('throws if no Lidarr connection', async () => {
+      const strategy = getStrategy('ai_recommendation')!;
+      await expect(
+        strategy.execute(makeSpotifyContext({ source: 'lidarr' })),
+      ).rejects.toThrow('No active Lidarr connection');
+    });
+
+    it('throws if Lidarr returns no artists', async () => {
+      mockGetArtists.mockResolvedValue([]);
+
+      const strategy = getStrategy('ai_recommendation')!;
+      await expect(
+        strategy.execute(makeContext({ source: 'lidarr' })),
+      ).rejects.toThrow('No artists found in lidarr library');
     });
   });
 

@@ -1,8 +1,8 @@
 /**
  * AI recommendation subscription strategy.
  *
- * Cross-service strategy: reads the user's library from Spotify or Last.fm,
- * then asks an AI service to suggest similar/new artists.
+ * Cross-service strategy: reads the user's library from Spotify, Last.fm, or
+ * Lidarr, then asks an AI service to suggest similar/new artists.
  *
  * Registered in the global strategy registry at module load time.
  */
@@ -17,7 +17,8 @@ import {
 import { AIService } from '../../services/ai.js';
 import { SpotifyService } from '../../services/spotify.js';
 import { LastfmService } from '../../services/lastfm.js';
-import { isSpotifyConfig, isLastFMConfig } from '../../types/connections.js';
+import { LidarrService } from '../../services/lidarr.js';
+import { isSpotifyConfig, isLastFMConfig, isLidarrConfig } from '../../types/connections.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,13 +33,14 @@ import { isSpotifyConfig, isLastFMConfig } from '../../types/connections.js';
 /**
  * ai_recommendation – AI-powered artist discovery.
  *
- * Uses the user's Spotify followed artists or Last.fm top artists as seeds,
- * then asks an AI provider (OpenAI / Anthropic) for recommendations using a
- * configurable strategy (similar, genre_expansion, discovery).
+ * Uses the user's Spotify followed artists, Last.fm top artists, or Lidarr
+ * library as seeds, then asks an AI provider (OpenAI / Anthropic) for
+ * recommendations using a configurable strategy (similar, genre_expansion,
+ * discovery).
  */
 const aiRecommendation: SubscriptionStrategy = {
   async execute(context: StrategyContext): Promise<SubscriptionStrategyResult> {
-    const source = context.config.source as 'spotify' | 'lastfm';
+    const source = context.config.source as 'spotify' | 'lastfm' | 'lidarr';
     const strategy = context.config.strategy || 'similar';
     const limit = context.config.limit || 20;
 
@@ -63,6 +65,18 @@ const aiRecommendation: SubscriptionStrategy = {
       const lastfm = new LastfmService({ apiKey: conn.config.apiKey });
       const top = await lastfm.getTopArtists(20);
       sourceArtists = top.artists.map(a => a.name);
+    } else if (source === 'lidarr') {
+      const conn = context.connections.get('lidarr');
+      if (!conn) throw new Error('No active Lidarr connection');
+      if (!isLidarrConfig(conn.config)) {
+        throw new Error('Invalid Lidarr connection config');
+      }
+      const lidarr = new LidarrService({
+        url: conn.config.url,
+        apiKey: conn.config.apiKey,
+      });
+      const artists = await lidarr.getArtists();
+      sourceArtists = artists.map(a => a.artistName);
     }
 
     if (sourceArtists.length === 0) {

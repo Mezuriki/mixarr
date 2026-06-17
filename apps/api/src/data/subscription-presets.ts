@@ -710,6 +710,31 @@ export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
       config: { source: 'lastfm', strategy: 'discovery', limit: 20 },
     },
 
+    {
+      id: 'ai-lidarr-similar',
+      name: 'AI Similar Artists (Lidarr)',
+      description: 'AI-powered similar artist recommendations based on your Lidarr library',
+      type: 'ai_recommendation',
+      category: 'ai',
+      config: { source: 'lidarr', strategy: 'similar', limit: 20 },
+    },
+    {
+      id: 'ai-lidarr-genre',
+      name: 'AI Genre Expansion (Lidarr)',
+      description: 'Discover related genres based on your Lidarr library',
+      type: 'ai_recommendation',
+      category: 'ai',
+      config: { source: 'lidarr', strategy: 'genre_expansion', limit: 20 },
+    },
+    {
+      id: 'ai-lidarr-discovery',
+      name: 'AI Discovery (Lidarr)',
+      description: 'Completely new discoveries based on your Lidarr library',
+      type: 'ai_recommendation',
+      category: 'ai',
+      config: { source: 'lidarr', strategy: 'discovery', limit: 20 },
+    },
+
     // TAUTULLI / PLEX
     {
       id: 'tautulli-similar-week',

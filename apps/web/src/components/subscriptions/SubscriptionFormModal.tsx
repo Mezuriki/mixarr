@@ -1040,6 +1040,7 @@ export function SubscriptionFormModal({
                   options={[
                     { value: 'spotify', label: 'Spotify Library' },
                     { value: 'lastfm', label: 'Last.fm Scrobbles' },
+                    { value: 'lidarr', label: 'Lidarr Library' },
                   ]}
                 />
                 <p className="text-xs text-muted-foreground mt-1">Which library to base recommendations on</p>
