@@ -157,7 +157,7 @@ export class AIService {
     if (!this.openaiClient) return [];
 
     const strategyPrompt = STRATEGY_PROMPTS[strategy];
-    const artistList = artistNames.slice(0, 10).join(', ');
+    const artistList = artistNames.join(', ');
 
     const prompt = `Based on these artists: ${artistList}
 
@@ -209,7 +209,7 @@ Return at least 5 unique artists total, maximum 10.`;
     if (!this.anthropicClient) return [];
 
     const strategyPrompt = STRATEGY_PROMPTS[strategy];
-    const artistList = artistNames.slice(0, 10).join(', ');
+    const artistList = artistNames.join(', ');
 
     const prompt = `Based on these artists: ${artistList}
 
