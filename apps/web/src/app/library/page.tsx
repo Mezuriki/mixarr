@@ -23,6 +23,7 @@ import Image from 'lucide-react/dist/esm/icons/image';
 import Music from 'lucide-react/dist/esm/icons/music';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Search from 'lucide-react/dist/esm/icons/search';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import Wrench from 'lucide-react/dist/esm/icons/wrench';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 
@@ -86,6 +87,8 @@ export default function LibraryPage() {
   const [isStartingFix, setIsStartingFix] = useState(false);
   const [isCancellingFix, setIsCancellingFix] = useState(false);
   const [fixingArtistId, setFixingArtistId] = useState<number | null>(null);
+  const [enrichingArtistId, setEnrichingArtistId] = useState<number | null>(null);
+  const [isEnrichingAll, setIsEnrichingAll] = useState(false);
   const [confirmFixAll, setConfirmFixAll] = useState(false);
 
   const handleDuplicateCountChange = useCallback((count: number) => {
@@ -225,6 +228,69 @@ export default function LibraryPage() {
     setFixingArtistId(null);
   };
 
+  const handleEnrichArtist = async (artistId: number) => {
+    if (enrichingArtistId !== null) return;
+
+    setEnrichingArtistId(artistId);
+    const { data, error } = await api.post<{
+      artistId: number;
+      updated: boolean;
+      fields: Record<string, unknown>;
+    }>(`/api/search/lidarr/artists/${artistId}/enrich`, {
+      updateLidarr: true,
+      forceUpdate: false,
+    });
+
+    if (error) {
+      addToast({ type: 'error', title: 'Enrich Failed', message: error });
+    } else if (data) {
+      if (data.updated) {
+        const fields = Object.keys(data.fields);
+        addToast({
+          type: 'success',
+          title: 'Artist Enriched',
+          message: 'Updated: ' + (fields.join(', ') || 'metadata'),
+        });
+        fetchArtists();
+      } else {
+        addToast({
+          type: 'info',
+          title: 'No Changes',
+          message: 'No additional metadata found from Last.fm, Deezer, or Discogs',
+        });
+      }
+    }
+    setEnrichingArtistId(null);
+  };
+
+  const handleEnrichAll = async () => {
+    if (isEnrichingAll) return;
+    setIsEnrichingAll(true);
+    addToast({
+      type: 'info',
+      title: 'Enrich All Started',
+      message: 'Enriching artists with incomplete metadata. This may take a while...',
+    });
+    const { data, error } = await api.post<{
+      success: boolean;
+      message: string;
+      enriched: number;
+      total: number;
+    }>('/api/search/lidarr/artists/enrich-incomplete', { limit: 100 });
+
+    if (error) {
+      addToast({ type: 'error', title: 'Enrich All Failed', message: error });
+    } else if (data) {
+      addToast({
+        type: data.enriched > 0 ? 'success' : 'info',
+        title: 'Enrich All Completed',
+        message: data.message,
+      });
+      fetchArtists();
+    }
+    setIsEnrichingAll(false);
+  };
+
   // Calculate artists needing fix
   const artistsNeedingFix = useMemo(() => {
     return artists.filter(a => a.needsRefresh).length;
@@ -355,14 +421,24 @@ export default function LibraryPage() {
               {isCancellingFix ? 'Cancelling...' : 'Cancel Fix'}
             </Button>
           ) : (
-            <Button 
-              variant="outline" 
-              onClick={handleFixAllClick} 
-              disabled={artistsNeedingFix === 0 || isStartingFix || isLoading}
-            >
-              <Wrench className={`h-4 w-4 mr-2 ${isStartingFix ? 'animate-spin' : ''}`} />
-              Fix All{artistsNeedingFix > 0 ? ` (${artistsNeedingFix})` : ''}
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                onClick={handleFixAllClick} 
+                disabled={artistsNeedingFix === 0 || isStartingFix || isLoading}
+              >
+                <Wrench className={`h-4 w-4 mr-2 ${isStartingFix ? 'animate-spin' : ''}`} />
+                Fix All{artistsNeedingFix > 0 ? ` (${artistsNeedingFix})` : ''}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleEnrichAll} 
+                disabled={isEnrichingAll || isLoading || artistsNeedingFix === 0}
+              >
+                <Sparkles className={`h-4 w-4 mr-2 ${isEnrichingAll ? 'animate-spin' : ''}`} />
+                {isEnrichingAll ? 'Enriching...' : 'Enrich All'}
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={fetchArtists} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -578,7 +654,7 @@ export default function LibraryPage() {
                     >
                       Issues <SortIcon field="issues" />
                     </th>
-                    <th className="text-center py-3 px-2 w-24">Actions</th>
+                    <th className="text-center py-3 px-2 w-32">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -622,17 +698,30 @@ export default function LibraryPage() {
                         )}
                       </td>
                       <td className="text-center py-3 px-2">
-                        {artist.needsRefresh && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleFixArtist(artist.id)}
-                            disabled={fixingArtistId !== null || fixJob?.status === 'running' || isLoading}
-                            title="Fix artist metadata"
-                          >
-                            <Wrench className={`h-4 w-4 ${fixingArtistId === artist.id ? 'animate-spin' : ''}`} />
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          {artist.needsRefresh && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleFixArtist(artist.id)}
+                                disabled={fixingArtistId !== null || fixJob?.status === 'running' || isLoading}
+                                title="Fix from MusicBrainz"
+                              >
+                                <Wrench className={`h-4 w-4 ${fixingArtistId === artist.id ? 'animate-spin' : ''}`} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEnrichArtist(artist.id)}
+                                disabled={enrichingArtistId !== null || isEnrichingAll || isLoading}
+                                title="Enrich from Last.fm, Deezer, Discogs"
+                              >
+                                <Sparkles className={`h-4 w-4 ${enrichingArtistId === artist.id ? 'animate-spin' : ''}`} />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
