@@ -38,12 +38,14 @@ vi.mock('../../../src/services/lidarr.js', () => ({
 
 const mockLoadSettings = vi.fn();
 const mockGetRecommendationsWithStrategy = vi.fn();
+const mockIsAvailable = vi.fn().mockResolvedValue(true);
 
 vi.mock('../../../src/services/ai.js', () => ({
   AIService: function MockAIService() {
     return {
       loadSettings: mockLoadSettings,
       getRecommendationsWithStrategy: mockGetRecommendationsWithStrategy,
+      isAvailable: mockIsAvailable,
     };
   },
 }));
@@ -145,6 +147,7 @@ function makeEmptyContext(config: Record<string, unknown> = {}): StrategyContext
 describe('AI recommendation strategy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsAvailable.mockResolvedValue(true);
   });
 
   // -----------------------------------------------------------------------

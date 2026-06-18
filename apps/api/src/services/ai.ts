@@ -193,8 +193,9 @@ Return at least 5 unique artists total, maximum 10.`;
         sourceArtist: artistNames[0],
       }));
     } catch (error) {
-      logger.error('OpenAI API error', { error });
-      return [];
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error('OpenAI API error', { error: msg });
+      throw new Error(`OpenAI API call failed: ${msg}`);
     }
   }
 
@@ -238,8 +239,9 @@ Return at least 5 unique artists total, maximum 10.`;
         sourceArtist: artistNames[0],
       }));
     } catch (error) {
-      logger.error('Anthropic API error', { error });
-      return [];
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error('Anthropic API error', { error: msg });
+      throw new Error(`Anthropic API call failed: ${msg}`);
     }
   }
 
@@ -394,6 +396,9 @@ Return ONLY a JSON array of artist names, nothing else. Format:
 
   /**
    * Get recommendations with a specific strategy (for subscription use)
+   * 
+   * Throws an error if all enabled providers fail, rather than silently
+   * returning empty results. This ensures subscription failures are visible.
    */
   async getRecommendationsWithStrategy(
     artistNames: string[],
@@ -405,21 +410,33 @@ Return ONLY a JSON array of artist names, nothing else. Format:
     }
 
     if (!this.settings) {
-      return [];
+      throw new Error('AI settings not configured');
     }
 
     const allRecommendations: AIRecommendation[] = [];
+    const errors: string[] = [];
 
     // Get OpenAI recommendations if enabled
     if (this.settings.openaiEnabled && this.openaiClient) {
       try {
+        logger.info('Requesting recommendations from OpenAI-compatible provider', {
+          model: this.settings.openaiModel || DEFAULT_OPENAI_MODEL,
+          baseUrl: this.settings.openaiBaseUrl || 'default',
+          strategy,
+          seedCount: artistNames.length,
+        });
         const openaiRecs = await this.getOpenAIRecommendations(
           artistNames,
           strategy as AIStrategy
         );
+        logger.info('OpenAI-compatible provider returned recommendations', {
+          count: openaiRecs.length,
+        });
         allRecommendations.push(...openaiRecs);
       } catch (error) {
-        logger.error('OpenAI recommendations failed', { error });
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error('OpenAI recommendations failed', { error: msg });
+        errors.push(`OpenAI: ${msg}`);
       }
     }
 
@@ -432,8 +449,18 @@ Return ONLY a JSON array of artist names, nothing else. Format:
         );
         allRecommendations.push(...anthropicRecs);
       } catch (error) {
-        logger.error('Anthropic recommendations failed', { error });
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error('Anthropic recommendations failed', { error: msg });
+        errors.push(`Anthropic: ${msg}`);
       }
+    }
+
+    // If no providers produced any results and there were errors, throw
+    if (allRecommendations.length === 0 && errors.length > 0) {
+      throw new Error(
+        `All AI providers failed: ${errors.join('; ')}. ` +
+        `Check AI settings (base URL, model name, API key).`
+      );
     }
 
     // Deduplicate by artist name (case-insensitive)

@@ -19,6 +19,9 @@ import { SpotifyService } from '../../services/spotify.js';
 import { LastfmService } from '../../services/lastfm.js';
 import { LidarrService } from '../../services/lidarr.js';
 import { isSpotifyConfig, isLastFMConfig, isLidarrConfig } from '../../types/connections.js';
+import { createLogger } from '../../lib/logger.js';
+
+const logger = createLogger('AI-Strategy');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,6 +47,11 @@ const aiRecommendation: SubscriptionStrategy = {
     const strategy = context.config.strategy || 'similar';
     const limit = context.config.limit || 20;
 
+    logger.info('AI recommendation starting', { source, strategy, limit });
+    logger.debug('Available connections', {
+      types: Array.from(context.connections.keys()),
+    });
+
     // Collect seed artists from the chosen source
     let sourceArtists: string[] = [];
 
@@ -67,31 +75,49 @@ const aiRecommendation: SubscriptionStrategy = {
       sourceArtists = top.artists.map(a => a.name);
     } else if (source === 'lidarr') {
       const conn = context.connections.get('lidarr');
-      if (!conn) throw new Error('No active Lidarr connection');
+      if (!conn) {
+        logger.error('No lidarr connection found in context');
+        throw new Error('No active Lidarr connection');
+      }
       if (!isLidarrConfig(conn.config)) {
+        logger.error('Invalid Lidarr config', { config: conn.config });
         throw new Error('Invalid Lidarr connection config');
       }
+      logger.info('Fetching artists from Lidarr', { url: conn.config.url });
       const lidarr = new LidarrService({
         url: conn.config.url,
         apiKey: conn.config.apiKey,
       });
       const artists = await lidarr.getArtists();
       sourceArtists = artists.map(a => a.artistName);
+      logger.info('Lidarr returned artists', { count: sourceArtists.length });
     }
 
     if (sourceArtists.length === 0) {
       throw new Error(`No artists found in ${source} library to analyze`);
     }
 
+    logger.info('Seed artists collected', { count: sourceArtists.length, sample: sourceArtists.slice(0, 5) });
+
     // Get AI recommendations
     const aiService = new AIService();
     await aiService.loadSettings();
+
+    const isAvailable = await aiService.isAvailable();
+    if (!isAvailable) {
+      logger.error('AI service not available - no provider configured or enabled');
+      throw new Error('AI service not available. Check AI settings (API key, base URL, model).');
+    }
+
+    logger.info('Calling AI service for recommendations', { strategy, seedCount: sourceArtists.length });
 
     const recs = await aiService.getRecommendationsWithStrategy(
       sourceArtists,
       strategy,
       limit,
     );
+
+    logger.info('AI service returned recommendations', { count: recs.length });
 
     return artistResult(
       recs.map(r => ({
