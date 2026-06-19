@@ -234,8 +234,9 @@ export default function LibraryPage() {
     setEnrichingArtistId(artistId);
     const { data, error } = await api.post<{
       artistId: number;
+      artistName: string;
       updated: boolean;
-      fields: Record<string, unknown>;
+      fieldsUpdated: string[];
     }>(`/api/search/lidarr/artists/${artistId}/enrich`, {
       updateLidarr: true,
       forceUpdate: false,
@@ -245,11 +246,10 @@ export default function LibraryPage() {
       addToast({ type: 'error', title: 'Enrich Failed', message: error });
     } else if (data) {
       if (data.updated) {
-        const fields = Object.keys(data.fields);
         addToast({
           type: 'success',
           title: 'Artist Enriched',
-          message: 'Updated: ' + (fields.join(', ') || 'metadata'),
+          message: 'Updated: ' + (data.fieldsUpdated.join(', ') || 'metadata'),
         });
         fetchArtists();
       } else {
