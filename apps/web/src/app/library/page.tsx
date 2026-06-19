@@ -249,14 +249,15 @@ export default function LibraryPage() {
         addToast({
           type: 'success',
           title: 'Artist Enriched',
-          message: 'Updated: ' + (data.fieldsUpdated.join(', ') || 'metadata'),
+          message: (data.artistName || 'Artist') + ': updated ' + (data.fieldsUpdated.join(', ') || 'metadata'),
         });
         fetchArtists();
       } else {
+        const fields = data.fieldsUpdated ? data.fieldsUpdated.join(', ') : 'none';
         addToast({
           type: 'info',
-          title: 'No Changes',
-          message: 'No additional metadata found from Last.fm, Deezer, or Discogs',
+          title: 'Enrich: No Changes',
+          message: (data.artistName || 'Artist') + ': fields updated=' + fields + '. Metadata may already be complete or unavailable upstream.',
         });
       }
     }
