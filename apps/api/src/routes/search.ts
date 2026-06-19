@@ -1017,6 +1017,7 @@ searchRouter.post('/lidarr/artists/:id/enrich', async (req, res) => {
     });
 
     if (!lastfmConn) {
+      log.warn('Enrich failed: no Last.fm connection for user', { userId: req.user!.id });
       res.status(400).json({ error: 'No active Last.fm connection for metadata enrichment' });
       return;
     }
@@ -1035,7 +1036,24 @@ searchRouter.post('/lidarr/artists/:id/enrich', async (req, res) => {
       forceUpdate?: boolean;
     };
 
+    // Fetch artist name for logging
+    const artist = await lidarr.getArtist(artistId);
+    log.info('Enriching artist metadata', {
+      artistId,
+      artistName: artist.artistName,
+      sources: ['lastfm', 'deezer', discogsToken ? 'discogs' : null].filter(Boolean),
+      updateLidarr,
+      forceUpdate,
+    });
+
     const result = await enrichService.enrichArtist(artistId, { updateLidarr, forceUpdate });
+
+    log.info('Enrich result', {
+      artistId,
+      artistName: artist.artistName,
+      updated: result.updated,
+      fieldsUpdated: result.updated ? result.fieldsUpdated : [],
+    });
 
     res.json(result);
   } catch (error) {
@@ -1054,6 +1072,7 @@ searchRouter.post('/lidarr/artists/enrich-incomplete', async (req, res) => {
       res.status(400).json({ error: 'No active Lidarr connection' });
       return;
     }
+    log.info('Enrich-incomplete started', { userId: req.user!.id });
 
     const lastfmConn = await prisma.connection.findFirst({
       where: { userId: req.user!.id, type: 'lastfm', isActive: true },
@@ -1101,12 +1120,24 @@ searchRouter.post('/lidarr/artists/enrich-incomplete', async (req, res) => {
       return;
     }
 
+    log.info('Enriching incomplete artists', {
+      total: incompleteArtists.length,
+      issueType,
+      hasDiscogs: !!discogsToken,
+    });
+
     const results = await enrichService.enrichArtists(
       incompleteArtists.map(a => a.id),
       { updateLidarr: true }
     );
 
     const enrichedCount = results.filter(r => r.updated).length;
+
+    log.info('Enrich-incomplete completed', {
+      total: results.length,
+      enriched: enrichedCount,
+      failed: results.length - enrichedCount,
+    });
 
     res.json({
       success: true,
