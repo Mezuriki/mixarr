@@ -67,6 +67,8 @@ export default function NavidromePage() {
   // Multi-select at the artist level. Expanding an artist loads its albums
   // (single-select) to inspect the missing-lyrics preview.
   const [selectedArtistIds, setSelectedArtistIds] = useState<Set<string>>(new Set());
+  // When true, enqueueing an artist/album adds BOTH a lyrics and a decode job.
+  const [both, setBoth] = useState(false);
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
   const [albums, setAlbums] = useState<AlbumInfo[]>([]);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
@@ -187,7 +189,48 @@ export default function NavidromePage() {
     }
     if (data) {
       setJob(data);
-      addToast({ type: 'success', title: 'Queued', message: `${data.queue?.length ?? 0} item(s) added to the queue` });
+      const running = data.status === 'running' || data.status === 'queued';
+      addToast({
+        type: 'success',
+        title: running ? 'Added to queue' : 'Queued',
+        message: `${data.queue?.length ?? 0} item(s) in the queue${running ? ' (appended to the running job)' : ''}`,
+      });
+    }
+  };
+
+  // Build the request payload for the selection/all, honoring the "both" flag.
+  // When both is set, two jobs (lyrics + decode) are sent per artist so the
+  // caller only needs to fire once.
+  const buildPayload = (mode: EnrichMode, scope: 'selected' | 'all') => {
+    const modes: EnrichMode[] = both ? ['lyrics', 'decode'] : [mode];
+    const base = scope === 'all' ? { all: true } : { artistIds: Array.from(selectedArtistIds) };
+    return modes.map((m) => ({ mode: m, ...base }));
+  };
+
+  // Fire one POST per mode (lyrics and/or decode). Each call appends to the
+  // queue; if a job is already running the items are picked up by the worker.
+  const enqueueMultiple = async (payloads: Record<string, unknown>[]) => {
+    setBusy(true);
+    let lastErr: string | null = null;
+    let lastData: EnrichJobStatus | null = null;
+    for (const p of payloads) {
+      const { data, error } = await api.post<EnrichJobStatus>('/api/navidrome/enrich', p);
+      if (error) lastErr = error;
+      if (data) lastData = data;
+    }
+    setBusy(false);
+    if (lastErr) {
+      addToast({ type: 'error', title: 'Failed to enqueue', message: lastErr });
+      return;
+    }
+    if (lastData) {
+      setJob(lastData);
+      const running = lastData.status === 'running' || lastData.status === 'queued';
+      addToast({
+        type: 'success',
+        title: running ? 'Added to queue' : 'Queued',
+        message: `${payloads.length} job(s)${both ? ' (lyrics + decode)' : ''}${running ? ' appended to the running queue' : ''}`,
+      });
     }
   };
 
@@ -196,10 +239,14 @@ export default function NavidromePage() {
       addToast({ type: 'info', title: 'Nothing selected', message: 'Select at least one artist first' });
       return;
     }
-    enqueue({ mode, artistIds: Array.from(selectedArtistIds) });
+    const payloads = buildPayload(mode, 'selected');
+    enqueueMultiple(payloads);
   };
 
-  const enrichAll = (mode: EnrichMode) => enqueue({ mode, all: true });
+  const enrichAll = (mode: EnrichMode) => {
+    const payloads = buildPayload(mode, 'all');
+    enqueueMultiple(payloads);
+  };
 
   const cancelJob = async () => {
     if (cancelling) return;
@@ -251,19 +298,37 @@ export default function NavidromePage() {
           <span className="text-sm text-muted-foreground mr-2">
             {selectedArtistIds.size} artist(s) selected
           </span>
-          <Button variant="outline" size="sm" disabled={busy || isActive} onClick={() => enrichSelected('lyrics')}>
-            Enrich lyrics (selected)
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground mr-2 select-none">
+            <input
+              type="checkbox"
+              checked={both}
+              onChange={(e) => setBoth(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Both (lyrics + decode)
+          </label>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => enrichSelected('lyrics')}>
+            {both ? 'Enrich selected (lyrics + decode)' : 'Enrich lyrics (selected)'}
           </Button>
-          <Button variant="outline" size="sm" disabled={busy || isActive} onClick={() => enrichSelected('decode')}>
-            Decode meaning (selected)
-          </Button>
+          {!both && (
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => enrichSelected('decode')}>
+              Decode meaning (selected)
+            </Button>
+          )}
           <div className="mx-2 h-5 w-px bg-border" />
-          <Button variant="outline" size="sm" disabled={busy || isActive} onClick={() => enrichAll('lyrics')}>
-            Enrich ALL lyrics
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => enrichAll('lyrics')}>
+            {both ? 'Enrich ALL (lyrics + decode)' : 'Enrich ALL lyrics'}
           </Button>
-          <Button variant="outline" size="sm" disabled={busy || isActive} onClick={() => enrichAll('decode')}>
-            Decode ALL
-          </Button>
+          {!both && (
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => enrichAll('decode')}>
+              Decode ALL
+            </Button>
+          )}
+          {isActive && (
+            <span className="text-xs text-muted-foreground ml-auto">
+              Queue running — new items will be appended
+            </span>
+          )}
         </CardContent>
       </Card>
 
@@ -401,10 +466,19 @@ export default function NavidromePage() {
                 </select>
                 <Button
                   size="sm"
-                  disabled={busy || isActive || missingCount === 0}
-                  onClick={() => enqueue({ mode: missingMode, albumIds: [selectedAlbum] })}
+                  disabled={busy || missingCount === 0}
+                  onClick={() => {
+                    if (both) {
+                      enqueueMultiple([
+                        { mode: 'lyrics', albumIds: [selectedAlbum] },
+                        { mode: 'decode', albumIds: [selectedAlbum] },
+                      ]);
+                    } else {
+                      enqueue({ mode: missingMode, albumIds: [selectedAlbum] });
+                    }
+                  }}
                 >
-                  Enrich this album ({missingCount} missing)
+                  {both ? `Enrich this album (lyrics + decode, ${missingCount} missing)` : `Enrich this album (${missingCount} missing)`}
                 </Button>
               </div>
             </div>
