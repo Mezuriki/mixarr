@@ -13,23 +13,25 @@
 import prisma from './db.js';
 import { LidarrService } from '../services/lidarr.js';
 import { LastfmService } from '../services/lastfm.js';
+import { NavidromeService } from '../services/navidrome.js';
 import { LidarrConnectionConfig, normalizeLidarrConfig } from '../types/connections.js';
 import type { Connection } from '@prisma/client';
 
 /**
  * Connection type strings supported by the resolver
  */
-export type ConnectionType = 
-  | 'lidarr' 
-  | 'lastfm' 
-  | 'spotify' 
-  | 'deezer' 
-  | 'tidal' 
-  | 'tautulli' 
-  | 'jellyfin' 
+export type ConnectionType =
+  | 'lidarr'
+  | 'lastfm'
+  | 'spotify'
+  | 'deezer'
+  | 'tidal'
+  | 'tautulli'
+  | 'jellyfin'
   | 'listenbrainz'
   | 'slskd'
-  | 'discogs';
+  | 'discogs'
+  | 'navidrome';
 
 /**
  * Centralized connection resolution with consistent user-owned → global fallback
@@ -70,6 +72,19 @@ export class ConnectionResolver {
 
     const config = connection.config as { url: string; apiKey: string };
     return new LidarrService(config);
+  }
+
+  /**
+   * Get a Navidrome (Subsonic) service for the given user, with the usual
+   * user-owned → global fallback. Used for both library enumeration and AI
+   * lyrics orchestration.
+   */
+  static async getNavidromeService(userId: number): Promise<NavidromeService | null> {
+    const connection = await this.getConnection('navidrome', userId);
+    if (!connection) return null;
+
+    const config = connection.config as { url: string; username: string; password: string };
+    return new NavidromeService(config);
   }
 
   /**
@@ -121,6 +136,7 @@ export class ConnectionResolver {
 // Export individual functions for convenience (backward compatibility)
 export const getConnection = ConnectionResolver.getConnection.bind(ConnectionResolver);
 export const getLidarrService = ConnectionResolver.getLidarrService.bind(ConnectionResolver);
+export const getNavidromeService = ConnectionResolver.getNavidromeService.bind(ConnectionResolver);
 export const getLidarrServiceWithConfig = ConnectionResolver.getLidarrServiceWithConfig.bind(ConnectionResolver);
 export const getLastfmService = ConnectionResolver.getLastfmService.bind(ConnectionResolver);
 export const hasConnection = ConnectionResolver.hasConnection.bind(ConnectionResolver);

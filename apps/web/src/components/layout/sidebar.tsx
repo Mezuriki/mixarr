@@ -15,6 +15,7 @@ import Library from 'lucide-react/dist/esm/icons/library';
 import ListChecks from 'lucide-react/dist/esm/icons/list-checks';
 import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Menu from 'lucide-react/dist/esm/icons/menu';
+import Music from 'lucide-react/dist/esm/icons/music';
 import Plug from 'lucide-react/dist/esm/icons/plug';
 import Search from 'lucide-react/dist/esm/icons/search';
 import Settings from 'lucide-react/dist/esm/icons/settings';
@@ -55,6 +56,7 @@ const navGroups: NavGroup[] = [
       { href: '/subscriptions', label: 'Subscriptions', icon: TrendingUp },
       { href: '/queue', label: 'Review Queue', icon: ListChecks },
       { href: '/downloads', label: 'Downloads', icon: Download },
+      { href: '/navidrome', label: 'Navidrome', icon: Music },
     ],
   },
   {

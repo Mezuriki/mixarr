@@ -12,6 +12,7 @@ export const connectionTypes = [
   'discogs',
   'jellyfin',
   'slskd',
+  'navidrome',
 ] as const;
 
 export type ConnectionType = (typeof connectionTypes)[number];
@@ -20,6 +21,15 @@ export type ConnectionType = (typeof connectionTypes)[number];
 export const lidarrConfigSchema = z.object({
   url: z.string().url(),
   apiKey: z.string(),
+});
+
+// Navidrome is a Subsonic-compatible server. The native /api/ai/* endpoints
+// share the same URL/user as the Subsonic API, so a single set of credentials
+// covers both library reads (Subsonic) and AI orchestration (native API).
+export const navidromeConfigSchema = z.object({
+  url: z.string().url(),
+  username: z.string(),
+  password: z.string(),
 });
 
 export const lastfmConfigSchema = z.object({

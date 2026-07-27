@@ -10,6 +10,7 @@ import { TidalForm } from './TidalForm';
 import { ListenBrainzForm } from './ListenBrainzForm';
 import { DiscogsForm } from './DiscogsForm';
 import { SlskdForm } from './SlskdForm';
+import { NavidromeForm } from './NavidromeForm';
 import type { ConnectionFormProps } from './types';
 
 export {
@@ -23,6 +24,7 @@ export {
   ListenBrainzForm,
   DiscogsForm,
   SlskdForm,
+  NavidromeForm,
 };
 
 export const connectionForms: Record<string, React.ComponentType<ConnectionFormProps>> = {
@@ -36,4 +38,5 @@ export const connectionForms: Record<string, React.ComponentType<ConnectionFormP
   listenbrainz: ListenBrainzForm,
   discogs: DiscogsForm,
   slskd: SlskdForm,
+  navidrome: NavidromeForm,
 };

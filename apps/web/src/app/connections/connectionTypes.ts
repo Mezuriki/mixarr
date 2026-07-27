@@ -16,4 +16,5 @@ export const connectionTypes: ConnectionTypeInfo[] = [
   { value: 'listenbrainz', label: 'ListenBrainz', color: '#353070', description: 'Open-source music tracking' },
   { value: 'discogs', label: 'Discogs', color: '#333333', description: 'Music database & collection' },
   { value: 'slskd', label: 'slskd', color: '#FF6B35', description: 'Soulseek downloads' },
+  { value: 'navidrome', label: 'Navidrome', color: '#19B6E8', description: 'Subsonic music server + AI lyrics' },
 ];

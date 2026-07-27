@@ -14,6 +14,7 @@ import { TidalService } from '../services/tidal.js';
 import { SlskdService } from '../services/slskd.js';
 import { ListenBrainzService } from '../services/listenbrainz.js';
 import { DiscogsService } from '../services/discogs.js';
+import { NavidromeService } from '../services/navidrome.js';
 import type { Prisma } from '@prisma/client';
 import { validateBody } from '../middleware/validate.js';
 import { createConnectionSchema, updateConnectionSchema, testConnectionSchema } from '../schemas/connection.js';
@@ -43,6 +44,22 @@ const connectionTestHandlers: Record<string, (config: Record<string, any>) => Pr
       success: testResult.success,
       message: testResult.success
         ? `Connected to Lidarr v${testResult.version}`
+        : testResult.error || 'Connection failed',
+      details: { version: testResult.version },
+    };
+  },
+
+  navidrome: async (config) => {
+    const service = new NavidromeService({
+      url: config.url,
+      username: config.username,
+      password: config.password,
+    });
+    const testResult = await service.testConnection();
+    return {
+      success: testResult.success,
+      message: testResult.success
+        ? `Connected to Navidrome${testResult.version ? ` v${testResult.version}` : ''}`
         : testResult.error || 'Connection failed',
       details: { version: testResult.version },
     };
@@ -291,7 +308,7 @@ connectionsRouter.post('/test', validateBody(testConnectionSchema), async (req, 
       }
     }
 
-    const { type, url, apiKey, clientId, clientSecret } = req.body;
+    const { type, url, apiKey, clientId, clientSecret, username, password } = req.body;
 
     switch (type) {
       case 'lidarr': {
@@ -306,6 +323,21 @@ connectionsRouter.post('/test', validateBody(testConnectionSchema), async (req, 
           return;
         }
         res.json({ success: true, message: `Connected to Lidarr v${testResult.version}` });
+        return;
+      }
+
+      case 'navidrome': {
+        if (!url || !username || !password) {
+          res.status(400).json({ success: false, error: 'URL, username and password required' });
+          return;
+        }
+        const service = new NavidromeService({ url, username, password });
+        const testResult = await service.testConnection();
+        if (!testResult.success) {
+          res.json({ success: false, error: testResult.error || 'Connection failed' });
+          return;
+        }
+        res.json({ success: true, message: `Connected to Navidrome${testResult.version ? ` v${testResult.version}` : ''}` });
         return;
       }
 
