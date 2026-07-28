@@ -110,6 +110,11 @@ class NavidromeEnrichmentService {
       startedAt: wasRunning ? (existing?.startedAt ?? Date.now()) : Date.now(),
     };
     await redis.set(this.jobKey(userId), JSON.stringify({ ...status, queue }), 'EX', JOB_TTL_SECONDS);
+    log.info(
+      `[user ${userId}] Enqueued ${items.length} item(s) [${items
+        .map((i) => `${i.label}:${i.mode}`)
+        .join(', ')}] — queue now ${queue.length} item(s), ${wasRunning ? 'appended to running job' : 'starting fresh'}`,
+    );
 
     // Fire-and-forget the worker (it's a no-op if already running).
     setImmediate(async () => {
@@ -200,12 +205,17 @@ class NavidromeEnrichmentService {
     status.status = 'running';
     status.startedAt = status.startedAt ?? Date.now();
     await this.updateStatus(userId, status, queue);
+    log.info(
+      `[user ${userId}] Worker started: ${queue.length} item(s) in queue`,
+    );
 
     while (queue.length > 0) {
       if (await this.isCancelled(userId)) {
         status.status = 'cancelled';
         await this.updateStatus(userId, status, queue);
-        log.info(`Queue cancelled for user ${userId} at ${status.processed}/${status.total}`);
+        log.info(
+          `[user ${userId}] Cancelled at ${status.processed}/${status.total} (remaining items: ${queue.length})`,
+        );
         return;
       }
 
@@ -213,15 +223,24 @@ class NavidromeEnrichmentService {
       status.currentItem = item.label;
       status.mode = item.mode;
       await this.updateStatus(userId, status, queue);
+      log.info(
+        `[user ${userId}] Next item: "${item.label}" (${item.mode}) — ${queue.length} item(s) still queued`,
+      );
 
       // Resolve the targets for this item.
       let targets: ResolvedTarget[];
       try {
         targets = await this.resolveTargets(service, token, item);
       } catch (err) {
-        log.warn(`Failed to resolve targets for "${item.label}":`, err);
+        log.warn(
+          `[user ${userId}] Failed to resolve targets for "${item.label}" (${item.mode}):`,
+          err instanceof Error ? err.message : err,
+        );
         continue; // drop the item, keep going
       }
+      log.info(
+        `[user ${userId}] "${item.label}" (${item.mode}): ${targets.length} track(s) to process`,
+      );
       // Grow the total to include newly discovered tracks.
       status.total += targets.length;
       await this.updateStatus(userId, status, queue);
@@ -230,10 +249,14 @@ class NavidromeEnrichmentService {
         if (await this.isCancelled(userId)) {
           status.status = 'cancelled';
           await this.updateStatus(userId, status, queue);
+          log.info(`[user ${userId}] Cancelled before track "${t.title}"`);
           return;
         }
         status.currentTrack = `${t.title}${t.artist ? ' — ' + t.artist : ''}`;
         await this.updateStatus(userId, status, queue);
+        log.info(
+          `[user ${userId}] (${item.mode}) "${t.title}" — start (${status.processed + 1}/${status.total})`,
+        );
 
         let ok = false;
         try {
@@ -243,6 +266,7 @@ class NavidromeEnrichmentService {
             item.mode,
             t,
             async () => {
+              log.info(`[user ${userId}] Re-authenticating to Navidrome`);
               token = await service.login();
             },
             () => this.isCancelled(userId),
@@ -251,17 +275,20 @@ class NavidromeEnrichmentService {
           if (err && (err as any).cancelled) {
             status.status = 'cancelled';
             await this.updateStatus(userId, status, queue);
-            log.info(`Queue cancelled mid-track for user ${userId}`);
+            log.info(`[user ${userId}] Cancelled mid-track "${t.title}"`);
             return;
           }
           throw err;
         }
         status.processed += 1;
-        if (ok) status.enriched += 1;
-        else {
+        if (ok) {
+          status.enriched += 1;
+          log.info(`[user ${userId}] (${item.mode}) "${t.title}" — done`);
+        } else {
           status.failed += 1;
           failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: 'failed' });
           status.failedItems = failedItems;
+          log.warn(`[user ${userId}] (${item.mode}) "${t.title}" — FAILED`);
         }
         await this.updateStatus(userId, status, queue);
         if (interTrackDelay > 0) await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
@@ -272,7 +299,9 @@ class NavidromeEnrichmentService {
     status.currentTrack = undefined;
     status.currentItem = undefined;
     await this.updateStatus(userId, status, queue);
-    log.info(`Queue completed for user ${userId}: +${status.enriched} enriched, ${status.failed} failed`);
+    log.info(
+      `[user ${userId}] Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`,
+    );
   }
 
   /**
@@ -298,9 +327,14 @@ class NavidromeEnrichmentService {
           if (!r.done) {
             if (r.error === 'cancelled') throw { cancelled: true };
             if (this.looksLikeQuotaError(r.error)) {
-              await this.cancelableSleep(QUOTA_BACKOFF_BASE_MS * 2 ** attempt, isCancelled);
+              const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
+              log.warn(
+                `[${mode}] "${target.title}" — quota/overload on Navidrome lyrics, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${r.error})`,
+              );
+              await this.cancelableSleep(backoff, isCancelled);
               continue;
             }
+            log.warn(`[${mode}] "${target.title}" — lyrics failed: ${r.error}`);
             return false;
           }
           return true;
@@ -312,6 +346,7 @@ class NavidromeEnrichmentService {
         if (err && (err as any).cancelled) throw err;
         const msg = err instanceof Error ? err.message : String(err);
         if (/401|token|unauthorized/i.test(msg)) {
+          log.info(`[${mode}] "${target.title}" — auth expired, re-authenticating`);
           try {
             await relogin();
             continue;
@@ -320,9 +355,14 @@ class NavidromeEnrichmentService {
           }
         }
         if (this.looksLikeQuotaError(msg)) {
-          await this.cancelableSleep(QUOTA_BACKOFF_BASE_MS * 2 ** attempt, isCancelled);
+          const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
+          log.warn(
+            `[${mode}] "${target.title}" — quota/overload, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${msg})`,
+          );
+          await this.cancelableSleep(backoff, isCancelled);
           continue;
         }
+        log.warn(`[${mode}] "${target.title}" — failed: ${msg}`);
         return false;
       }
     }
@@ -363,7 +403,17 @@ class NavidromeEnrichmentService {
   private looksLikeQuotaError(msg?: string): boolean {
     if (!msg) return false;
     const m = msg.toLowerCase();
-    return m.includes('quota') || m.includes('rate limit') || m.includes('429') || m.includes('resource_exhausted');
+    return (
+      m.includes('quota') ||
+      m.includes('rate limit') ||
+      m.includes('429') ||
+      m.includes('resource_exhausted') ||
+      m.includes('high demand') ||
+      m.includes('overloaded') ||
+      m.includes('try again later') ||
+      m.includes('status unavailable') ||
+      m.includes(' 503')
+    );
   }
 }
 
