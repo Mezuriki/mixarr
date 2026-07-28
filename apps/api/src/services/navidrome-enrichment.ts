@@ -37,11 +37,17 @@ function dbLog(
 export type EnrichMode = 'lyrics' | 'decode';
 
 export interface QueueItem {
+  /**
+   * Stable id so the UI can cancel a single queued item. Assigned by enqueue()
+   * when the item is added to the queue; callers creating items do not need to
+   * set it (it is optional on input, always present after enqueue).
+   */
+  id?: string;
   /** What the item refers to. */
   type: 'album' | 'artist' | 'tracks';
   /** The artist/album id (for type album/artist) — unused for 'tracks'. */
   ref?: string;
-  /** Human label for the UI (e.g. "Back to Black — Amy Winehouse"). */
+  /** Human label for the UI (e.g. "Back in Black — AC/DC"). */
   label: string;
   /** Explicit track list for type 'tracks'; otherwise resolved at run time. */
   trackIds?: string[];
@@ -56,8 +62,8 @@ interface ResolvedTarget {
 
 export interface EnrichJobStatus {
   status: 'queued' | 'running' | 'completed' | 'cancelled' | 'idle';
-  /** Items still waiting (labels only, for the UI). */
-  queue: Array<{ label: string; mode: EnrichMode; trackCount: number }>;
+  /** Items still waiting (id + label for the UI; per-item cancel needs the id). */
+  queue: Array<{ id: string; label: string; mode: EnrichMode; trackCount: number }>;
   total: number; // total tracks across the whole queue
   processed: number;
   enriched: number;
@@ -86,6 +92,15 @@ class NavidromeEnrichmentService {
   private cancelKey(userId: number): string {
     return `navidrome-enrich:cancel:${userId}`;
   }
+  // Redis SET of cancelled item ids, so the worker can skip individual queued
+  // items (per-item cancel) without aborting the whole queue.
+  private cancelItemsKey(userId: number): string {
+    return `navidrome-enrich:cancel-items:${userId}`;
+  }
+
+  private genId(): string {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
 
   /**
    * Append items to the user's queue and start the worker if it isn't running
@@ -105,16 +120,21 @@ class NavidromeEnrichmentService {
     // fresh: clear any stale cancel flag and reset the counters. When appending
     // to a live running queue, keep the accumulating counters.
     const queue: QueueItem[] = wasRunning && existing?.queue ? this.queueFromRaw(existing.queue) : [];
+    // Assign a stable id to every newly-enqueued item so the UI can cancel it.
+    for (const it of items) {
+      if (!it.id) it.id = this.genId();
+    }
     queue.push(...items);
     if (!wasRunning) {
       await redis.del(this.cancelKey(userId));
+      await redis.del(this.cancelItemsKey(userId));
     }
 
     // Seed the running status (or keep it running). We don't yet know track
     // counts for artist/album items; the worker fills total in as it resolves.
     const status: EnrichJobStatus = {
       status: wasRunning ? 'running' : 'queued',
-      queue: queue.map((q) => ({ label: q.label, mode: q.mode, trackCount: q.trackIds?.length ?? 0 })),
+      queue: queue.map((q) => ({ id: q.id || '', label: q.label, mode: q.mode, trackCount: q.trackIds?.length ?? 0 })),
       total: queue.reduce((n, q) => n + (q.trackIds?.length ?? 0), 0),
       processed: wasRunning ? (existing?.processed ?? 0) : 0,
       enriched: wasRunning ? (existing?.enriched ?? 0) : 0,
@@ -152,6 +172,30 @@ class NavidromeEnrichmentService {
     await redis.set(this.cancelKey(userId), '1', 'EX', CANCEL_TTL_SECONDS);
     log.info(`Cancel requested for user ${userId}`);
     return true;
+  }
+
+  /**
+   * Cancel a single queued item by id. The worker checks the cancel-items set
+   * before processing each item and skips any whose id is present, so the rest
+   * of the queue keeps running. The currently-processing item is NOT interrupted
+   * (it finishes or hits the whole-queue cancel). Returns false if the item is
+   * not found in the queue.
+   */
+  async cancelItem(userId: number, itemId: string): Promise<boolean> {
+    const status = await this.getRawStatus(userId);
+    const queue = this.queueFromRaw(status?.queue);
+    const found = queue.some((q) => q.id === itemId);
+    if (!found) return false;
+    await redis.sadd(this.cancelItemsKey(userId), itemId);
+    await redis.expire(this.cancelItemsKey(userId), CANCEL_TTL_SECONDS);
+    log.info(`[user ${userId}] Cancel requested for item ${itemId}`);
+    return true;
+  }
+
+  /** Whether a specific item id has been marked cancelled via cancelItem. */
+  private async isItemCancelled(userId: number, itemId: string): Promise<boolean> {
+    const isMember = await redis.sismember(this.cancelItemsKey(userId), itemId);
+    return isMember === 1;
   }
 
   private getIdleStatus(): EnrichJobStatus {
@@ -234,6 +278,17 @@ class NavidromeEnrichmentService {
       }
 
       const item = queue.shift()!;
+      // Per-item cancel: skip items the user cancelled individually without
+      // aborting the rest of the queue.
+      if (item.id && (await this.isItemCancelled(userId, item.id))) {
+        const skipMsg = `Skipping cancelled item "${item.label}" (${item.mode})`;
+        log.info(`[user ${userId}] ${skipMsg}`);
+        dbLog('info', skipMsg, { userId, itemId: item.id });
+        status.currentItem = undefined;
+        status.currentTrack = undefined;
+        await this.updateStatus(userId, status, queue);
+        continue;
+      }
       status.currentItem = item.label;
       status.mode = item.mode;
       await this.updateStatus(userId, status, queue);

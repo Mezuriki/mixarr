@@ -180,3 +180,19 @@ navidromeRouter.post('/enrich/cancel', async (req, res) => {
     res.status(500).json({ error: 'Failed to cancel' });
   }
 });
+
+// Cancel a single queued item by id (the rest of the queue keeps running).
+navidromeRouter.post('/enrich/cancel/:itemId', async (req, res) => {
+  try {
+    const itemId = req.params.itemId;
+    if (!itemId) {
+      res.status(400).json({ error: 'Missing itemId' });
+      return;
+    }
+    const cancelled = await navidromeEnrichmentService.cancelItem(req.user!.id, itemId);
+    res.json({ cancelled, itemId });
+  } catch (error) {
+    log.error('Failed to cancel enrichment item:', error);
+    res.status(500).json({ error: 'Failed to cancel item' });
+  }
+});

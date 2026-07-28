@@ -82,6 +82,8 @@ export interface NavidromeMissingItem {
   title: string;
   artist: string;
   hasLyrics: boolean;
+  /** Whether a Russian translation sidecar (.ru.lrc) already exists. */
+  hasTranslation?: boolean;
 }
 
 // Throttling for Gemini free-tier: space out requests to stay under ~5 RPM.

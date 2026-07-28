@@ -11,6 +11,7 @@ import Loader from 'lucide-react/dist/esm/icons/loader-2';
 import XCircle from 'lucide-react/dist/esm/icons/x-circle';
 import CheckCircle from 'lucide-react/dist/esm/icons/circle-check';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
+import Languages from 'lucide-react/dist/esm/icons/languages';
 
 interface Artist {
   id: string;
@@ -31,11 +32,14 @@ interface MissingItem {
   title: string;
   artist: string;
   hasLyrics: boolean;
+  /** Whether a RU translation (.ru.lrc) already exists (lyrics mode only). */
+  hasTranslation?: boolean;
 }
 
 type EnrichMode = 'lyrics' | 'decode';
 
 interface QueueEntry {
+  id: string;
   label: string;
   mode: EnrichMode;
   trackCount: number;
@@ -55,7 +59,7 @@ interface EnrichJobStatus {
 }
 
 const POLL_INTERVAL_MS = 2000;
-const JOB_DONE_DISPLAY_MS = 5000;
+const JOB_DONE_DISPLAY_MS = 8000;
 
 export default function NavidromePage() {
   const { addToast } = useToast();
@@ -64,10 +68,7 @@ export default function NavidromePage() {
   const [loadingArtists, setLoadingArtists] = useState(true);
   const [noConnection, setNoConnection] = useState(false);
 
-  // Multi-select at the artist level. Expanding an artist loads its albums
-  // (single-select) to inspect the missing-lyrics preview.
   const [selectedArtistIds, setSelectedArtistIds] = useState<Set<string>>(new Set());
-  // When true, enqueueing an artist/album adds BOTH a lyrics and a decode job.
   const [both, setBoth] = useState(false);
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
   const [albums, setAlbums] = useState<AlbumInfo[]>([]);
@@ -78,9 +79,12 @@ export default function NavidromePage() {
   const [missingMode, setMissingMode] = useState<EnrichMode>('lyrics');
   const [loadingMissing, setLoadingMissing] = useState(false);
 
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+
   const [job, setJob] = useState<EnrichJobStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [cancellingItems, setCancellingItems] = useState<Set<string>>(new Set());
 
   // Load artist list on mount.
   useEffect(() => {
@@ -115,6 +119,7 @@ export default function NavidromePage() {
     setAlbums([]);
     setSelectedAlbum(null);
     setMissing(null);
+    setSelectedTrackIds(new Set());
     api
       .get<{ albums: AlbumInfo[] }>(`/api/navidrome/albums?artistId=${expandedArtist}`)
       .then(({ data, error }) => {
@@ -139,6 +144,7 @@ export default function NavidromePage() {
         return;
       }
       setMissing(data?.items || []);
+      setSelectedTrackIds(new Set());
     },
     [addToast],
   );
@@ -179,6 +185,22 @@ export default function NavidromePage() {
     });
   };
 
+  const toggleTrack = (id: string) => {
+    setSelectedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllTracks = () => {
+    if (!missing) return;
+    setSelectedTrackIds(new Set(missing.map((m) => m.mediaFileId)));
+  };
+
+  const clearTrackSelection = () => setSelectedTrackIds(new Set());
+
   const enqueue = async (payload: Record<string, unknown>) => {
     setBusy(true);
     const { data, error } = await api.post<EnrichJobStatus>('/api/navidrome/enrich', payload);
@@ -198,17 +220,12 @@ export default function NavidromePage() {
     }
   };
 
-  // Build the request payload for the selection/all, honoring the "both" flag.
-  // When both is set, two jobs (lyrics + decode) are sent per artist so the
-  // caller only needs to fire once.
   const buildPayload = (mode: EnrichMode, scope: 'selected' | 'all') => {
     const modes: EnrichMode[] = both ? ['lyrics', 'decode'] : [mode];
     const base = scope === 'all' ? { all: true } : { artistIds: Array.from(selectedArtistIds) };
     return modes.map((m) => ({ mode: m, ...base }));
   };
 
-  // Fire one POST per mode (lyrics and/or decode). Each call appends to the
-  // queue; if a job is already running the items are picked up by the worker.
   const enqueueMultiple = async (payloads: Record<string, unknown>[]) => {
     setBusy(true);
     let lastErr: string | null = null;
@@ -248,6 +265,31 @@ export default function NavidromePage() {
     enqueueMultiple(payloads);
   };
 
+  // Enqueue only the explicitly checkbox-selected tracks.
+  const enrichSelectedTracks = (mode: EnrichMode) => {
+    if (selectedTrackIds.size === 0) {
+      addToast({ type: 'info', title: 'No tracks selected', message: 'Tick the checkboxes beside tracks first' });
+      return;
+    }
+    const payloads = both
+      ? [
+          { mode: 'lyrics' as EnrichMode, trackIds: Array.from(selectedTrackIds) },
+          { mode: 'decode' as EnrichMode, trackIds: Array.from(selectedTrackIds) },
+        ]
+      : [{ mode, trackIds: Array.from(selectedTrackIds) }];
+    enqueueMultiple(payloads);
+  };
+
+  // Translate-only: tracks with original lyrics but no RU translation.
+  const translateMissingRu = () => {
+    const need = (missing || []).filter((m) => m.hasLyrics && !m.hasTranslation).map((m) => m.mediaFileId);
+    if (need.length === 0) {
+      addToast({ type: 'info', title: 'Nothing to translate', message: 'All tracks already have a RU translation' });
+      return;
+    }
+    enqueue({ mode: 'lyrics', trackIds: need });
+  };
+
   const cancelJob = async () => {
     if (cancelling) return;
     setCancelling(true);
@@ -255,6 +297,19 @@ export default function NavidromePage() {
     setCancelling(false);
     if (error) addToast({ type: 'error', title: 'Failed to cancel', message: error });
     else addToast({ type: 'info', title: 'Cancelling…', message: 'The queue will stop after the current track' });
+  };
+
+  const cancelQueueItem = async (itemId: string, label: string) => {
+    if (cancellingItems.has(itemId)) return;
+    setCancellingItems((prev) => new Set(prev).add(itemId));
+    const { error } = await api.post(`/api/navidrome/enrich/cancel/${itemId}`);
+    setCancellingItems((prev) => {
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+    if (error) addToast({ type: 'error', title: 'Failed to cancel item', message: error });
+    else addToast({ type: 'info', title: 'Item cancelled', message: `"${label}" will be skipped` });
   };
 
   if (noConnection) {
@@ -280,6 +335,7 @@ export default function NavidromePage() {
   const isActive = job?.status === 'running' || job?.status === 'queued';
   const missingCount = missing?.filter((m) => !m.hasLyrics).length ?? 0;
   const withLyrics = missing?.filter((m) => m.hasLyrics).length ?? 0;
+  const missingRu = missingMode === 'lyrics' ? missing?.filter((m) => m.hasLyrics && !m.hasTranslation).length ?? 0 : 0;
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-4">
@@ -288,8 +344,8 @@ export default function NavidromePage() {
         <h1 className="text-2xl font-semibold">Navidrome Enrichment</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        Queue lyrics + translation or meaning-decode for your library. Select artists (or run “All”).
-        Work runs in Navidrome&apos;s AI pipeline (Gemini + LRCLIB); this page only schedules and tracks it.
+        Queue lyrics + translation or meaning-decode for your library. Select artists, specific tracks, or run “All”.
+        Work runs in Navidrome&apos;s AI pipeline; this page schedules and tracks it.
       </p>
 
       {/* Global actions */}
@@ -299,12 +355,7 @@ export default function NavidromePage() {
             {selectedArtistIds.size} artist(s) selected
           </span>
           <label className="flex items-center gap-1.5 text-sm text-muted-foreground mr-2 select-none">
-            <input
-              type="checkbox"
-              checked={both}
-              onChange={(e) => setBoth(e.target.checked)}
-              className="h-4 w-4"
-            />
+            <input type="checkbox" checked={both} onChange={(e) => setBoth(e.target.checked)} className="h-4 w-4" />
             Both (lyrics + decode)
           </label>
           <Button variant="outline" size="sm" disabled={busy} onClick={() => enrichSelected('lyrics')}>
@@ -332,27 +383,37 @@ export default function NavidromePage() {
         </CardContent>
       </Card>
 
-      {/* Queue / progress */}
-      {isActive && job && (
+      {/* Queue / progress — always visible when there is a job (not idle) */}
+      {job && job.status && job.status !== 'idle' && (
         <Card className="border-primary/50">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Loader className="h-4 w-4 animate-spin text-primary" />
-                <span className="font-medium capitalize">{job.mode || ''} queue</span>
+                {isActive ? (
+                  <Loader className="h-4 w-4 animate-spin text-primary" />
+                ) : job.status === 'completed' ? (
+                  <CheckCircle className="h-4 w-4 text-status-success" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-status-error" />
+                )}
+                <span className="font-medium capitalize">{job.status} · {job.mode || ''}</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={cancelJob} disabled={cancelling} className="text-status-error">
-                <XCircle className={`h-4 w-4 mr-1 ${cancelling ? 'animate-spin' : ''}`} />
-                {cancelling ? 'Cancelling…' : 'Cancel queue'}
-              </Button>
+              {isActive && (
+                <Button variant="ghost" size="sm" onClick={cancelJob} disabled={cancelling} className="text-status-error">
+                  <XCircle className={`h-4 w-4 mr-1 ${cancelling ? 'animate-spin' : ''}`} />
+                  {cancelling ? 'Cancelling…' : 'Cancel all'}
+                </Button>
+              )}
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300"
-                style={{ width: `${job.total > 0 ? (job.processed / job.total) * 100 : 0}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
+            {isActive && (
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${job.total > 0 ? (job.processed / job.total) * 100 : 0}%` }}
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-between text-sm text-muted-foreground flex-wrap gap-2">
               <div className="flex items-center gap-4">
                 <span>{job.processed} / {job.total} tracks</span>
                 <span className="text-status-success">✓ {job.enriched}</span>
@@ -363,12 +424,42 @@ export default function NavidromePage() {
                 {job.currentTrack && <span className="truncate max-w-64">{job.currentTrack}</span>}
               </div>
             </div>
+            {/* Full queue list — every item visible with individual cancel */}
             {job.queue && job.queue.length > 0 && (
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer">Queue ({job.queue.length} item(s))</summary>
+              <div className="border rounded-md divide-y">
+                <div className="px-3 py-1.5 text-xs text-muted-foreground bg-muted/50">
+                  Queue ({job.queue.length} item(s))
+                </div>
+                {job.queue.map((q) => (
+                  <div key={q.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <span className="capitalize text-xs text-muted-foreground w-14 shrink-0">{q.mode}</span>
+                    <span className="truncate flex-1">{q.label}</span>
+                    {q.trackCount > 0 && <span className="text-xs text-muted-foreground">{q.trackCount} tracks</span>}
+                    {isActive && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-status-error"
+                        disabled={cancellingItems.has(q.id)}
+                        onClick={() => cancelQueueItem(q.id, q.label)}
+                        title="Cancel this item"
+                      >
+                        {cancellingItems.has(q.id) ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Failed tracks detail */}
+            {job.failedItems && job.failedItems.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-status-error">Failed tracks ({job.failedItems.length})</summary>
                 <ul className="mt-2 space-y-1">
-                  {job.queue.map((q, i) => (
-                    <li key={i}>{q.label} — {q.mode}</li>
+                  {job.failedItems.map((f, i) => (
+                    <li key={i} className="text-muted-foreground">
+                      <span className="text-status-error">✗</span> {f.title}: <span className="truncate">{f.error}</span>
+                    </li>
                   ))}
                 </ul>
               </details>
@@ -391,12 +482,7 @@ export default function NavidromePage() {
                 return (
                   <div key={a.id} className={`rounded border ${selected ? 'border-primary bg-primary/5' : ''}`}>
                     <div className="flex items-center gap-2 p-2">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleArtist(a.id)}
-                        className="h-4 w-4"
-                      />
+                      <input type="checkbox" checked={selected} onChange={() => toggleArtist(a.id)} className="h-4 w-4" />
                       <button
                         onClick={() => setExpandedArtist(expanded ? null : a.id)}
                         className="flex-1 text-left min-w-0"
@@ -449,13 +535,13 @@ export default function NavidromePage() {
         </Card>
       )}
 
-      {/* Track preview for a single album + a single-album enqueue shortcut */}
+      {/* Track preview + per-track selection + RU indicators */}
       {selectedAlbum && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <CardTitle>Tracks</CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <select
                   className="text-xs border rounded px-2 py-1 bg-background"
                   value={missingMode}
@@ -464,9 +550,35 @@ export default function NavidromePage() {
                   <option value="lyrics">lyrics</option>
                   <option value="decode">decode</option>
                 </select>
+                <Button size="sm" variant="ghost" onClick={selectAllTracks} disabled={!missing || missing.length === 0}>
+                  All
+                </Button>
+                <Button size="sm" variant="ghost" onClick={clearTrackSelection} disabled={selectedTrackIds.size === 0}>
+                  None
+                </Button>
+                {missingMode === 'lyrics' && missingRu > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={translateMissingRu}
+                    disabled={busy}
+                    title="Translate tracks that have original lyrics but no RU translation"
+                  >
+                    <Languages className="h-3.5 w-3.5 mr-1" />
+                    Translate {missingRu} RU
+                  </Button>
+                )}
                 <Button
                   size="sm"
-                  disabled={busy || missingCount === 0}
+                  disabled={busy || selectedTrackIds.size === 0}
+                  onClick={() => enrichSelectedTracks(missingMode)}
+                >
+                  Enrich selected ({selectedTrackIds.size})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy || (missingMode === 'decode' ? missingCount === 0 : (missing?.length ?? 0) === 0)}
                   onClick={() => {
                     if (both) {
                       enqueueMultiple([
@@ -478,7 +590,7 @@ export default function NavidromePage() {
                     }
                   }}
                 >
-                  {both ? `Enrich this album (lyrics + decode, ${missingCount} missing)` : `Enrich this album (${missingCount} missing)`}
+                  Enrich whole album
                 </Button>
               </div>
             </div>
@@ -488,23 +600,63 @@ export default function NavidromePage() {
               <div className="text-sm text-muted-foreground">Loading…</div>
             ) : missing && missing.length > 0 ? (
               <>
-                <div className="text-xs text-muted-foreground mb-2">
-                  {withLyrics} already have {missingMode} · {missingCount} missing
+                <div className="text-xs text-muted-foreground mb-2 flex items-center gap-3 flex-wrap">
+                  {missingMode === 'lyrics' ? (
+                    <>
+                      <span className="text-status-error">{missingCount} no lyrics</span>
+                      <span className="text-status-warning">{missingRu} missing RU</span>
+                      <span className="text-status-success">{withLyrics - missingRu} complete</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-status-warning">{missingCount} missing</span>
+                      <span className="text-status-success">{withLyrics} done</span>
+                    </>
+                  )}
                 </div>
                 <ul className="divide-y">
-                  {missing.map((m) => (
-                    <li key={m.mediaFileId} className="flex items-center gap-2 py-2 text-sm">
-                      {m.hasLyrics ? (
-                        <CheckCircle className="h-4 w-4 text-status-success shrink-0" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-status-warning shrink-0" />
-                      )}
-                      <span className="truncate">{m.title}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {m.hasLyrics ? 'done' : 'missing'}
-                      </span>
-                    </li>
-                  ))}
+                  {missing.map((m) => {
+                    const checked = selectedTrackIds.has(m.mediaFileId);
+                    // RU-aware status for lyrics mode.
+                    const ruMissing = missingMode === 'lyrics' && m.hasLyrics && !m.hasTranslation;
+                    return (
+                      <li key={m.mediaFileId} className="flex items-center gap-2 py-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleTrack(m.mediaFileId)}
+                          className="h-4 w-4 shrink-0"
+                        />
+                        {missingMode === 'lyrics' ? (
+                          m.hasLyrics ? (
+                            ruMissing ? (
+                              <AlertCircle className="h-4 w-4 text-status-warning shrink-0" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 text-status-success shrink-0" />
+                            )
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-status-error shrink-0" />
+                          )
+                        ) : m.hasLyrics ? (
+                          <CheckCircle className="h-4 w-4 text-status-success shrink-0" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-status-warning shrink-0" />
+                        )}
+                        <span className="truncate">{m.title}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {missingMode === 'lyrics'
+                            ? !m.hasLyrics
+                              ? 'no lyrics'
+                              : ruMissing
+                                ? 'RU missing'
+                                : 'complete'
+                            : m.hasLyrics
+                              ? 'done'
+                              : 'missing'}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             ) : (
