@@ -17,9 +17,22 @@
 
 import { redis } from '../lib/redis.js';
 import { createLogger } from '../lib/logger.js';
+import { addLogEntry } from '../routes/logs.js';
 import { NavidromeService, type NavidromeMissingItem } from './navidrome.js';
 
 const log = createLogger('NavidromeEnrichment');
+const LOG_CATEGORY = 'navidrome';
+
+// Persist an event to the Mixarr Logs page (DB) in addition to the console
+// logger. addLogEntry swallows its own errors, so this is fire-and-forget; we
+// don't await it to keep the worker moving.
+function dbLog(
+  level: 'debug' | 'info' | 'warn' | 'error',
+  message: string,
+  metadata?: Record<string, unknown>,
+): void {
+  void addLogEntry(level, LOG_CATEGORY, message, metadata);
+}
 
 export type EnrichMode = 'lyrics' | 'decode';
 
@@ -110,11 +123,11 @@ class NavidromeEnrichmentService {
       startedAt: wasRunning ? (existing?.startedAt ?? Date.now()) : Date.now(),
     };
     await redis.set(this.jobKey(userId), JSON.stringify({ ...status, queue }), 'EX', JOB_TTL_SECONDS);
-    log.info(
-      `[user ${userId}] Enqueued ${items.length} item(s) [${items
-        .map((i) => `${i.label}:${i.mode}`)
-        .join(', ')}] — queue now ${queue.length} item(s), ${wasRunning ? 'appended to running job' : 'starting fresh'}`,
-    );
+    const enqueueMsg = `Enqueued ${items.length} item(s) [${items
+      .map((i) => `${i.label}:${i.mode}`)
+      .join(', ')}] — queue now ${queue.length} item(s), ${wasRunning ? 'appended to running job' : 'starting fresh'}`;
+    log.info(`[user ${userId}] ${enqueueMsg}`);
+    dbLog('info', enqueueMsg, { userId, itemsAdded: items.length, queueLength: queue.length, appended: wasRunning });
 
     // Fire-and-forget the worker (it's a no-op if already running).
     setImmediate(async () => {
@@ -208,14 +221,15 @@ class NavidromeEnrichmentService {
     log.info(
       `[user ${userId}] Worker started: ${queue.length} item(s) in queue`,
     );
+    dbLog('info', `Enrichment started: ${queue.length} item(s) in queue`, { userId, queueLength: queue.length });
 
     while (queue.length > 0) {
       if (await this.isCancelled(userId)) {
         status.status = 'cancelled';
         await this.updateStatus(userId, status, queue);
-        log.info(
-          `[user ${userId}] Cancelled at ${status.processed}/${status.total} (remaining items: ${queue.length})`,
-        );
+        const cancelMsg = `Cancelled at ${status.processed}/${status.total} (remaining items: ${queue.length})`;
+        log.info(`[user ${userId}] ${cancelMsg}`);
+        dbLog('warn', cancelMsg, { userId, processed: status.processed, total: status.total, remaining: queue.length });
         return;
       }
 
@@ -232,15 +246,18 @@ class NavidromeEnrichmentService {
       try {
         targets = await this.resolveTargets(service, token, item);
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
         log.warn(
           `[user ${userId}] Failed to resolve targets for "${item.label}" (${item.mode}):`,
-          err instanceof Error ? err.message : err,
+          errMsg,
         );
+        dbLog('error', `Failed to resolve tracks for "${item.label}" (${item.mode}): ${errMsg}`, { userId, item: item.label, mode: item.mode });
         continue; // drop the item, keep going
       }
       log.info(
         `[user ${userId}] "${item.label}" (${item.mode}): ${targets.length} track(s) to process`,
       );
+      dbLog('info', `Processing "${item.label}" (${item.mode}): ${targets.length} track(s)`, { userId, item: item.label, mode: item.mode, trackCount: targets.length });
       // Grow the total to include newly discovered tracks.
       status.total += targets.length;
       await this.updateStatus(userId, status, queue);
@@ -276,6 +293,7 @@ class NavidromeEnrichmentService {
             status.status = 'cancelled';
             await this.updateStatus(userId, status, queue);
             log.info(`[user ${userId}] Cancelled mid-track "${t.title}"`);
+            dbLog('warn', `Cancelled mid-track "${t.title}"`, { userId, track: t.title });
             return;
           }
           throw err;
@@ -284,11 +302,13 @@ class NavidromeEnrichmentService {
         if (ok) {
           status.enriched += 1;
           log.info(`[user ${userId}] (${item.mode}) "${t.title}" — done`);
+          dbLog('info', `(${item.mode}) "${t.title}" — done`, { userId, mode: item.mode, track: t.title });
         } else {
           status.failed += 1;
           failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: 'failed' });
           status.failedItems = failedItems;
           log.warn(`[user ${userId}] (${item.mode}) "${t.title}" — FAILED`);
+          dbLog('warn', `(${item.mode}) "${t.title}" — FAILED`, { userId, mode: item.mode, track: t.title, mediaFileId: t.mediaFileId });
         }
         await this.updateStatus(userId, status, queue);
         if (interTrackDelay > 0) await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
@@ -299,9 +319,9 @@ class NavidromeEnrichmentService {
     status.currentTrack = undefined;
     status.currentItem = undefined;
     await this.updateStatus(userId, status, queue);
-    log.info(
-      `[user ${userId}] Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`,
-    );
+    const doneMsg = `Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`;
+    log.info(`[user ${userId}] ${doneMsg}`);
+    dbLog('info', doneMsg, { userId, enriched: status.enriched, failed: status.failed, total: status.total });
   }
 
   /**
@@ -328,13 +348,14 @@ class NavidromeEnrichmentService {
             if (r.error === 'cancelled') throw { cancelled: true };
             if (this.looksLikeQuotaError(r.error)) {
               const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
-              log.warn(
-                `[${mode}] "${target.title}" — quota/overload on Navidrome lyrics, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${r.error})`,
-              );
+              const retryMsg = `[${mode}] "${target.title}" — quota/overload on Navidrome lyrics, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${r.error})`;
+              log.warn(retryMsg);
+              dbLog('warn', retryMsg, { mode, track: target.title, attempt: attempt + 1, backoffMs: backoff, error: r.error });
               await this.cancelableSleep(backoff, isCancelled);
               continue;
             }
             log.warn(`[${mode}] "${target.title}" — lyrics failed: ${r.error}`);
+            dbLog('warn', `[${mode}] "${target.title}" — lyrics failed: ${r.error}`, { mode, track: target.title, error: r.error });
             return false;
           }
           return true;
@@ -356,13 +377,14 @@ class NavidromeEnrichmentService {
         }
         if (this.looksLikeQuotaError(msg)) {
           const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
-          log.warn(
-            `[${mode}] "${target.title}" — quota/overload, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${msg})`,
-          );
+          const retryMsg = `[${mode}] "${target.title}" — quota/overload, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${msg})`;
+          log.warn(retryMsg);
+          dbLog('warn', retryMsg, { mode, track: target.title, attempt: attempt + 1, backoffMs: backoff, error: msg });
           await this.cancelableSleep(backoff, isCancelled);
           continue;
         }
         log.warn(`[${mode}] "${target.title}" — failed: ${msg}`);
+        dbLog('warn', `[${mode}] "${target.title}" — failed: ${msg}`, { mode, track: target.title, error: msg });
         return false;
       }
     }

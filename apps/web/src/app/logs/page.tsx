@@ -43,6 +43,7 @@ const categoryOptions = [
   { value: 'lidarr', label: 'Lidarr' },
   { value: 'spotify', label: 'Spotify' },
   { value: 'lastfm', label: 'Last.fm' },
+  { value: 'navidrome', label: 'Navidrome' },
   { value: 'system', label: 'System' },
 ];
 
