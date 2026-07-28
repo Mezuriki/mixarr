@@ -415,11 +415,23 @@ class NavidromeEnrichmentService {
       return item.trackIds.map((id) => ({ mediaFileId: id, title: id }));
     }
     const params = item.type === 'album' ? { albumId: item.ref } : { artistId: item.ref };
+    // The navidrome /missing endpoints return ALL tracks of the scope, each
+    // flagged with hasLyrics (whether the sidecar already exists). We previously
+    // filtered out tracks where hasLyrics was true — but for lyrics mode that
+    // dropped tracks that had the ORIGINAL .lrc but no RU translation, so a
+    // "translate only" pass was impossible. The navidrome /lyrics/fetch pipeline
+    // is idempotent (it skips re-fetching the original and only fills the gap),
+    // so for lyrics mode we now process every track. Decode mode still only
+    // needs the tracks without a .ai.decode.md, so it keeps the filter.
     const missing: NavidromeMissingItem[] =
       item.mode === 'lyrics'
         ? await service.getMissingLyrics(token, params)
         : await service.getMissingDecode(token, params);
-    return missing.filter((m) => !m.hasLyrics).map((m) => ({ mediaFileId: m.mediaFileId, title: m.title, artist: m.artist }));
+    const targets =
+      item.mode === 'decode'
+        ? missing.filter((m) => !m.hasLyrics)
+        : missing;
+    return targets.map((m) => ({ mediaFileId: m.mediaFileId, title: m.title, artist: m.artist }));
   }
 
   private looksLikeQuotaError(msg?: string): boolean {

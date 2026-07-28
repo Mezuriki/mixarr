@@ -14,7 +14,7 @@
 
 import { randomBytes, createHash } from 'node:crypto';
 import { rateLimit } from './rate-limiter.js';
-import { fetchWithTimeout } from '../lib/fetch-with-timeout.js';
+import { fetchWithTimeout, fetchAI } from '../lib/fetch-with-timeout.js';
 import { createLogger } from '../lib/logger.js';
 import { validateServiceUrl } from '../lib/validate-service-url.js';
 
@@ -310,7 +310,7 @@ export class NavidromeService {
    * Returns once the response is ready (the body text is not needed here).
    */
   async decodeTrack(token: string, mediaFileId: string, title: string, artist?: string): Promise<void> {
-    const resp = await fetchWithTimeout(`${this.baseUrl}/api/ai/decode`, {
+    const resp = await fetchAI(`${this.baseUrl}/api/ai/decode`, {
       method: 'POST',
       headers: this.nativeHeaders(token),
       body: JSON.stringify({ title, artist: artist || '', mediaFileId }),
