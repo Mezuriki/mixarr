@@ -156,8 +156,16 @@ class NavidromeEnrichmentService {
     setImmediate(async () => {
       try {
         await this.runWorker(userId, service);
+        // After worker finishes, save the final status to history.
+        const final = await this.getRawStatus(userId);
+        if (final && (final.status === 'completed' || final.status === 'cancelled')) {
+          await this.saveHistory(userId, final);
+        }
       } catch (err) {
         log.error('Navidrome enrichment worker crashed:', err);
+        // Even on crash, try to save what we have.
+        const final = await this.getRawStatus(userId);
+        if (final) { final.status = 'cancelled'; await this.saveHistory(userId, final); }
       }
     });
 
@@ -249,8 +257,8 @@ class NavidromeEnrichmentService {
    * resolved NavidromeService.
    */
   private async runWorker(userId: number, service: NavidromeService): Promise<void> {
-    const current = await this.getRawStatus(userId);
-    // Only one live worker at a time. A stale "running" (dead worker) does not
+   const current = await this.getRawStatus(userId);
+   // Only one live worker at a time. A stale "running" (dead worker) does not
     // count, so this call can take over and recover the queue.
     if (current?.status === 'running' && !this.isStaleRunning(current)) return;
 
@@ -356,10 +364,11 @@ class NavidromeEnrichmentService {
           await this.updateStatus(userId, status, queue);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', lyrics: '' }));
+            const titleMap = new Map(batch.map((t) => [t.mediaFileId, t.title]));
             const results = await service.translateBatch(token, items);
             for (const r of results) {
-              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (translate) ${r.mediaFileId} — ok`); }
-              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (translate) ${titleMap.get(r.mediaFileId) || r.mediaFileId} — ok`); }
+              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: titleMap.get(r.mediaFileId) || r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
             }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -371,7 +380,9 @@ class NavidromeEnrichmentService {
               i -= BATCH_SIZE; continue;
             }
             log.warn(`[user ${userId}] (translate-batch) failed: ${msg}`);
+            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg }); }
             status.failed += batch.length;
+            status.failedItems = failedItems;
           }
           await this.updateStatus(userId, status, queue);
           if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
@@ -388,10 +399,11 @@ class NavidromeEnrichmentService {
           await this.updateStatus(userId, status, queue);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: '', lyrics: '' }));
+            const titleMap = new Map(batch.map((t) => [t.mediaFileId, t.title]));
             const results = await service.decodeBatch(token, items);
             for (const r of results) {
-              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (decode) ${r.mediaFileId} — ok`); }
-              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (decode) ${titleMap.get(r.mediaFileId) || r.mediaFileId} — ok`); }
+              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: titleMap.get(r.mediaFileId) || r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
             }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -404,7 +416,9 @@ class NavidromeEnrichmentService {
               i -= BATCH_SIZE; continue;
             }
             log.warn(`[user ${userId}] (decode-batch) failed: ${msg}`);
+            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg }); }
             status.failed += batch.length;
+            status.failedItems = failedItems;
           }
           await this.updateStatus(userId, status, queue);
           if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
@@ -418,9 +432,40 @@ class NavidromeEnrichmentService {
     status.currentTrack = undefined;
     status.currentItem = undefined;
     await this.updateStatus(userId, status, queue);
+    await this.saveHistory(userId, status);
     const doneMsg = `Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`;
     log.info(`[user ${userId}] ${doneMsg}`);
     dbLog('info', doneMsg, { userId, enriched: status.enriched, failed: status.failed, total: status.total });
+  }
+
+  private historyKey(userId: number): string {
+    return `navidrome-enrich:history:${userId}`;
+  }
+
+  /** Save a finished job to the history list (keeps last 10). */
+  private async saveHistory(userId: number, status: EnrichJobStatus): Promise<void> {
+    try {
+      const entry = JSON.stringify({
+        ...status,
+        finishedAt: Date.now(),
+      });
+      const key = this.historyKey(userId);
+      await redis.lpush(key, entry);
+      await redis.ltrim(key, 0, 9); // keep last 10
+      await redis.expire(key, 86400 * 7); // 7 days
+    } catch {
+      // history is best-effort; don't fail the worker
+    }
+  }
+
+  /** Return up to 10 past finished jobs. */
+  async getHistory(userId: number): Promise<EnrichJobStatus[]> {
+    try {
+      const raw = await redis.lrange(this.historyKey(userId), 0, 9);
+      return raw.map((r) => JSON.parse(r) as EnrichJobStatus);
+    } catch {
+      return [];
+    }
   }
 
   // sleep that wakes up early if the queue was cancelled, so backoff does not

@@ -12,7 +12,7 @@ const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds (library reads, login, etc.)
 // AI generation calls (decode / translate) can take much longer than a simple
 // HTTP read — a reasoning model producing a full Markdown analysis routinely
 // needs 60-120s. The previous 30s default aborted the very first decode.
-const AI_TIMEOUT_MS = 180_000; // 3 minutes for AI generation calls
+const AI_TIMEOUT_MS = 300_000; // 5 minutes for batch AI generation (5 songs at once)
 
 export function fetchWithTimeout(
   url: string | URL,

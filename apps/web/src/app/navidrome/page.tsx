@@ -48,6 +48,7 @@ export default function NavidromePage() {
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancellingItems, setCancellingItems] = useState<Set<string>>(new Set());
+  const [history, setHistory] = useState<EnrichJobStatus[]>([]);
 
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
@@ -59,6 +60,11 @@ export default function NavidromePage() {
   // Per-artist stats come from the /stats endpoint (perArtist field), not a
   // separate per-artist fetch — this avoids spamming navidrome with 100+ requests.
 
+  const loadHistory = useCallback(async () => {
+    const { data } = await api.get<{ history: EnrichJobStatus[] }>('/api/navidrome/enrich/history');
+    if (data?.history) setHistory(data.history);
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoadingArtists(true);
@@ -69,8 +75,9 @@ export default function NavidromePage() {
       setArtists(list);
     })();
     loadStats();
+    loadHistory();
     api.get<EnrichJobStatus>('/api/navidrome/enrich/status').then(({ data }) => { if (data && data.status && data.status !== 'idle') setJob(data); });
-  }, [addToast, loadStats]);
+  }, [addToast, loadStats, loadHistory]);
 
   useEffect(() => {
     if (!expandedArtist) return;
@@ -100,6 +107,7 @@ export default function NavidromePage() {
         setJob(data);
         if (data.status === 'completed' || data.status === 'cancelled') {
           loadStats();
+          loadHistory();
           if (selectedAlbum) loadMissing(selectedAlbum, missingMode);
           setTimeout(() => setJob(null), 8000);
         }
@@ -107,7 +115,7 @@ export default function NavidromePage() {
     };
     const interval = setInterval(poll, POLL_MS);
     return () => clearInterval(interval);
-  }, [job?.status, selectedAlbum, missingMode, loadStats, loadMissing]);
+  }, [job?.status, selectedAlbum, missingMode, loadStats, loadMissing, loadHistory]);
 
   const enqueue = async (payload: Record<string, unknown>) => {
     setBusy(true);
@@ -186,7 +194,43 @@ export default function NavidromePage() {
         </Card>
       )}
 
-      {/* 2. Statistics + global fill button */}
+      {/* 2. History (last 10 finished jobs) */}
+      {history.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>History</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {history.map((h, i) => (
+              <details key={i} className="border rounded-md">
+                <summary className="cursor-pointer px-3 py-2 text-sm flex items-center gap-3">
+                  <span className={`font-medium ${h.status === 'completed' ? 'text-status-success' : 'text-status-error'}`}>
+                    {h.status === 'completed' ? '✓' : '✗'}
+                  </span>
+                  <span className="capitalize">{h.mode || 'lyrics'}</span>
+                  <span className="text-muted-foreground">{h.processed}/{h.total}</span>
+                  <span className="text-status-success">✓{h.enriched}</span>
+                  {h.failed > 0 && <span className="text-status-error">✗{h.failed}</span>}
+                  {h.currentItem && <span className="text-muted-foreground truncate ml-auto">{h.currentItem}</span>}
+                </summary>
+                <div className="px-4 py-2 space-y-1">
+                  {h.failedItems && h.failedItems.length > 0 ? (
+                    <ul className="text-xs space-y-1">
+                      {h.failedItems.map((f, j) => (
+                        <li key={j} className="text-muted-foreground">
+                          <span className="text-status-error">✗</span> {f.title}: {f.error}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">No failures.</div>
+                  )}
+                </div>
+              </details>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 3. Statistics + global fill button */}
       <Card>
         <CardHeader><div className="flex items-center justify-between"><CardTitle>Statistics</CardTitle><Button variant="ghost" size="sm" onClick={loadStats} disabled={loadingStats}><RefreshCw className={`h-4 w-4 ${loadingStats ? 'animate-spin' : ''}`} /></Button></div></CardHeader>
         <CardContent>

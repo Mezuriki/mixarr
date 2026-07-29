@@ -223,6 +223,20 @@ navidromeRouter.get('/enrich/status', async (req, res) => {
 });
 
 /**
+ * GET /api/navidrome/enrich/history
+ * Returns up to 10 past finished jobs.
+ */
+navidromeRouter.get('/enrich/history', async (req, res) => {
+  try {
+    const history = await navidromeEnrichmentService.getHistory(req.user!.id);
+    res.json({ history });
+  } catch (error) {
+    log.error('Failed to get enrichment history:', error);
+    res.json({ history: [] });
+  }
+});
+
+/**
  * POST /api/navidrome/enrich/cancel
  */
 navidromeRouter.post('/enrich/cancel', async (req, res) => {
