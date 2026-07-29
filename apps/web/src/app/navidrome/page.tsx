@@ -17,7 +17,7 @@ import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 interface Artist { id: string; name: string; albumCount?: number; }
 interface AlbumInfo { id: string; name: string; artist?: string; songCount?: number; year?: number; }
 interface MissingItem { mediaFileId: string; title: string; artist: string; hasLyrics: boolean; hasTranslation?: boolean; }
-interface LibStats { total: number; withLyrics: number; withTranslation: number; withDecode: number; artistCount: number; }
+interface LibStats { total: number; withLyrics: number; withTranslation: number; withDecode: number; artistCount: number; perArtist?: Array<{ id: string; name: string; total: number; withLyrics: number; withTranslation: number; withDecode: number }>; }
 type EnrichMode = 'lyrics' | 'decode';
 interface QueueEntry { id: string; label: string; mode: EnrichMode; trackCount: number; }
 interface EnrichJobStatus {
@@ -48,8 +48,6 @@ export default function NavidromePage() {
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancellingItems, setCancellingItems] = useState<Set<string>>(new Set());
-  // Per-artist enrichment stats: { total, withLyrics, withTranslation, withDecode }
-  const [artistStats, setArtistStats] = useState<Record<string, LibStats>>({});
 
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
@@ -58,35 +56,8 @@ export default function NavidromePage() {
     if (!error && data) setStats(data);
   }, []);
 
-  // Fetch per-artist enrichment stats (total / lyrics / RU / decode) by polling
-  // the navidrome /missing endpoints. Done in parallel batches of 3 to avoid
-  // overwhelming navidrome.
-  const loadArtistStats = useCallback(async (artistList: Artist[]) => {
-    const results: Record<string, LibStats> = {};
-    const BATCH = 3;
-    for (let i = 0; i < artistList.length; i += BATCH) {
-      const batch = artistList.slice(i, i + BATCH);
-      await Promise.all(batch.map(async (a) => {
-        try {
-          const [{ data: lyr }, { data: dec }] = await Promise.all([
-            api.get<{ items: MissingItem[] }>(`/api/navidrome/missing?artistId=${a.id}&mode=lyrics`),
-            api.get<{ items: MissingItem[] }>(`/api/navidrome/missing?artistId=${a.id}&mode=decode`),
-          ]);
-          const lItems = lyr?.items || [];
-          const dItems = dec?.items || [];
-          results[a.id] = {
-            total: lItems.length,
-            withLyrics: lItems.filter((t) => t.hasLyrics).length,
-            withTranslation: lItems.filter((t) => t.hasTranslation).length,
-            withDecode: dItems.filter((t) => t.hasLyrics).length,
-            artistCount: 1,
-          };
-        } catch { /* skip */ }
-      }));
-      // Push incremental results so the UI fills in progressively.
-      setArtistStats((prev) => ({ ...prev, ...results }));
-    }
-  }, []);
+  // Per-artist stats come from the /stats endpoint (perArtist field), not a
+  // separate per-artist fetch — this avoids spamming navidrome with 100+ requests.
 
   useEffect(() => {
     (async () => {
@@ -96,11 +67,10 @@ export default function NavidromePage() {
       if (error) { if (/no navidrome connection/i.test(error)) setNoConnection(true); else addToast({ type: 'error', title: 'Failed to load library', message: error }); return; }
       const list = data?.artists || [];
       setArtists(list);
-      loadArtistStats(list);
     })();
     loadStats();
     api.get<EnrichJobStatus>('/api/navidrome/enrich/status').then(({ data }) => { if (data && data.status && data.status !== 'idle') setJob(data); });
-  }, [addToast, loadStats, loadArtistStats]);
+  }, [addToast, loadStats]);
 
   useEffect(() => {
     if (!expandedArtist) return;
@@ -130,7 +100,6 @@ export default function NavidromePage() {
         setJob(data);
         if (data.status === 'completed' || data.status === 'cancelled') {
           loadStats();
-          if (artists.length > 0) loadArtistStats(artists);
           if (selectedAlbum) loadMissing(selectedAlbum, missingMode);
           setTimeout(() => setJob(null), 8000);
         }
@@ -138,7 +107,7 @@ export default function NavidromePage() {
     };
     const interval = setInterval(poll, POLL_MS);
     return () => clearInterval(interval);
-  }, [job?.status, selectedAlbum, missingMode, loadStats, loadMissing, artists, loadArtistStats]);
+  }, [job?.status, selectedAlbum, missingMode, loadStats, loadMissing]);
 
   const enqueue = async (payload: Record<string, unknown>) => {
     setBusy(true);
@@ -246,7 +215,7 @@ export default function NavidromePage() {
           {loadingArtists ? <div className="text-sm text-muted-foreground">Loading…</div> : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
               {artists.map((a) => {
-                const as = artistStats[a.id];
+                const as = stats?.perArtist?.find((p) => p.id === a.id);
                 return (
                   <div key={a.id} className={`rounded border ${expandedArtist === a.id ? 'border-primary bg-primary/5' : ''}`}>
                     <button onClick={() => setExpandedArtist(expandedArtist === a.id ? null : a.id)} className="flex items-center gap-2 p-2 w-full text-left">

@@ -24,9 +24,8 @@ navidromeRouter.use(requireAuth);
  */
 /**
  * GET /api/navidrome/stats
- * Returns aggregated library statistics: total tracks, how many have original
- * lyrics (.lrc), RU translation (.ru.lrc), and decode (.ai.decode.md). Cached
- * in Redis for 5 minutes to avoid hammering navidrome on every page load.
+ * Returns aggregated library statistics AND per-artist breakdown in ONE request
+ * (one navidrome login, one pass). Cached in Redis for 5 minutes.
  */
 navidromeRouter.get('/stats', async (req, res) => {
   try {
@@ -43,23 +42,27 @@ navidromeRouter.get('/stats', async (req, res) => {
     const token = await service.login();
     const artists = await service.getArtists();
     let total = 0, withLyrics = 0, withTranslation = 0, withDecode = 0;
+    const perArtist: Array<{ id: string; name: string; total: number; withLyrics: number; withTranslation: number; withDecode: number }> = [];
+    // Sequential to avoid spamming navidrome (one login, one pass).
     for (const a of artists) {
       try {
         const [lyr, dec] = await Promise.all([
           service.getMissingLyrics(token, { artistId: a.id }),
           service.getMissingDecode(token, { artistId: a.id }),
         ]);
+        let aTotal = 0, aLyr = 0, aRu = 0, aDec = 0;
         for (const t of lyr) {
-          total++;
-          if (t.hasLyrics) withLyrics++;
-          if (t.hasTranslation) withTranslation++;
+          total++; aTotal++;
+          if (t.hasLyrics) { withLyrics++; aLyr++; }
+          if (t.hasTranslation) { withTranslation++; aRu++; }
         }
         for (const t of dec) {
-          if (t.hasLyrics) withDecode++;
+          if (t.hasLyrics) { withDecode++; aDec++; }
         }
+        perArtist.push({ id: a.id, name: a.name, total: aTotal, withLyrics: aLyr, withTranslation: aRu, withDecode: aDec });
       } catch { /* skip artist on error */ }
     }
-    const stats = { total, withLyrics, withTranslation, withDecode, artistCount: artists.length };
+    const stats = { total, withLyrics, withTranslation, withDecode, artistCount: artists.length, perArtist };
     await redis.set('navidrome:stats', JSON.stringify(stats), 'EX', 300);
     res.json(stats);
   } catch (error) {
