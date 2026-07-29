@@ -82,11 +82,11 @@ const JOB_TTL_SECONDS = 86_400; // queue may run for a long time on big librarie
 // worker (crashed/restarted), so a new enqueue is allowed to take over.
 const STALE_RUNNING_MS = 30_000;
 const CANCEL_TTL_SECONDS = 3_600;
-const MAX_RETRIES_PER_TRACK = 3;
 const QUOTA_BACKOFF_BASE_MS = 30_000; // 30s, 60s, 120s
-// Number of tracks processed in parallel within one queue item. Z.ai (coding
-// plan) has no tight RPS limit, so 5 concurrent requests cut wall time ~5x.
-const TRACK_CONCURRENCY = 5;
+// Batch size for translate/decode: N songs are combined into ONE Z.ai call
+// (separated by ===SONG===/===DECODE=== markers) so we make N× fewer requests
+// and never hit the concurrent-request rate limit.
+const BATCH_SIZE = 5;
 
 class NavidromeEnrichmentService {
   private jobKey(userId: number): string {
@@ -320,71 +320,96 @@ class NavidromeEnrichmentService {
       status.total += targets.length;
       await this.updateStatus(userId, status, queue);
 
-      // Process tracks in parallel batches (TRACK_CONCURRENCY at a time) to cut
-      // wall time dramatically. Each batch is awaited together; status is
-      // updated once per batch. Cancellation is checked per batch.
-      for (let i = 0; i < targets.length; i += TRACK_CONCURRENCY) {
-        if (await this.isCancelled(userId)) {
-          status.status = 'cancelled';
+      // ─── 3-phase processing ───
+      // For lyrics mode: Phase A (LRCLIB originals, one at a time, no AI) then
+      // Phase B (translate to RU, batches of BATCH_SIZE in one Z.ai call).
+      // For decode mode: Phase C (decode meaning, batches of BATCH_SIZE).
+      if (item.mode === 'lyrics') {
+        // Phase A: fetch original lyrics (LRCLIB only, 1 track at a time, no AI).
+        for (const t of targets) {
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          status.currentTrack = `${t.title}`;
           await this.updateStatus(userId, status, queue);
-          log.info(`[user ${userId}] Cancelled at batch starting ${targets[i].title}`);
-          return;
-        }
-        const batch = targets.slice(i, i + TRACK_CONCURRENCY);
-        status.currentTrack = batch.map((t) => `${t.title}${t.artist ? ' — ' + t.artist : ''}`).join(' | ');
-        await this.updateStatus(userId, status, queue);
-
-        const results = await Promise.all(
-          batch.map(async (t) => {
-            log.info(`[user ${userId}] (${item.mode}) "${t.title}" — start`);
-            try {
-              const ok = await this.processOne(
-                service,
-                token,
-                item.mode,
-                t,
-                async () => {
-                  log.info(`[user ${userId}] Re-authenticating to Navidrome`);
-                  token = await service.login();
-                },
-                () => this.isCancelled(userId),
-              );
-              return { t, ok, cancelled: false };
-            } catch (err) {
-              if (err && (err as any).cancelled) return { t, ok: false, cancelled: true };
-              throw err;
-            }
-          }),
-        );
-
-        // If any track in the batch was cancelled, stop the whole queue.
-        if (results.some((r) => r.cancelled)) {
-          status.status = 'cancelled';
-          await this.updateStatus(userId, status, queue);
-          const cancelledTrack = results.find((r) => r.cancelled)?.t.title;
-          log.info(`[user ${userId}] Cancelled mid-track "${cancelledTrack}"`);
-          dbLog('warn', `Cancelled mid-track "${cancelledTrack}"`, { userId, track: cancelledTrack });
-          return;
-        }
-
-        // Aggregate the batch results into the shared status.
-        for (const { t, ok } of results) {
-          status.processed += 1;
-          if (ok) {
+          try {
+            await service.fetchOriginalLyrics(token, t.mediaFileId);
+            status.processed += 1;
             status.enriched += 1;
-            log.info(`[user ${userId}] (${item.mode}) "${t.title}" — done`);
-            dbLog('info', `(${item.mode}) "${t.title}" — done`, { userId, mode: item.mode, track: t.title });
-          } else {
+            log.info(`[user ${userId}] (lrclib) "${t.title}" — done`);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (/401|token|unauthorized/i.test(msg)) { token = await service.login(); continue; }
+            status.processed += 1;
             status.failed += 1;
-            failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: 'failed' });
+            failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg });
             status.failedItems = failedItems;
-            log.warn(`[user ${userId}] (${item.mode}) "${t.title}" — FAILED`);
-            dbLog('warn', `(${item.mode}) "${t.title}" — FAILED`, { userId, mode: item.mode, track: t.title, mediaFileId: t.mediaFileId });
+            log.warn(`[user ${userId}] (lrclib) "${t.title}" — failed: ${msg}`);
+          }
+          await this.updateStatus(userId, status, queue);
+        }
+
+        // Phase B: translate to RU in batches of BATCH_SIZE (one Z.ai call per batch).
+        // Build batch items — translateBatch on navidrome side reads .lrc itself.
+        for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          const batch = targets.slice(i, i + BATCH_SIZE);
+          status.currentTrack = `translating: ${batch.map((t) => t.title).join(' | ')}`;
+          await this.updateStatus(userId, status, queue);
+          try {
+            const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', lyrics: '' }));
+            const results = await service.translateBatch(token, items);
+            for (const r of results) {
+              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (translate) ${r.mediaFileId} — ok`); }
+              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (/401|token|unauthorized/i.test(msg)) { token = await service.login(); i -= BATCH_SIZE; continue; }
+            if (this.looksLikeQuotaError(msg)) {
+              const backoff = QUOTA_BACKOFF_BASE_MS;
+              log.warn(`[user ${userId}] (translate-batch) quota/overload, retry in ${backoff}ms (${msg})`);
+              await this.cancelableSleep(backoff, () => this.isCancelled(userId));
+              i -= BATCH_SIZE; continue;
+            }
+            log.warn(`[user ${userId}] (translate-batch) failed: ${msg}`);
+            status.failed += batch.length;
+          }
+          await this.updateStatus(userId, status, queue);
+          if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
+            await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
           }
         }
-        await this.updateStatus(userId, status, queue);
-        if (interTrackDelay > 0 && i + TRACK_CONCURRENCY < targets.length) {
-          await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
+      } else {
+        // Phase C: decode meaning in batches of BATCH_SIZE (one Z.ai call per batch).
+        for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          const batch = targets.slice(i, i + BATCH_SIZE);
+          status.currentTrack = `decoding: ${batch.map((t) => t.title).join(' | ')}`;
+          status.processed += batch.length;
+          await this.updateStatus(userId, status, queue);
+          try {
+            const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: '', lyrics: '' }));
+            const results = await service.decodeBatch(token, items);
+            for (const r of results) {
+              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (decode) ${r.mediaFileId} — ok`); }
+              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (/401|token|unauthorized/i.test(msg)) { token = await service.login(); status.processed -= batch.length; i -= BATCH_SIZE; continue; }
+            if (this.looksLikeQuotaError(msg)) {
+              const backoff = QUOTA_BACKOFF_BASE_MS;
+              log.warn(`[user ${userId}] (decode-batch) quota/overload, retry in ${backoff}ms (${msg})`);
+              status.processed -= batch.length;
+              await this.cancelableSleep(backoff, () => this.isCancelled(userId));
+              i -= BATCH_SIZE; continue;
+            }
+            log.warn(`[user ${userId}] (decode-batch) failed: ${msg}`);
+            status.failed += batch.length;
+          }
+          await this.updateStatus(userId, status, queue);
+          if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
+            await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
+          }
         }
       }
     }
@@ -396,73 +421,6 @@ class NavidromeEnrichmentService {
     const doneMsg = `Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`;
     log.info(`[user ${userId}] ${doneMsg}`);
     dbLog('info', doneMsg, { userId, enriched: status.enriched, failed: status.failed, total: status.total });
-  }
-
-  /**
-   * Process a single track in the given mode, with quota-aware retry. Returns
-   * true on success, false on failure, and throws {cancelled:true} when the
-   * queue was cancelled mid-track (so the caller can stop promptly). On
-   * 401/auth errors it calls relogin() and retries.
-   */
-  private async processOne(
-    service: NavidromeService,
-    token: string,
-    mode: EnrichMode,
-    target: ResolvedTarget,
-    relogin: () => Promise<void>,
-    isCancelled: () => Promise<boolean>,
-  ): Promise<boolean> {
-    for (let attempt = 0; attempt < MAX_RETRIES_PER_TRACK; attempt++) {
-      if (await isCancelled()) throw { cancelled: true };
-      try {
-        if (mode === 'lyrics') {
-          await service.startLyricsFetch(token, target.mediaFileId);
-          const r = await service.waitForLyrics(token, target.mediaFileId, isCancelled);
-          if (!r.done) {
-            if (r.error === 'cancelled') throw { cancelled: true };
-            if (this.looksLikeQuotaError(r.error)) {
-              const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
-              const retryMsg = `[${mode}] "${target.title}" — quota/overload on Navidrome lyrics, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${r.error})`;
-              log.warn(retryMsg);
-              dbLog('warn', retryMsg, { mode, track: target.title, attempt: attempt + 1, backoffMs: backoff, error: r.error });
-              await this.cancelableSleep(backoff, isCancelled);
-              continue;
-            }
-            log.warn(`[${mode}] "${target.title}" — lyrics failed: ${r.error}`);
-            dbLog('warn', `[${mode}] "${target.title}" — lyrics failed: ${r.error}`, { mode, track: target.title, error: r.error });
-            return false;
-          }
-          return true;
-        }
-        // decode
-        await service.decodeTrack(token, target.mediaFileId, target.title, target.artist);
-        return true;
-      } catch (err) {
-        if (err && (err as any).cancelled) throw err;
-        const msg = err instanceof Error ? err.message : String(err);
-        if (/401|token|unauthorized/i.test(msg)) {
-          log.info(`[${mode}] "${target.title}" — auth expired, re-authenticating`);
-          try {
-            await relogin();
-            continue;
-          } catch {
-            return false;
-          }
-        }
-        if (this.looksLikeQuotaError(msg)) {
-          const backoff = QUOTA_BACKOFF_BASE_MS * 2 ** attempt;
-          const retryMsg = `[${mode}] "${target.title}" — quota/overload, retry ${attempt + 1}/${MAX_RETRIES_PER_TRACK} in ${backoff}ms (${msg})`;
-          log.warn(retryMsg);
-          dbLog('warn', retryMsg, { mode, track: target.title, attempt: attempt + 1, backoffMs: backoff, error: msg });
-          await this.cancelableSleep(backoff, isCancelled);
-          continue;
-        }
-        log.warn(`[${mode}] "${target.title}" — failed: ${msg}`);
-        dbLog('warn', `[${mode}] "${target.title}" — failed: ${msg}`, { mode, track: target.title, error: msg });
-        return false;
-      }
-    }
-    return false;
   }
 
   // sleep that wakes up early if the queue was cancelled, so backoff does not

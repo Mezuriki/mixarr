@@ -326,6 +326,59 @@ export class NavidromeService {
     }
   }
 
+  // ─── 3-phase batch endpoints (LRCLIB-only, translate-batch, decode-batch) ───
+
+  /** Phase A: fetch ORIGINAL lyrics from LRCLIB only (synchronous, no AI). */
+  async fetchOriginalLyrics(token: string, mediaFileId: string): Promise<{ ok: boolean; found: boolean }> {
+    const resp = await fetchWithTimeout(`${this.baseUrl}/api/ai/lyrics/fetch-original`, {
+      method: 'POST',
+      headers: this.nativeHeaders(token),
+      body: JSON.stringify({ mediaFileId }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Navidrome fetch-original failed: status ${resp.status} ${text.slice(0, 200)}`);
+    }
+    return (await resp.json()) as { ok: boolean; found: boolean };
+  }
+
+  /** Phase B: translate up to N songs in one LLM call. */
+  async translateBatch(
+    token: string,
+    items: Array<{ mediaFileId: string; title: string; artist: string; lyrics: string }>,
+    toLang = 'ru',
+  ): Promise<Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }>> {
+    const resp = await fetchAI(`${this.baseUrl}/api/ai/translate/batch`, {
+      method: 'POST',
+      headers: this.nativeHeaders(token),
+      body: JSON.stringify({ items, toLang }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Navidrome translate-batch failed: status ${resp.status} ${text.slice(0, 200)}`);
+    }
+    const body = (await resp.json()) as { results?: Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }> };
+    return body.results || [];
+  }
+
+  /** Phase C: decode meaning for up to N songs in one LLM call. */
+  async decodeBatch(
+    token: string,
+    items: Array<{ mediaFileId: string; title: string; artist: string; album?: string; lyrics?: string }>,
+  ): Promise<Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }>> {
+    const resp = await fetchAI(`${this.baseUrl}/api/ai/decode/batch`, {
+      method: 'POST',
+      headers: this.nativeHeaders(token),
+      body: JSON.stringify({ items }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`Navidrome decode-batch failed: status ${resp.status} ${text.slice(0, 200)}`);
+    }
+    const body = (await resp.json()) as { results?: Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }> };
+    return body.results || [];
+  }
+
   private nativeHeaders(token: string): Record<string, string> {
     return {
       'Content-Type': 'application/json',
