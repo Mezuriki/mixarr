@@ -11,11 +11,62 @@ import { requireAuth } from '../middleware/auth.js';
 import { getNavidromeService } from '../lib/connection-resolver.js';
 import { navidromeEnrichmentService, type QueueItem } from '../services/navidrome-enrichment.js';
 import { createLogger } from '../lib/logger.js';
+import { redis } from '../lib/redis.js';
 
 const log = createLogger('NavidromeRoute');
 
 export const navidromeRouter = Router();
 navidromeRouter.use(requireAuth);
+
+/**
+ * GET /api/navidrome/library
+ * Returns the list of artists from the configured Navidrome instance.
+ */
+/**
+ * GET /api/navidrome/stats
+ * Returns aggregated library statistics: total tracks, how many have original
+ * lyrics (.lrc), RU translation (.ru.lrc), and decode (.ai.decode.md). Cached
+ * in Redis for 5 minutes to avoid hammering navidrome on every page load.
+ */
+navidromeRouter.get('/stats', async (req, res) => {
+  try {
+    const service = await getNavidromeService(req.user!.id);
+    if (!service) {
+      res.status(400).json({ error: 'No Navidrome connection' });
+      return;
+    }
+    const cached = await redis.get('navidrome:stats');
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+    const token = await service.login();
+    const artists = await service.getArtists();
+    let total = 0, withLyrics = 0, withTranslation = 0, withDecode = 0;
+    for (const a of artists) {
+      try {
+        const [lyr, dec] = await Promise.all([
+          service.getMissingLyrics(token, { artistId: a.id }),
+          service.getMissingDecode(token, { artistId: a.id }),
+        ]);
+        for (const t of lyr) {
+          total++;
+          if (t.hasLyrics) withLyrics++;
+          if (t.hasTranslation) withTranslation++;
+        }
+        for (const t of dec) {
+          if (t.hasLyrics) withDecode++;
+        }
+      } catch { /* skip artist on error */ }
+    }
+    const stats = { total, withLyrics, withTranslation, withDecode, artistCount: artists.length };
+    await redis.set('navidrome:stats', JSON.stringify(stats), 'EX', 300);
+    res.json(stats);
+  } catch (error) {
+    log.error('Failed to get navidrome stats:', error);
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
 
 /**
  * GET /api/navidrome/library
