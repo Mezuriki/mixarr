@@ -86,8 +86,10 @@ export interface NavidromeMissingItem {
   hasTranslation?: boolean;
 }
 
-// Throttling for Gemini free-tier: space out requests to stay under ~5 RPM.
-const DEFAULT_INTER_TRACK_DELAY_MS = 15_000;
+// Throttling between tracks. Was 15s for the Gemini free-tier; Z.ai (coding
+// plan) has no such tight limit, so 1s is enough — Z.ai's own response time
+// already paces the calls naturally.
+const DEFAULT_INTER_TRACK_DELAY_MS = 1_000;
 const MAX_POLL_ATTEMPTS = 60; // up to ~2 minutes per track at 2s poll
 const POLL_INTERVAL_MS = 2_000;
 
