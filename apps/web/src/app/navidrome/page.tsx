@@ -24,7 +24,8 @@ interface EnrichJobStatus {
   status: 'queued' | 'running' | 'completed' | 'cancelled' | 'idle' | null;
   queue: QueueEntry[]; total: number; processed: number; enriched: number; failed: number;
   currentTrack?: string; currentItem?: string; mode?: EnrichMode;
-  failedItems?: Array<{ mediaFileId: string; title: string; error: string }>;
+  failedItems?: Array<{ mediaFileId: string; title: string; artist?: string; album?: string; error: string }>;
+  enrichedItems?: Array<{ mediaFileId: string; title: string; artist?: string; album?: string }>;
 }
 
 const POLL_MS = 2000;
@@ -187,8 +188,11 @@ export default function NavidromePage() {
                 ))}
               </div>
             )}
+            {job.enrichedItems && job.enrichedItems.length > 0 && (
+              <details className="text-xs"><summary className="cursor-pointer text-status-success">Enriched ({job.enrichedItems.length})</summary><ul className="mt-2 space-y-1">{job.enrichedItems.map((f, i) => <li key={i} className="text-muted-foreground"><span className="text-status-success">✓</span> {f.title}{f.artist ? ` — ${f.artist}` : ''}{f.album ? ` [${f.album}]` : ''}</li>)}</ul></details>
+            )}
             {job.failedItems && job.failedItems.length > 0 && (
-              <details className="text-xs"><summary className="cursor-pointer text-status-error">Failed ({job.failedItems.length})</summary><ul className="mt-2 space-y-1">{job.failedItems.map((f, i) => <li key={i} className="text-muted-foreground"><span className="text-status-error">✗</span> {f.title}: {f.error}</li>)}</ul></details>
+              <details className="text-xs"><summary className="cursor-pointer text-status-error">Failed ({job.failedItems.length})</summary><ul className="mt-2 space-y-1">{job.failedItems.map((f, i) => <li key={i} className="text-muted-foreground"><span className="text-status-error">✗</span> {f.title}{f.artist ? ` — ${f.artist}` : ''}{f.album ? ` [${f.album}]` : ''}: {f.error}</li>)}</ul></details>
             )}
           </CardContent>
         </Card>
@@ -211,15 +215,30 @@ export default function NavidromePage() {
                   {h.failed > 0 && <span className="text-status-error">✗{h.failed}</span>}
                   {h.currentItem && <span className="text-muted-foreground truncate ml-auto">{h.currentItem}</span>}
                 </summary>
-                <div className="px-4 py-2 space-y-1">
+                <div className="px-4 py-2 space-y-2">
+                  {h.enrichedItems && h.enrichedItems.length > 0 && (
+                    <details>
+                      <summary className="cursor-pointer text-xs text-status-success">Enriched ({h.enrichedItems.length})</summary>
+                      <ul className="mt-1 space-y-0.5">
+                        {h.enrichedItems.map((f, j) => (
+                          <li key={j} className="text-xs text-muted-foreground">
+                            <span className="text-status-success">✓</span> {f.title}{f.artist ? ` — ${f.artist}` : ''}{f.album ? ` [${f.album}]` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   {h.failedItems && h.failedItems.length > 0 ? (
-                    <ul className="text-xs space-y-1">
-                      {h.failedItems.map((f, j) => (
-                        <li key={j} className="text-muted-foreground">
-                          <span className="text-status-error">✗</span> {f.title}: {f.error}
-                        </li>
-                      ))}
-                    </ul>
+                    <details>
+                      <summary className="cursor-pointer text-xs text-status-error">Failed ({h.failedItems.length})</summary>
+                      <ul className="mt-1 space-y-0.5">
+                        {h.failedItems.map((f, j) => (
+                          <li key={j} className="text-xs text-muted-foreground">
+                            <span className="text-status-error">✗</span> {f.title}{f.artist ? ` — ${f.artist}` : ''}{f.album ? ` [${f.album}]` : ''}: {f.error}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   ) : (
                     <div className="text-xs text-muted-foreground">No failures.</div>
                   )}

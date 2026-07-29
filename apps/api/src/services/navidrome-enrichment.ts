@@ -70,7 +70,8 @@ export interface EnrichJobStatus {
   failed: number;
   currentTrack?: string;
   currentItem?: string;
-  failedItems?: Array<{ mediaFileId: string; title: string; error: string }>;
+  failedItems?: Array<{ mediaFileId: string; title: string; artist?: string; album?: string; error: string }>;
+  enrichedItems?: Array<{ mediaFileId: string; title: string; artist?: string; album?: string }>;
   startedAt?: number;
   /** Unix ms of the last progress update, used to detect a dead worker. */
   updatedAt?: number;
@@ -264,6 +265,7 @@ class NavidromeEnrichmentService {
 
     let token = await service.login();
     const failedItems: EnrichJobStatus['failedItems'] = [];
+    const enrichedItems: EnrichJobStatus['enrichedItems'] = [];
     const queue: QueueItem[] = current?.queue ? this.queueFromRaw(current.queue) : [];
     const interTrackDelay = NavidromeService.interTrackDelayMs();
 
@@ -342,13 +344,15 @@ class NavidromeEnrichmentService {
             await service.fetchOriginalLyrics(token, t.mediaFileId);
             status.processed += 1;
             status.enriched += 1;
+            enrichedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label });
+            status.enrichedItems = enrichedItems;
             log.info(`[user ${userId}] (lrclib) "${t.title}" — done`);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             if (/401|token|unauthorized/i.test(msg)) { token = await service.login(); continue; }
             status.processed += 1;
             status.failed += 1;
-            failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg });
+            failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label, error: msg });
             status.failedItems = failedItems;
             log.warn(`[user ${userId}] (lrclib) "${t.title}" — failed: ${msg}`);
           }
@@ -364,11 +368,21 @@ class NavidromeEnrichmentService {
           await this.updateStatus(userId, status, queue);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', lyrics: '' }));
-            const titleMap = new Map(batch.map((t) => [t.mediaFileId, t.title]));
+            const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
             const results = await service.translateBatch(token, items);
             for (const r of results) {
-              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (translate) ${titleMap.get(r.mediaFileId) || r.mediaFileId} — ok`); }
-              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: titleMap.get(r.mediaFileId) || r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+              const t = trackMap.get(r.mediaFileId);
+              if (r.ok) {
+                status.enriched += 1;
+                enrichedItems.push({ mediaFileId: r.mediaFileId, title: t?.title || r.mediaFileId, artist: t?.artist, album: item.label });
+                status.enrichedItems = enrichedItems;
+                log.info(`[user ${userId}] (translate) ${t?.title || r.mediaFileId} — ok`);
+              }
+              else if (!r.skipped) {
+                status.failed += 1;
+                failedItems.push({ mediaFileId: r.mediaFileId, title: t?.title || r.mediaFileId, artist: t?.artist, album: item.label, error: r.error || 'failed' });
+                status.failedItems = failedItems;
+              }
             }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -380,7 +394,7 @@ class NavidromeEnrichmentService {
               i -= BATCH_SIZE; continue;
             }
             log.warn(`[user ${userId}] (translate-batch) failed: ${msg}`);
-            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg }); }
+            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label, error: msg }); }
             status.failed += batch.length;
             status.failedItems = failedItems;
           }
@@ -398,12 +412,22 @@ class NavidromeEnrichmentService {
           status.processed += batch.length;
           await this.updateStatus(userId, status, queue);
           try {
-            const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: '', lyrics: '' }));
-            const titleMap = new Map(batch.map((t) => [t.mediaFileId, t.title]));
+            const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: item.label, lyrics: '' }));
+            const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
             const results = await service.decodeBatch(token, items);
             for (const r of results) {
-              if (r.ok) { status.enriched += 1; log.info(`[user ${userId}] (decode) ${titleMap.get(r.mediaFileId) || r.mediaFileId} — ok`); }
-              else if (!r.skipped) { status.failed += 1; failedItems.push({ mediaFileId: r.mediaFileId, title: titleMap.get(r.mediaFileId) || r.mediaFileId, error: r.error || 'failed' }); status.failedItems = failedItems; }
+              const t = trackMap.get(r.mediaFileId);
+              if (r.ok) {
+                status.enriched += 1;
+                enrichedItems.push({ mediaFileId: r.mediaFileId, title: t?.title || r.mediaFileId, artist: t?.artist, album: item.label });
+                status.enrichedItems = enrichedItems;
+                log.info(`[user ${userId}] (decode) ${t?.title || r.mediaFileId} — ok`);
+              }
+              else if (!r.skipped) {
+                status.failed += 1;
+                failedItems.push({ mediaFileId: r.mediaFileId, title: t?.title || r.mediaFileId, artist: t?.artist, album: item.label, error: r.error || 'failed' });
+                status.failedItems = failedItems;
+              }
             }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
@@ -416,7 +440,7 @@ class NavidromeEnrichmentService {
               i -= BATCH_SIZE; continue;
             }
             log.warn(`[user ${userId}] (decode-batch) failed: ${msg}`);
-            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: msg }); }
+            for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label, error: msg }); }
             status.failed += batch.length;
             status.failedItems = failedItems;
           }
