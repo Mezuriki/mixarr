@@ -84,6 +84,9 @@ const STALE_RUNNING_MS = 30_000;
 const CANCEL_TTL_SECONDS = 3_600;
 const MAX_RETRIES_PER_TRACK = 3;
 const QUOTA_BACKOFF_BASE_MS = 30_000; // 30s, 60s, 120s
+// Number of tracks processed in parallel within one queue item. Z.ai (coding
+// plan) has no tight RPS limit, so 5 concurrent requests cut wall time ~5x.
+const TRACK_CONCURRENCY = 5;
 
 class NavidromeEnrichmentService {
   private jobKey(userId: number): string {
@@ -317,56 +320,72 @@ class NavidromeEnrichmentService {
       status.total += targets.length;
       await this.updateStatus(userId, status, queue);
 
-      for (const t of targets) {
+      // Process tracks in parallel batches (TRACK_CONCURRENCY at a time) to cut
+      // wall time dramatically. Each batch is awaited together; status is
+      // updated once per batch. Cancellation is checked per batch.
+      for (let i = 0; i < targets.length; i += TRACK_CONCURRENCY) {
         if (await this.isCancelled(userId)) {
           status.status = 'cancelled';
           await this.updateStatus(userId, status, queue);
-          log.info(`[user ${userId}] Cancelled before track "${t.title}"`);
+          log.info(`[user ${userId}] Cancelled at batch starting ${targets[i].title}`);
           return;
         }
-        status.currentTrack = `${t.title}${t.artist ? ' — ' + t.artist : ''}`;
+        const batch = targets.slice(i, i + TRACK_CONCURRENCY);
+        status.currentTrack = batch.map((t) => `${t.title}${t.artist ? ' — ' + t.artist : ''}`).join(' | ');
         await this.updateStatus(userId, status, queue);
-        log.info(
-          `[user ${userId}] (${item.mode}) "${t.title}" — start (${status.processed + 1}/${status.total})`,
+
+        const results = await Promise.all(
+          batch.map(async (t) => {
+            log.info(`[user ${userId}] (${item.mode}) "${t.title}" — start`);
+            try {
+              const ok = await this.processOne(
+                service,
+                token,
+                item.mode,
+                t,
+                async () => {
+                  log.info(`[user ${userId}] Re-authenticating to Navidrome`);
+                  token = await service.login();
+                },
+                () => this.isCancelled(userId),
+              );
+              return { t, ok, cancelled: false };
+            } catch (err) {
+              if (err && (err as any).cancelled) return { t, ok: false, cancelled: true };
+              throw err;
+            }
+          }),
         );
 
-        let ok = false;
-        try {
-          ok = await this.processOne(
-            service,
-            token,
-            item.mode,
-            t,
-            async () => {
-              log.info(`[user ${userId}] Re-authenticating to Navidrome`);
-              token = await service.login();
-            },
-            () => this.isCancelled(userId),
-          );
-        } catch (err) {
-          if (err && (err as any).cancelled) {
-            status.status = 'cancelled';
-            await this.updateStatus(userId, status, queue);
-            log.info(`[user ${userId}] Cancelled mid-track "${t.title}"`);
-            dbLog('warn', `Cancelled mid-track "${t.title}"`, { userId, track: t.title });
-            return;
-          }
-          throw err;
+        // If any track in the batch was cancelled, stop the whole queue.
+        if (results.some((r) => r.cancelled)) {
+          status.status = 'cancelled';
+          await this.updateStatus(userId, status, queue);
+          const cancelledTrack = results.find((r) => r.cancelled)?.t.title;
+          log.info(`[user ${userId}] Cancelled mid-track "${cancelledTrack}"`);
+          dbLog('warn', `Cancelled mid-track "${cancelledTrack}"`, { userId, track: cancelledTrack });
+          return;
         }
-        status.processed += 1;
-        if (ok) {
-          status.enriched += 1;
-          log.info(`[user ${userId}] (${item.mode}) "${t.title}" — done`);
-          dbLog('info', `(${item.mode}) "${t.title}" — done`, { userId, mode: item.mode, track: t.title });
-        } else {
-          status.failed += 1;
-          failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: 'failed' });
-          status.failedItems = failedItems;
-          log.warn(`[user ${userId}] (${item.mode}) "${t.title}" — FAILED`);
-          dbLog('warn', `(${item.mode}) "${t.title}" — FAILED`, { userId, mode: item.mode, track: t.title, mediaFileId: t.mediaFileId });
+
+        // Aggregate the batch results into the shared status.
+        for (const { t, ok } of results) {
+          status.processed += 1;
+          if (ok) {
+            status.enriched += 1;
+            log.info(`[user ${userId}] (${item.mode}) "${t.title}" — done`);
+            dbLog('info', `(${item.mode}) "${t.title}" — done`, { userId, mode: item.mode, track: t.title });
+          } else {
+            status.failed += 1;
+            failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, error: 'failed' });
+            status.failedItems = failedItems;
+            log.warn(`[user ${userId}] (${item.mode}) "${t.title}" — FAILED`);
+            dbLog('warn', `(${item.mode}) "${t.title}" — FAILED`, { userId, mode: item.mode, track: t.title, mediaFileId: t.mediaFileId });
+          }
         }
         await this.updateStatus(userId, status, queue);
-        if (interTrackDelay > 0) await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
+        if (interTrackDelay > 0 && i + TRACK_CONCURRENCY < targets.length) {
+          await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
+        }
       }
     }
 
@@ -482,10 +501,15 @@ class NavidromeEnrichmentService {
       item.mode === 'lyrics'
         ? await service.getMissingLyrics(token, params)
         : await service.getMissingDecode(token, params);
+    // Filter client-side so we DON'T send already-complete tracks to navidrome
+    // (which would re-stat the sidecars over the network share for nothing).
+    //  - decode mode: process tracks without .ai.decode.md (!hasLyrics)
+    //  - lyrics mode: process tracks that lack original (.lrc) OR RU (.ru.lrc).
+    //    A track with BOTH hasLyrics and hasTranslation is fully done → skip.
     const targets =
       item.mode === 'decode'
         ? missing.filter((m) => !m.hasLyrics)
-        : missing;
+        : missing.filter((m) => !(m.hasLyrics && m.hasTranslation));
     return targets.map((m) => ({ mediaFileId: m.mediaFileId, title: m.title, artist: m.artist }));
   }
 
