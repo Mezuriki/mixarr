@@ -9,10 +9,10 @@
  */
 
 const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds (library reads, login, etc.)
-// AI generation calls (decode / translate) can take much longer than a simple
-// HTTP read — a reasoning model producing a full Markdown analysis routinely
-// needs 60-120s. The previous 30s default aborted the very first decode.
-const AI_TIMEOUT_MS = 120_000; // 2 minutes — enough for BATCH_SIZE=2 (2 songs × ~60s each)
+// MUST be > navidrome OpenAI timeout (90s). If Mixarr times out before navidrome,
+// the navidrome goroutine keeps running (holding resources). 100s gives navidrome
+// 10s of headroom to return (including its 90s Z.ai timeout + response time).
+const AI_TIMEOUT_MS = 100_000;
 
 export function fetchWithTimeout(
   url: string | URL,
