@@ -11,6 +11,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { connectionsRouter } from './routes/connections.js';
 import { navidromeRouter } from './routes/navidrome.js';
+import { navidromeEnrichmentService } from './services/navidrome-enrichment.js';
 import { searchRouter } from './routes/search.js';
 import { settingsRouter } from './routes/settings.js';
 import { subscriptionsRouter } from './routes/subscriptions.js';
@@ -132,7 +133,21 @@ app.set('io', io);
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/connections', connectionsRouter);
-app.use('/api/navidrome', navidromeRouter);
+  // Public (no-auth) endpoint so navidrome can proxy the enrich status.
+  app.get('/api/navidrome/enrich/status', async (_req, res) => {
+    try {
+      const status = await navidromeEnrichmentService.getStatus(1);
+      res.json(status);
+    } catch { res.json({ status: 'idle' }); }
+  });
+  // Public cancel endpoint for navidrome proxy
+  app.post('/api/navidrome/enrich/cancel', async (_req, res) => {
+    try {
+      await navidromeEnrichmentService.cancel(1);
+      res.json({ cancelled: true });
+    } catch { res.json({ cancelled: false }); }
+  });
+  app.use('/api/navidrome', navidromeRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/subscriptions', subscriptionsRouter);
