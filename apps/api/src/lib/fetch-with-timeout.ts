@@ -9,10 +9,9 @@
  */
 
 const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds (library reads, login, etc.)
-// MUST be > navidrome OpenAI timeout (90s). If Mixarr times out before navidrome,
-// the navidrome goroutine keeps running (holding resources). 100s gives navidrome
-// 10s of headroom to return (including its 90s Z.ai timeout + response time).
-const AI_TIMEOUT_MS = 100_000;
+// MUST be > navidrome OpenAI timeout (500s). Z.ai glm-5-turbo with reasoning can
+// take 200+ seconds per song. BATCH_SIZE=2 → up to 400-500s total.
+const AI_TIMEOUT_MS = 520_000;
 
 export function fetchWithTimeout(
   url: string | URL,
