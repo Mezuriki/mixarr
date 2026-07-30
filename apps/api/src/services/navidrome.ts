@@ -342,16 +342,18 @@ export class NavidromeService {
     return (await resp.json()) as { ok: boolean; found: boolean };
   }
 
-  /** Phase B: translate up to N songs in one LLM call. */
+  /** Phase B: translate up to N songs. Accepts an AbortSignal for cancel. */
   async translateBatch(
     token: string,
     items: Array<{ mediaFileId: string; title: string; artist: string; lyrics: string }>,
     toLang = 'ru',
+    signal?: AbortSignal,
   ): Promise<Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }>> {
     const resp = await fetchAI(`${this.baseUrl}/api/ai/translate/batch`, {
       method: 'POST',
       headers: this.nativeHeaders(token),
       body: JSON.stringify({ items, toLang }),
+      signal,
     });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
@@ -361,15 +363,17 @@ export class NavidromeService {
     return body.results || [];
   }
 
-  /** Phase C: decode meaning for up to N songs in one LLM call. */
+  /** Phase C: decode meaning for up to N songs. Accepts an AbortSignal for cancel. */
   async decodeBatch(
     token: string,
     items: Array<{ mediaFileId: string; title: string; artist: string; album?: string; lyrics?: string }>,
+    signal?: AbortSignal,
   ): Promise<Array<{ mediaFileId: string; ok: boolean; error?: string; skipped?: boolean }>> {
     const resp = await fetchAI(`${this.baseUrl}/api/ai/decode/batch`, {
       method: 'POST',
       headers: this.nativeHeaders(token),
       body: JSON.stringify({ items }),
+      signal,
     });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');

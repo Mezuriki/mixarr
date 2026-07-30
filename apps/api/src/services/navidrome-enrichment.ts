@@ -370,19 +370,23 @@ class NavidromeEnrichmentService {
           await this.updateStatus(userId, status, queue);
         }
 
-        // Phase B: translate to RU in batches of BATCH_SIZE (one Z.ai call per batch).
-        // Only translate tracks that have a .lrc original. We check the
-        // missing-list data which already told us hasLyrics status.
+        // Phase B: translate to RU in batches of BATCH_SIZE.
+        // Only translate tracks that have a .lrc original.
         const translateTargets = targets.filter((t) => t.hasLyrics !== false);
         for (let i = 0; i < translateTargets.length; i += BATCH_SIZE) {
           if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
           const batch = translateTargets.slice(i, i + BATCH_SIZE);
+          // AbortController so cancel can interrupt the Z.ai call mid-flight.
+          const ac = new AbortController();
+          const cancelPoll = setInterval(async () => {
+            if (await this.isCancelled(userId)) ac.abort();
+          }, 3000);
           status.currentTrack = `translating: ${batch.map((t) => t.title).join(' | ')}`;
           await this.updateStatus(userId, status, queue);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', lyrics: '' }));
             const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
-            const results = await service.translateBatch(token, items);
+            const results = await service.translateBatch(token, items, 'ru', ac.signal);
             for (const r of results) {
               const t = trackMap.get(r.mediaFileId);
               if (r.ok) {
@@ -411,8 +415,9 @@ class NavidromeEnrichmentService {
             status.failed += batch.length;
             status.failedItems = failedItems;
           }
+          clearInterval(cancelPoll);
           await this.updateStatus(userId, status, queue);
-          if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
+          if (interTrackDelay > 0 && i + BATCH_SIZE < translateTargets.length) {
             await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
           }
         }
@@ -421,13 +426,17 @@ class NavidromeEnrichmentService {
         for (let i = 0; i < targets.length; i += BATCH_SIZE) {
           if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
           const batch = targets.slice(i, i + BATCH_SIZE);
+          const ac = new AbortController();
+          const cancelPoll = setInterval(async () => {
+            if (await this.isCancelled(userId)) ac.abort();
+          }, 3000);
           status.currentTrack = `decoding: ${batch.map((t) => t.title).join(' | ')}`;
           status.processed += batch.length;
           await this.updateStatus(userId, status, queue);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: item.label, lyrics: '' }));
             const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
-            const results = await service.decodeBatch(token, items);
+            const results = await service.decodeBatch(token, items, ac.signal);
             for (const r of results) {
               const t = trackMap.get(r.mediaFileId);
               if (r.ok) {
@@ -457,6 +466,7 @@ class NavidromeEnrichmentService {
             status.failed += batch.length;
             status.failedItems = failedItems;
           }
+          clearInterval(cancelPoll);
           await this.updateStatus(userId, status, queue);
           if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
             await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
