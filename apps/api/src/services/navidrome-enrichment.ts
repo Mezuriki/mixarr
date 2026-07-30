@@ -58,6 +58,8 @@ interface ResolvedTarget {
   mediaFileId: string;
   title: string;
   artist?: string;
+  hasLyrics?: boolean;
+  hasTranslation?: boolean;
 }
 
 export interface EnrichJobStatus {
@@ -341,12 +343,21 @@ class NavidromeEnrichmentService {
           status.currentTrack = `${t.title}`;
           await this.updateStatus(userId, status, queue);
           try {
-            await service.fetchOriginalLyrics(token, t.mediaFileId);
-            status.processed += 1;
-            status.enriched += 1;
-            enrichedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label });
-            status.enrichedItems = enrichedItems;
-            log.info(`[user ${userId}] (lrclib) "${t.title}" — done`);
+            const res = await service.fetchOriginalLyrics(token, t.mediaFileId);
+            if (res.found) {
+              status.processed += 1;
+              status.enriched += 1;
+              enrichedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label });
+              status.enrichedItems = enrichedItems;
+              log.info(`[user ${userId}] (lrclib) "${t.title}" — done`);
+            } else {
+              // LRCLIB didn't have the lyrics — not an error, just a miss.
+              // Skip translation (Phase B) for this track by marking it processed
+              // but NOT enriched. Don't add to failedItems either (it's not a
+              // failure, just "not found").
+              status.processed += 1;
+              log.info(`[user ${userId}] (lrclib) "${t.title}" — not found, skipping`);
+            }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             if (/401|token|unauthorized/i.test(msg)) { token = await service.login(); continue; }
@@ -360,10 +371,12 @@ class NavidromeEnrichmentService {
         }
 
         // Phase B: translate to RU in batches of BATCH_SIZE (one Z.ai call per batch).
-        // Build batch items — translateBatch on navidrome side reads .lrc itself.
-        for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+        // Only translate tracks that have a .lrc original. We check the
+        // missing-list data which already told us hasLyrics status.
+        const translateTargets = targets.filter((t) => t.hasLyrics !== false);
+        for (let i = 0; i < translateTargets.length; i += BATCH_SIZE) {
           if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
-          const batch = targets.slice(i, i + BATCH_SIZE);
+          const batch = translateTargets.slice(i, i + BATCH_SIZE);
           status.currentTrack = `translating: ${batch.map((t) => t.title).join(' | ')}`;
           await this.updateStatus(userId, status, queue);
           try {
@@ -537,7 +550,7 @@ class NavidromeEnrichmentService {
       item.mode === 'decode'
         ? missing.filter((m) => !m.hasLyrics)
         : missing.filter((m) => !(m.hasLyrics && m.hasTranslation));
-    return targets.map((m) => ({ mediaFileId: m.mediaFileId, title: m.title, artist: m.artist }));
+    return targets.map((m) => ({ mediaFileId: m.mediaFileId, title: m.title, artist: m.artist, hasLyrics: m.hasLyrics, hasTranslation: m.hasTranslation }));
   }
 
   private looksLikeQuotaError(msg?: string): boolean {
