@@ -84,10 +84,10 @@ const JOB_TTL_SECONDS = 86_400; // queue may run for a long time on big librarie
 const STALE_RUNNING_MS = 30_000;
 const CANCEL_TTL_SECONDS = 3_600;
 const QUOTA_BACKOFF_BASE_MS = 30_000; // 30s, 60s, 120s
-// Batch size for translate/decode: N songs are combined into ONE Z.ai call
-// (separated by ===SONG===/===DECODE=== markers) so we make N× fewer requests
-// and never hit the concurrent-request rate limit.
-const BATCH_SIZE = 5;
+// Batch size for translate/decode: each song needs a separate Z.ai call (30-60s
+// each), so BATCH_SIZE=2 keeps total under 120s — well within the 300s timeouts
+// on both the Mixarr fetchAI and navidrome OpenAIProvider sides.
+const BATCH_SIZE = 2;
 
 class NavidromeEnrichmentService {
   private jobKey(userId: number): string {
