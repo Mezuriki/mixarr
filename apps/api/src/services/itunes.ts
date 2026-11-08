@@ -61,3 +61,24 @@ async function fetchWithTimeout(url: string, init: RequestInit & { timeout: numb
     clearTimeout(timer);
   }
 }
+
+/**
+ * Multiple album cover candidates from iTunes (up to 6, 600x600).
+ */
+export async function fetchItunesCandidates(artist: string, album?: string): Promise<string[]> {
+  const term = album ? `${artist} ${album}` : artist;
+  try {
+    const response = await fetchWithTimeout(
+      `${ITUNES_API_BASE}?term=${encodeURIComponent(term)}&entity=album&limit=12`,
+      { timeout: API_TIMEOUT, headers: { 'Accept': 'application/json' } }
+    );
+    if (!response.ok) return [];
+    const data = await response.json() as ITunesSearchResponse;
+    const urls = (data.results || [])
+      .map((r) => (r.artworkUrl100 ? upscaleArtwork(r.artworkUrl100) : undefined))
+      .filter((u): u is string => !!u);
+    return [...new Set(urls)].slice(0, 6);
+  } catch {
+    return [];
+  }
+}

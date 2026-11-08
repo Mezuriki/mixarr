@@ -173,3 +173,39 @@ export async function getDeezerArtist(artistId: number): Promise<DeezerArtist | 
   }
   return response.json() as Promise<DeezerArtist>;
 }
+
+/**
+ * Album cover candidates from Deezer (up to 6, xl size).
+ */
+export async function fetchDeezerAlbumCandidates(artist: string, album: string): Promise<string[]> {
+  try {
+    const q = encodeURIComponent(`${artist} ${album}`);
+    const response = await fetchWithTimeout(`${DEEZER_API_BASE}/search/album?q=${q}`, { timeout: API_TIMEOUT });
+    if (!response.ok) return [];
+    const data = await response.json() as { data?: Array<{ cover_xl?: string; cover_big?: string; cover_medium?: string }> };
+    return (data.data || [])
+      .map((a) => a.cover_xl || a.cover_big || a.cover_medium)
+      .filter((u): u is string => !!u)
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Artist photo candidates from Deezer (up to 6).
+ */
+export async function fetchDeezerArtistCandidates(artist: string): Promise<string[]> {
+  try {
+    const q = encodeURIComponent(artist);
+    const response = await fetchWithTimeout(`${DEEZER_API_BASE}/search/artist?q=${q}`, { timeout: API_TIMEOUT });
+    if (!response.ok) return [];
+    const data = await response.json() as { data?: Array<{ picture_xl?: string; picture_big?: string }> };
+    return (data.data || [])
+      .map((a) => a.picture_xl || a.picture_big)
+      .filter((u): u is string => !!u)
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}

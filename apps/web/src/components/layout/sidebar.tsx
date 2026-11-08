@@ -57,6 +57,7 @@ const navGroups: NavGroup[] = [
       { href: '/queue', label: 'Review Queue', icon: ListChecks },
       { href: '/downloads', label: 'Downloads', icon: Download },
       { href: '/navidrome', label: 'Navidrome', icon: Music },
+      { href: '/media', label: 'Медиа', icon: Music },
     ],
   },
   {

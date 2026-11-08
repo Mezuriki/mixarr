@@ -1,0 +1,173 @@
+/**
+ * Media Library Service — данные для страницы «Медиа» в Mixarr:
+ * библиотека Navidrome (альбомы/артисты с обложками), текущие обложки,
+ * кандидаты обложек (Deezer + iTunes), текст/смысл треков (sidecar),
+ * биографии (Last.fm), применение выбранной обложки (загрузка в Navidrome).
+ */
+// @ts-nocheck
+import type { LastfmService } from './lastfm.js';
+import { fetchDeezerArtistImage } from './deezer.js';
+import { fetchItunesArtwork, fetchItunesCandidates } from './itunes.js';
+import { fetchDeezerAlbumCandidates } from './deezer.js';
+import { ConnectionResolver } from '../lib/connection-resolver.js';
+
+export interface MediaTrack {
+  id: string;
+  title: string;
+  artist?: string;
+  duration?: number;
+  hasLyrics: boolean;
+  hasDecode: boolean;
+}
+
+export interface MediaAlbum {
+  id: string;
+  name: string;
+  artist?: string;
+  artistId?: string;
+  year?: number;
+  coverUrl?: string;
+}
+
+export interface MediaArtist {
+  id: string;
+  name: string;
+  coverUrl?: string;
+  imageUrl?: string;
+}
+
+export class MediaLibraryService {
+  constructor(private lastfm: LastfmService) {}
+
+  private async nd(userId: number) {
+    const service = await ConnectionResolver.getNavidromeService(userId);
+    if (!service) throw new Error('Navidrome connection is not configured');
+    return service;
+  }
+
+  /** Album list with playable cover URLs (subsonic getCoverArt). */
+  async albums(userId: number): Promise<MediaAlbum[]> {
+    const nd = await this.nd(userId);
+    const list = await nd.getAlbumList2({ type: 'alphabeticalByName', size: 500 });
+    return (list || []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      artist: a.artist,
+      artistId: a.artistId,
+      year: a.year,
+      coverUrl: nd.coverArtUrl(a.coverArtId || a.id),
+    }));
+  }
+
+  /** Artist list (subsonic getArtists). */
+  async artists(userId: number): Promise<MediaArtist[]> {
+    const nd = await this.nd(userId);
+    const list = await nd.getArtistsFlat();
+    return await Promise.all((list || []).map(async (a) => ({
+      id: a.id,
+      name: a.name,
+      coverUrl: nd.coverArtUrl(a.coverArtId || a.id),
+      imageUrl: await fetchDeezerArtistImage(a.name),
+    })));
+  }
+
+  /** Album detail: meta + tracks with sidecar status. */
+  async albumDetail(userId: number, albumId: string): Promise<{ album: MediaAlbum; tracks: MediaTrack[] }> {
+    const nd = await this.nd(userId);
+    const { album, songs } = await nd.getAlbum(albumId);
+    const token = await nd.login();
+    const tracks: MediaTrack[] = [];
+    for (const s of songs || []) {
+      const [lyr, dec] = await Promise.all([
+        nd.sidecarContent(token, s.id, 'lyrics'),
+        nd.sidecarContent(token, s.id, 'decode'),
+      ]);
+      tracks.push({
+        id: s.id,
+        title: s.title,
+        artist: s.artist,
+        duration: s.duration,
+        hasLyrics: !!(lyr && lyr.trim()),
+        hasDecode: !!(dec && dec.trim()),
+      });
+    }
+    return {
+      album: {
+        id: album.id,
+        name: album.name,
+        artist: album.artist,
+        artistId: album.artistId,
+        year: album.year,
+        coverUrl: nd.coverArtUrl(album.coverArtId || album.id),
+      },
+      tracks,
+    };
+  }
+
+  /** Cover candidates for an album: Deezer albums + iTunes albums. */
+  async albumCoverCandidates(artist: string, album: string): Promise<string[]> {
+    const [dz, it] = await Promise.all([
+      fetchDeezerAlbumCandidates(artist, album),
+      fetchItunesCandidates(artist, album),
+    ]);
+    return [...dz, ...it];
+  }
+
+  /** Photo candidates for an artist: Deezer artist images. */
+  async artistPhotoCandidates(artist: string): Promise<string[]> {
+    const { fetchDeezerArtistCandidates } = await import('./deezer.js');
+    return fetchDeezerArtistCandidates(artist);
+  }
+
+  /** Biography (Last.fm). */
+  async artistBio(artist: string): Promise<{ summary: string; content?: string; url?: string }> {
+    const info = await this.lastfm.getArtistInfo(artist);
+    return {
+      summary: info?.bio?.summary || '',
+      content: info?.bio?.content,
+      url: info?.url,
+    };
+  }
+
+  /** Sidecar content (lyrics .lrc / decode .ai.decode.md). */
+  async sidecar(userId: number, mediaFileId: string, kind: 'lyrics' | 'decode'): Promise<string> {
+    const nd = await this.nd(userId);
+    const token = await nd.login();
+    return nd.sidecarContent(token, mediaFileId, kind);
+  }
+
+  /** Apply a cover to a Navidrome album: upload file (multipart) by URL or Buffer. */
+  async applyAlbumCover(userId: number, albumId: string, source: { url?: string; buffer?: Buffer; filename?: string }): Promise<void> {
+    const nd = await this.nd(userId);
+    const token = await nd.login();
+    let buf: Buffer | undefined = source.buffer;
+    let filename = source.filename || 'cover.jpg';
+    if (!buf && source.url) {
+      const resp = await fetch(source.url);
+      if (!resp.ok) throw new Error(`Не удалось скачать изображение (${resp.status})`);
+      buf = Buffer.from(await resp.arrayBuffer());
+      filename = source.url.split('.').pop()?.split('?')[0] || 'jpg';
+      if (filename.length > 5) filename = 'jpg';
+    }
+    if (!buf) throw new Error('Нет данных изображения');
+    await nd.uploadAlbumArt(token, albumId, buf, filename);
+  }
+
+  /** Apply an artist photo via the existing artist image upload. */
+  async applyArtistPhoto(userId: number, artistId: string, source: { url?: string; buffer?: Buffer; filename?: string }): Promise<void> {
+    const nd = await this.nd(userId);
+    const token = await nd.login();
+    let buf: Buffer | undefined = source.buffer;
+    let filename = source.filename || 'artist.jpg';
+    if (!buf && source.url) {
+      const resp = await fetch(source.url);
+      if (!resp.ok) throw new Error(`Не удалось скачать изображение (${resp.status})`);
+      buf = Buffer.from(await resp.arrayBuffer());
+      filename = 'artist.jpg';
+    }
+    if (!buf) throw new Error('Нет данных изображения');
+    await nd.uploadArtistImage(token, artistId, buf, filename);
+  }
+}
+
+export { fetchItunesArtwork };

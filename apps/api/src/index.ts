@@ -11,6 +11,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { connectionsRouter } from './routes/connections.js';
 import { navidromeRouter } from './routes/navidrome.js';
+import { mediaRouter } from './routes/media.js';
 import { navidromeEnrichmentService } from './services/navidrome-enrichment.js';
 import { searchRouter } from './routes/search.js';
 import { settingsRouter } from './routes/settings.js';
@@ -148,6 +149,7 @@ app.use('/api/connections', connectionsRouter);
     } catch { res.json({ cancelled: false }); }
   });
   app.use('/api/navidrome', navidromeRouter);
+  app.use('/api/media', mediaRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/subscriptions', subscriptionsRouter);

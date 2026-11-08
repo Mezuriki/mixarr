@@ -222,6 +222,67 @@ export class NavidromeService {
    * is short-lived but sufficient for a batch run; callers should re-login if
    * they hit a 401 mid-run.
    */
+  /** Public subsonic cover URL for an album/artist coverArt id. */
+  coverArtUrl(coverArtId: string, size: number = 300): string {
+    return `${this.baseUrl}/rest/getCoverArt?id=${encodeURIComponent(coverArtId)}&size=${size}&${this.subsonicAuthParams()}`;
+  }
+
+  /** Flat artist list from getArtists indexes. */
+  async getArtistsFlat(): Promise<Array<{ id: string; name: string; coverArtId?: string }>> {
+    const all = await this.getArtists();
+    return all.map((a) => ({ id: a.id, name: a.name, coverArtId: (a as any).coverArtId || (a as any).coverArt }));
+  }
+
+  /** Album list via getAlbumList2. */
+  async getAlbumList2(params: { type: string; size?: number; artistId?: string }): Promise<Array<{ id: string; name: string; artist?: string; artistId?: string; year?: number; coverArtId?: string }>> {
+    const qs = new URLSearchParams({ type: params.type, size: String(params.size || 100) });
+    if (params.artistId) qs.set('artist_id', params.artistId);
+    const res = await this.subsonicGet<{ albumList2?: { album?: any[] } }>(`getAlbumList2.view?${qs.toString()}`);
+    return (res.albumList2?.album || []).map((a) => ({
+      id: a.id, name: a.name, artist: a.artist, artistId: a.artistId,
+      year: a.year ? Number(a.year) : undefined, coverArtId: a.coverArt,
+    }));
+  }
+
+  /** Read sidecar content (.lrc / .ai.decode.md) from Navidrome native API. */
+  async sidecarContent(token: string, mediaFileId: string, kind: 'lyrics' | 'decode'): Promise<string> {
+    const resp = await fetchWithTimeout(
+      `${this.baseUrl}/api/ai/sidecar?mediaFileId=${encodeURIComponent(mediaFileId)}&kind=${kind}`,
+      { method: 'GET', headers: this.nativeHeaders(token) },
+    );
+    if (!resp.ok) return '';
+    const body = (await resp.json()) as { content?: string };
+    return body.content || '';
+  }
+
+  /** Upload album artwork via the fork's POST /api/album/{id}/art. */
+  async uploadAlbumArt(token: string, albumId: string, buf: Buffer, filename: string): Promise<void> {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(buf)]), filename);
+    const resp = await fetchWithTimeout(`${this.baseUrl}/api/album/${encodeURIComponent(albumId)}/art`, {
+      method: 'POST',
+      headers: { 'x-nd-authorization': `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) {
+      throw new Error(`Navidrome album art upload failed: status ${resp.status}`);
+    }
+  }
+
+  /** Upload artist image via the fork's POST /api/artist/{id}/image. */
+  async uploadArtistImage(token: string, artistId: string, buf: Buffer, filename: string): Promise<void> {
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(buf)]), filename);
+    const resp = await fetchWithTimeout(`${this.baseUrl}/api/artist/${encodeURIComponent(artistId)}/image`, {
+      method: 'POST',
+      headers: { 'x-nd-authorization': `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) {
+      throw new Error(`Navidrome artist image upload failed: status ${resp.status}`);
+    }
+  }
+
   async login(): Promise<string> {
     const resp = await fetchWithTimeout(`${this.baseUrl}/auth/login`, {
       method: 'POST',
