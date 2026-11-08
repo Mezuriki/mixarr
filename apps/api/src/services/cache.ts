@@ -29,6 +29,8 @@ export const CACHE_KEYS = {
     `deezer:image:${normalizedName}`,
   lastfmStats: (normalizedName: string): string =>
     `lastfm:stats:${normalizedName}`,
+  itunesArtwork: (term: string): string =>
+    `itunes:artwork:${term}`,
 } as const;
 
 interface RedisLike {

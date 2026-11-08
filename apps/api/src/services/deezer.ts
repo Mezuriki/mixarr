@@ -63,13 +63,20 @@ export async function fetchDeezerArtistImage(artistName: string): Promise<string
       const data = await response.json() as DeezerSearchResponse;
       if (data.data && data.data.length > 0) {
         const artist = data.data[0];
-        return artist.picture_xl || artist.picture_big || artist.picture_medium || artist.picture;
+        const img = artist.picture_xl || artist.picture_big || artist.picture_medium || artist.picture;
+        if (img) return img;
       }
     }
   } catch {
     // Ignore image fetch errors
   }
-  return undefined;
+  // Fallback: iTunes album cover for this artist (Deezer gave nothing)
+  try {
+    const { fetchItunesArtwork } = await import('./itunes.js');
+    return await fetchItunesArtwork(artistName);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
