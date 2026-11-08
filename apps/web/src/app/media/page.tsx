@@ -26,7 +26,7 @@ function Mono({ name, round }: { name: string; round?: boolean }) {
   const { letter, hue } = monogram(name);
   return (
     <div
-      className={`w-full h-full flex items-center justify-center font-bold text-white ${round ? 'rounded-full' : 'rounded'}`}
+      className={`w-full flex items-center justify-center font-bold text-white ${round ? 'rounded-full aspect-square' : 'rounded aspect-square'}`}
       style={{ background: `hsl(${hue}, 30%, 30%)`, fontSize: round ? 20 : 34 }}
     >
       {letter}
@@ -69,30 +69,46 @@ export default function MediaPage() {
   useEffect(() => { load(); }, [load]);
 
   const openAlbum = async (a: MediaAlbum) => {
-    setSidecar(null);
-    setDetailLoading(true);
-    setDetail(null);
-    setCandidates([]);
-    const res = await api.get<{ album: MediaAlbum; tracks: MediaTrack[] }>(`/api/media/album/${a.id}`);
-    if (res.data) {
+    try {
+      setSidecar(null);
+      setDetailLoading(true);
+      setDetail(null);
+      setCandidates([]);
+      const res = await api.get<{ album: MediaAlbum; tracks: MediaTrack[] }>(`/api/media/album/${a.id}`);
+      if (!res.data || !res.data.album) {
+        if (res.error) addToast({ type: 'error', title: 'Медиа', message: res.error });
+        setDetailLoading(false);
+        return;
+      }
       setDetail(res.data);
-      const cand = await api.get<{ candidates: string[] }>(
-        `/api/media/album/${a.id}/cover-candidates?artist=${encodeURIComponent(a.artist || '')}&album=${encodeURIComponent(a.name)}`);
-      setCandidates(cand.data?.candidates || []);
-    } else if (res.error) addToast({ type: 'error', title: 'Медиа', message: res.error });
-    setDetailLoading(false);
+      setDetailLoading(false);
+      // кандидаты грузим отдельно — карточка видна сразу
+      api.get<{ candidates: string[] }>(
+        `/api/media/album/${a.id}/cover-candidates?artist=${encodeURIComponent(a.artist || '')}&album=${encodeURIComponent(a.name)}`)
+        .then((cand) => setCandidates((cand.data && cand.data.candidates) || []))
+        .catch(() => setCandidates([]));
+    } catch (e: any) {
+      console.error('media openAlbum', e);
+      addToast({ type: 'error', title: 'Медиа', message: e?.message || 'Ошибка открытия альбома' });
+      setDetailLoading(false);
+    }
   };
 
   const openArtist = async (ar: MediaArtist) => {
-    setSelectedArtist(ar);
-    setBio(null);
-    setPhotoCandidates([]);
-    const [pc, bioRes] = await Promise.all([
-      api.get<{ candidates: string[] }>(`/api/media/artist/${ar.id}/photo-candidates?artist=${encodeURIComponent(ar.name)}`),
-      api.get<{ summary: string; content?: string }>(`/api/media/artist/${encodeURIComponent(ar.name)}/bio`),
-    ]);
-    setPhotoCandidates(pc.data?.candidates || []);
-    setBio(bioRes.data || null);
+    try {
+      setSelectedArtist(ar);
+      setBio(null);
+      setPhotoCandidates([]);
+      const [pc, bioRes] = await Promise.all([
+        api.get<{ candidates: string[] }>(`/api/media/artist/${ar.id}/photo-candidates?artist=${encodeURIComponent(ar.name)}`),
+        api.get<{ summary: string; content?: string }>(`/api/media/artist/${encodeURIComponent(ar.name)}/bio`),
+      ]);
+      setPhotoCandidates((pc.data && pc.data.candidates) || []);
+      setBio(bioRes.data || null);
+    } catch (e: any) {
+      console.error('media openArtist', e);
+      addToast({ type: 'error', title: 'Медиа', message: e?.message || 'Ошибка открытия артиста' });
+    }
   };
 
   const applyCover = async (payload: { url?: string; dataUrl?: string }) => {
@@ -162,7 +178,12 @@ export default function MediaPage() {
       ) : tab === 'albums' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
           {filtered(albums).map((a) => (
-            <Card key={a.id} className="cursor-pointer hover:ring-2 ring-primary transition" onClick={() => openAlbum(a)}>
+            <button
+              key={a.id}
+              type="button"
+              className="text-left rounded-card border bg-card text-card-foreground shadow-sm hover:ring-2 ring-primary transition cursor-pointer"
+              onClick={() => openAlbum(a)}
+            >
               <CardContent className="p-2 space-y-1.5">
                 {a.coverUrl
                   ? <img src={a.coverUrl} alt="" className="w-full aspect-square object-cover rounded" loading="lazy" />
@@ -170,20 +191,25 @@ export default function MediaPage() {
                 <div className="text-sm font-medium truncate">{a.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{a.artist}{a.year ? ` · ${a.year}` : ''}</div>
               </CardContent>
-            </Card>
+            </button>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
           {filtered(artists).map((ar) => (
-            <Card key={ar.id} className="cursor-pointer hover:ring-2 ring-primary transition" onClick={() => openArtist(ar)}>
+            <button
+              key={ar.id}
+              type="button"
+              className="rounded-card border bg-card text-card-foreground shadow-sm hover:ring-2 ring-primary transition cursor-pointer"
+              onClick={() => openArtist(ar)}
+            >
               <CardContent className="p-2 flex flex-col items-center gap-1.5">
                 {ar.coverUrl
                   ? <img src={ar.coverUrl} alt="" className="w-16 h-16 rounded-full object-cover" loading="lazy" />
                   : <div className="w-16 h-16"><Mono name={ar.name} round /></div>}
                 <div className="text-xs text-center truncate w-full">{ar.name}</div>
               </CardContent>
-            </Card>
+            </button>
           ))}
         </div>
       )}
@@ -192,13 +218,15 @@ export default function MediaPage() {
 
       {detail && (
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-3">
-            {detail.album.coverUrl
-              ? <img src={detail.album.coverUrl} className="w-12 h-12 rounded object-cover" alt="" />
-              : <div className="w-12 h-12"><Mono name={detail.album.name} /></div>}
-            {detail.album.name}
-            <span className="text-sm text-muted-foreground font-normal">{detail.album.artist}{detail.album.year ? ` · ${detail.album.year}` : ''}</span>
-          </CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              {detail.album.coverUrl
+                ? <img src={detail.album.coverUrl} className="w-12 h-12 rounded object-cover" alt="" />
+                : <div className="w-12 h-12"><Mono name={detail.album.name} /></div>}
+              <CardTitle className="text-xl">{detail.album.name}</CardTitle>
+              <span className="text-sm text-muted-foreground font-normal">{detail.album.artist}{detail.album.year ? ` · ${detail.album.year}` : ''}</span>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-5">
             <div>
               <div className="text-sm font-semibold mb-2">Обложки: можно выбрать</div>
@@ -258,12 +286,14 @@ export default function MediaPage() {
 
       {selectedArtist && (
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-3">
-            {selectedArtist.coverUrl
-              ? <img src={selectedArtist.coverUrl} className="w-12 h-12 rounded-full object-cover" alt="" />
-              : <div className="w-12 h-12"><Mono name={selectedArtist.name} round /></div>}
-            {selectedArtist.name}
-          </CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              {selectedArtist.coverUrl
+                ? <img src={selectedArtist.coverUrl} className="w-12 h-12 rounded-full object-cover" alt="" />
+                : <div className="w-12 h-12"><Mono name={selectedArtist.name} round /></div>}
+              <CardTitle className="text-xl">{selectedArtist.name}</CardTitle>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="text-sm font-semibold mb-2">Фото: текущее и кандидаты</div>
