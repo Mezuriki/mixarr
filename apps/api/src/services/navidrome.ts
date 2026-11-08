@@ -256,6 +256,15 @@ export class NavidromeService {
     return body.content || '';
   }
 
+  /** Fetch cover art bytes (subsonic getCoverArt) for server-side proxying. */
+  async fetchCover(coverArtId: string, size: number = 300): Promise<{ buf: Buffer; contentType: string }> {
+    const url = `${this.baseUrl}/rest/getCoverArt?id=${encodeURIComponent(coverArtId)}&size=${size}&${this.subsonicAuthParams()}`;
+    const resp = await fetchWithTimeout(url, { timeout: 15000 });
+    if (!resp.ok) throw new Error(`getCoverArt failed: ${resp.status}`);
+    const buf = Buffer.from(await resp.arrayBuffer());
+    return { buf, contentType: resp.headers.get('content-type') || 'image/jpeg' };
+  }
+
   /** Upload album artwork via the fork's POST /api/album/{id}/art. */
   async uploadAlbumArt(token: string, albumId: string, buf: Buffer, filename: string): Promise<void> {
     const form = new FormData();

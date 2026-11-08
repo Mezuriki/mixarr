@@ -82,6 +82,21 @@ mediaRouter.get('/artist/:name/bio', async (req, res) => {
   }
 });
 
+mediaRouter.get('/cover', async (req: any, res: any) => {
+  try {
+    const id = String(req.query.id || '');
+    const size = Number(req.query.size) || 300;
+    if (!id) { res.status(400).json({ error: 'id required' }); return; }
+    const svc = await buildService(req.user!.id);
+    const { buf, contentType } = await svc.coverBytes(req.user!.id, id, size);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.send(buf);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 mediaRouter.get('/sidecar', async (req, res) => {
   try {
     const mediaFileId = String(req.query.mediaFileId || '');

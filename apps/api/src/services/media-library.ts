@@ -44,6 +44,17 @@ export class MediaLibraryService {
     return service;
   }
 
+  /** Same-origin cover proxy path (avoids mixed content on https pages). */
+  private coverProxyUrl(coverArtId: string): string {
+    return `/api/media/cover?id=${encodeURIComponent(coverArtId)}`;
+  }
+
+  /** Cover bytes for the proxy route. */
+  async coverBytes(userId: number, coverArtId: string, size?: number): Promise<{ buf: Buffer; contentType: string }> {
+    const nd = await this.nd(userId);
+    return nd.fetchCover(coverArtId, size || 300);
+  }
+
   /** Album list with playable cover URLs (subsonic getCoverArt). */
   async albums(userId: number): Promise<MediaAlbum[]> {
     const nd = await this.nd(userId);
@@ -54,7 +65,7 @@ export class MediaLibraryService {
       artist: a.artist,
       artistId: a.artistId,
       year: a.year,
-      coverUrl: a.coverArtId ? nd.coverArtUrl(a.coverArtId) : undefined,
+      coverUrl: a.coverArtId ? this.coverProxyUrl(a.coverArtId) : undefined,
     }));
   }
 
@@ -98,7 +109,7 @@ export class MediaLibraryService {
         artist: album.artist,
         artistId: album.artistId,
         year: album.year,
-        coverUrl: (album as any).coverArt ? nd.coverArtUrl((album as any).coverArt) : undefined,
+        coverUrl: (album as any).coverArt ? this.coverProxyUrl((album as any).coverArt) : undefined,
       },
       tracks,
     };
