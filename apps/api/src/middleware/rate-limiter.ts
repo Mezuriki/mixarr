@@ -78,7 +78,13 @@ export const apiLimiter = rateLimit({
     });
   },
   skip: (req: Request) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health' || req.path === '/api/health/ready';
+    // Skip rate limiting for health checks and media cover images: the
+    // library grid renders hundreds of authenticated cover requests at once
+    // (each proxied with a 24h private cache), which would instantly eat
+    // the whole 100/min budget and 429 every other API call.
+    const p = req.path.replace(/^\/api(?=\/|$)/, ''); // лимитер смонтирован на /api
+    return p === '/health' || p === '/health/ready' ||
+      p === '/api/health' || p === '/api/health/ready' ||
+      p.startsWith('/media/cover') || p.startsWith('/api/media/cover');
   },
 });
