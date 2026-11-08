@@ -6,7 +6,6 @@
  */
 // @ts-nocheck
 import type { LastfmService } from './lastfm.js';
-import { fetchDeezerArtistImage } from './deezer.js';
 import { fetchItunesArtwork, fetchItunesCandidates } from './itunes.js';
 import { fetchDeezerAlbumCandidates } from './deezer.js';
 import { ConnectionResolver } from '../lib/connection-resolver.js';
@@ -55,7 +54,7 @@ export class MediaLibraryService {
       artist: a.artist,
       artistId: a.artistId,
       year: a.year,
-      coverUrl: nd.coverArtUrl(a.coverArtId || a.id),
+      coverUrl: a.coverArtId ? nd.coverArtUrl(a.coverArtId) : undefined,
     }));
   }
 
@@ -63,12 +62,13 @@ export class MediaLibraryService {
   async artists(userId: number): Promise<MediaArtist[]> {
     const nd = await this.nd(userId);
     const list = await nd.getArtistsFlat();
-    return await Promise.all((list || []).map(async (a) => ({
+    // no eager Deezer lookups here (rate limits): photo candidates are
+    // fetched lazily when the artist card is opened
+    return (list || []).map((a) => ({
       id: a.id,
       name: a.name,
-      coverUrl: nd.coverArtUrl(a.coverArtId || a.id),
-      imageUrl: await fetchDeezerArtistImage(a.name),
-    })));
+      coverUrl: a.coverArtId ? nd.coverArtUrl(a.coverArtId) : undefined,
+    }));
   }
 
   /** Album detail: meta + tracks with sidecar status. */
@@ -98,7 +98,7 @@ export class MediaLibraryService {
         artist: album.artist,
         artistId: album.artistId,
         year: album.year,
-        coverUrl: nd.coverArtUrl(album.coverArtId || album.id),
+        coverUrl: (album as any).coverArt ? nd.coverArtUrl((album as any).coverArt) : undefined,
       },
       tracks,
     };

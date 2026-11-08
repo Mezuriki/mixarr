@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import Music from 'lucide-react/dist/esm/icons/music';
-import User from 'lucide-react/dist/esm/icons/user';
 import Loader from 'lucide-react/dist/esm/icons/loader-2';
 import Upload from 'lucide-react/dist/esm/icons/upload';
 import FileText from 'lucide-react/dist/esm/icons/file-text';
@@ -16,6 +15,24 @@ interface MediaAlbum { id: string; name: string; artist?: string; artistId?: str
 interface MediaArtist { id: string; name: string; coverUrl?: string; imageUrl?: string; }
 interface MediaTrack { id: string; title: string; artist?: string; duration?: number; hasLyrics: boolean; hasDecode: boolean; }
 type Tab = 'albums' | 'artists';
+
+function monogram(name: string): { letter: string; hue: number } {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return { letter: (name.trim()[0] || '?').toUpperCase(), hue: h };
+}
+
+function Mono({ name, round }: { name: string; round?: boolean }) {
+  const { letter, hue } = monogram(name);
+  return (
+    <div
+      className={`w-full h-full flex items-center justify-center font-bold text-white ${round ? 'rounded-full' : 'rounded'}`}
+      style={{ background: `hsl(${hue}, 30%, 30%)`, fontSize: round ? 20 : 34 }}
+    >
+      {letter}
+    </div>
+  );
+}
 
 export default function MediaPage() {
   const { addToast } = useToast();
@@ -149,7 +166,7 @@ export default function MediaPage() {
               <CardContent className="p-2 space-y-1.5">
                 {a.coverUrl
                   ? <img src={a.coverUrl} alt="" className="w-full aspect-square object-cover rounded" loading="lazy" />
-                  : <div className="w-full aspect-square rounded bg-muted flex items-center justify-center"><Music className="w-8 h-8 opacity-30" /></div>}
+                  : <Mono name={a.name} />}
                 <div className="text-sm font-medium truncate">{a.name}</div>
                 <div className="text-xs text-muted-foreground truncate">{a.artist}{a.year ? ` · ${a.year}` : ''}</div>
               </CardContent>
@@ -163,7 +180,7 @@ export default function MediaPage() {
               <CardContent className="p-2 flex flex-col items-center gap-1.5">
                 {ar.coverUrl
                   ? <img src={ar.coverUrl} alt="" className="w-16 h-16 rounded-full object-cover" loading="lazy" />
-                  : <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center"><User className="w-6 h-6 opacity-30" /></div>}
+                  : <div className="w-16 h-16"><Mono name={ar.name} round /></div>}
                 <div className="text-xs text-center truncate w-full">{ar.name}</div>
               </CardContent>
             </Card>
@@ -176,7 +193,9 @@ export default function MediaPage() {
       {detail && (
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-3">
-            {detail.album.coverUrl && <img src={detail.album.coverUrl} className="w-12 h-12 rounded object-cover" alt="" />}
+            {detail.album.coverUrl
+              ? <img src={detail.album.coverUrl} className="w-12 h-12 rounded object-cover" alt="" />
+              : <div className="w-12 h-12"><Mono name={detail.album.name} /></div>}
             {detail.album.name}
             <span className="text-sm text-muted-foreground font-normal">{detail.album.artist}{detail.album.year ? ` · ${detail.album.year}` : ''}</span>
           </CardTitle></CardHeader>
@@ -240,7 +259,9 @@ export default function MediaPage() {
       {selectedArtist && (
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-3">
-            {selectedArtist.coverUrl && <img src={selectedArtist.coverUrl} className="w-12 h-12 rounded-full object-cover" alt="" />}
+            {selectedArtist.coverUrl
+              ? <img src={selectedArtist.coverUrl} className="w-12 h-12 rounded-full object-cover" alt="" />
+              : <div className="w-12 h-12"><Mono name={selectedArtist.name} round /></div>}
             {selectedArtist.name}
           </CardTitle></CardHeader>
           <CardContent className="space-y-4">

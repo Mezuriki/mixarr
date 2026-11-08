@@ -227,10 +227,11 @@ export class NavidromeService {
     return `${this.baseUrl}/rest/getCoverArt?id=${encodeURIComponent(coverArtId)}&size=${size}&${this.subsonicAuthParams()}`;
   }
 
-  /** Flat artist list from getArtists indexes. */
+  /** Flat artist list; coverArtId is undefined when the artist has no artwork
+   * (subsonic omits the attr) — render a monogram instead of a placeholder. */
   async getArtistsFlat(): Promise<Array<{ id: string; name: string; coverArtId?: string }>> {
     const all = await this.getArtists();
-    return all.map((a) => ({ id: a.id, name: a.name, coverArtId: (a as any).coverArtId || (a as any).coverArt }));
+    return all.map((a) => ({ id: a.id, name: a.name, coverArtId: (a as any).coverArt }));
   }
 
   /** Album list via getAlbumList2. */
@@ -240,7 +241,7 @@ export class NavidromeService {
     const res = await this.subsonicGet<{ albumList2?: { album?: any[] } }>(`getAlbumList2.view?${qs.toString()}`);
     return (res.albumList2?.album || []).map((a) => ({
       id: a.id, name: a.name, artist: a.artist, artistId: a.artistId,
-      year: a.year ? Number(a.year) : undefined, coverArtId: a.coverArt,
+      year: a.year ? Number(a.year) : undefined, coverArtId: a.coverArt || undefined,
     }));
   }
 
