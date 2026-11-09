@@ -51,6 +51,8 @@ export default function MediaPage() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoFileRef = useRef<HTMLInputElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const artistRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +69,18 @@ export default function MediaPage() {
   }, [tab, addToast]);
 
   useEffect(() => { load(); }, [load]);
+
+  // деталь рендерится ниже огромной сетки — сами доскролливаем до неё
+  useEffect(() => {
+    if (detail && detailRef.current) {
+      detailRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [detail]);
+  useEffect(() => {
+    if (selectedArtist && artistRef.current) {
+      artistRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedArtist]);
 
   const openAlbum = async (a: MediaAlbum) => {
     try {
@@ -217,6 +231,7 @@ export default function MediaPage() {
       {detailLoading && <div className="flex justify-center py-6"><Loader className="w-6 h-6 animate-spin" /></div>}
 
       {detail && (
+        <div ref={detailRef} className="scroll-mt-4">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -273,6 +288,7 @@ export default function MediaPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       )}
 
       {sidecar && (
@@ -285,6 +301,7 @@ export default function MediaPage() {
       )}
 
       {selectedArtist && (
+        <div ref={artistRef} className="scroll-mt-4">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -324,6 +341,7 @@ export default function MediaPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       )}
     </div>
   );
