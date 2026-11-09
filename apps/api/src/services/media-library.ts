@@ -157,8 +157,8 @@ export class MediaLibraryService {
       const resp = await fetch(source.url);
       if (!resp.ok) throw new Error(`Не удалось скачать изображение (${resp.status})`);
       buf = Buffer.from(await resp.arrayBuffer());
-      filename = source.url.split('.').pop()?.split('?')[0] || 'jpg';
-      if (filename.length > 5) filename = 'jpg';
+      const urlExt = /\.(jpe?g|png|webp)\b/i.exec(source.url)?.[1]?.toLowerCase();
+      filename = `cover.${urlExt || 'jpg'}`;
     }
     if (!buf) throw new Error('Нет данных изображения');
     await nd.uploadAlbumArt(token, albumId, buf, filename);
@@ -176,6 +176,7 @@ export class MediaLibraryService {
       buf = Buffer.from(await resp.arrayBuffer());
       filename = 'artist.jpg';
     }
+    filename = filename.includes('.') ? filename : `${filename}.jpg`;
     if (!buf) throw new Error('Нет данных изображения');
     await nd.uploadArtistImage(token, artistId, buf, filename);
   }
