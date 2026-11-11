@@ -246,10 +246,12 @@ export class NavidromeService {
   }
 
   /** Read sidecar content (.lrc / .ai.decode.md) from Navidrome native API. */
-  async sidecarContent(token: string, mediaFileId: string, kind: 'lyrics' | 'decode' | 'translation'): Promise<string> {
+  async sidecarContent(_token: string, mediaFileId: string, kind: 'lyrics' | 'decode' | 'translation'): Promise<string> {
+    // Public endpoint (registered outside /ai, which is mounted behind auth) —
+    // no auth header needed; `token` kept in the signature for compatibility.
     const resp = await fetchWithTimeout(
-      `${this.baseUrl}/api/ai/sidecar?mediaFileId=${encodeURIComponent(mediaFileId)}&kind=${kind}`,
-      { method: 'GET', headers: this.nativeHeaders(token) },
+      `${this.baseUrl}/api/sidecar?mediaFileId=${encodeURIComponent(mediaFileId)}&kind=${kind}`,
+      { method: 'GET' },
     );
     if (!resp.ok) return '';
     const body = (await resp.json()) as { content?: string };
