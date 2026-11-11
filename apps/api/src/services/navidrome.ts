@@ -246,7 +246,7 @@ export class NavidromeService {
   }
 
   /** Read sidecar content (.lrc / .ai.decode.md) from Navidrome native API. */
-  async sidecarContent(token: string, mediaFileId: string, kind: 'lyrics' | 'decode'): Promise<string> {
+  async sidecarContent(token: string, mediaFileId: string, kind: 'lyrics' | 'decode' | 'translation'): Promise<string> {
     const resp = await fetchWithTimeout(
       `${this.baseUrl}/api/ai/sidecar?mediaFileId=${encodeURIComponent(mediaFileId)}&kind=${kind}`,
       { method: 'GET', headers: this.nativeHeaders(token) },

@@ -15,7 +15,7 @@ import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left';
 
 interface MediaAlbum { id: string; name: string; artist?: string; artistId?: string; year?: number; coverUrl?: string; }
 interface MediaArtist { id: string; name: string; coverUrl?: string; imageUrl?: string; }
-interface MediaTrack { id: string; title: string; artist?: string; duration?: number; hasLyrics: boolean; hasDecode: boolean; }
+interface MediaTrack { id: string; title: string; artist?: string; duration?: number; hasLyrics: boolean; hasDecode: boolean; hasTranslation?: boolean; }
 type Tab = 'albums' | 'artists';
 const PAGE_SIZES = [10, 20, 50, 100] as const;
 
@@ -180,9 +180,9 @@ export default function MediaPage() {
     else addToast({ type: 'error', title: 'Медиа', message: res.error || 'Не удалось запустить' });
   };
 
-  const showSidecar = async (t: MediaTrack, kind: 'lyrics' | 'decode') => {
+  const showSidecar = async (t: MediaTrack, kind: 'lyrics' | 'decode' | 'translation') => {
     const res = await api.get<{ content: string }>(`/api/media/sidecar?mediaFileId=${t.id}&kind=${kind}`);
-    setSidecar({ title: t.title, kind, content: res.data?.content || '' });
+    setSidecar({ title: t.title, kind: kind === 'translation' ? 'lyrics' : kind, content: res.data?.content || '' });
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>, apply: (p: { dataUrl?: string }) => void) => {
@@ -249,9 +249,12 @@ export default function MediaPage() {
                       <span className="flex-1 truncate">{t.title}</span>
                       <button type="button" title="Текст" disabled={!t.hasLyrics} onClick={() => showSidecar(t, 'lyrics')}
                         className={`px-1.5 py-0.5 rounded text-xs ${t.hasLyrics ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground opacity-50'}`}>текст</button>
+                      <button type="button" title="RU перевод" disabled={!t.hasTranslation} onClick={() => showSidecar(t, 'translation')}
+                        className={`px-1.5 py-0.5 rounded text-xs ${t.hasTranslation ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground opacity-50'}`}>RU</button>
                       <button type="button" title="Смысл" disabled={!t.hasDecode} onClick={() => showSidecar(t, 'decode')}
                         className={`px-1.5 py-0.5 rounded text-xs ${t.hasDecode ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground opacity-50'}`}>смысл</button>
                       {!t.hasLyrics && <button type="button" onClick={() => enrich(detail.album.id, 'lyrics', t.id)} className="text-xs underline text-primary">текст?</button>}
+                      {t.hasLyrics && !t.hasTranslation && <button type="button" onClick={() => enrich(detail.album.id, 'lyrics', t.id)} className="text-xs underline text-primary">RU?</button>}
                       {!t.hasDecode && <button type="button" onClick={() => enrich(detail.album.id, 'decode', t.id)} className="text-xs underline text-primary">смысл?</button>}
                     </div>
                   ))}

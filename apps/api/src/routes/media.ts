@@ -100,7 +100,8 @@ mediaRouter.get('/cover', async (req: any, res: any) => {
 mediaRouter.get('/sidecar', async (req, res) => {
   try {
     const mediaFileId = String(req.query.mediaFileId || '');
-    const kind = req.query.kind === 'decode' ? 'decode' : 'lyrics';
+    const kindParam = String(req.query.kind || '');
+    const kind = (kindParam === 'decode' || kindParam === 'translation') ? kindParam : 'lyrics';
     res.json({ content: await (await buildService(req.user!.id)).sidecar(req.user!.id, mediaFileId, kind) });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

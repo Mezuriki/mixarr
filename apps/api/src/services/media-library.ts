@@ -17,6 +17,7 @@ export interface MediaTrack {
   duration?: number;
   hasLyrics: boolean;
   hasDecode: boolean;
+  hasTranslation: boolean;
 }
 
 export interface MediaAlbum {
@@ -87,21 +88,23 @@ export class MediaLibraryService {
     const nd = await this.nd(userId);
     const { album, songs } = await nd.getAlbum(albumId);
     const token = await nd.login();
-    const tracks: MediaTrack[] = [];
-    for (const s of songs || []) {
-      const [lyr, dec] = await Promise.all([
-        nd.sidecarContent(token, s.id, 'lyrics'),
-        nd.sidecarContent(token, s.id, 'decode'),
-      ]);
-      tracks.push({
-        id: s.id,
-        title: s.title,
-        artist: s.artist,
-        duration: s.duration,
-        hasLyrics: !!(lyr && lyr.trim()),
-        hasDecode: !!(dec && dec.trim()),
-      });
-    }
+    // Use /missing endpoints (bulk) instead of per-track sidecar calls —
+    // they return hasLyrics/hasTranslation/hasDecode for ALL tracks in one request.
+    const [lyr, dec] = await Promise.all([
+      nd.getMissingLyrics(token, { albumId }),
+      nd.getMissingDecode(token, { albumId }),
+    ]);
+    const lyrMap = new Map(lyr.map((t) => [t.mediaFileId, t]));
+    const decMap = new Map(dec.map((t) => [t.mediaFileId, t.hasLyrics]));
+    const tracks: MediaTrack[] = (songs || []).map((s) => ({
+      id: s.id,
+      title: s.title,
+      artist: s.artist,
+      duration: s.duration,
+      hasLyrics: lyrMap.get(s.id)?.hasLyrics ?? false,
+      hasTranslation: lyrMap.get(s.id)?.hasTranslation ?? false,
+      hasDecode: decMap.get(s.id) ?? false,
+    }));
     return {
       album: {
         id: album.id,
@@ -141,7 +144,7 @@ export class MediaLibraryService {
   }
 
   /** Sidecar content (lyrics .lrc / decode .ai.decode.md). */
-  async sidecar(userId: number, mediaFileId: string, kind: 'lyrics' | 'decode'): Promise<string> {
+  async sidecar(userId: number, mediaFileId: string, kind: 'lyrics' | 'decode' | 'translation'): Promise<string> {
     const nd = await this.nd(userId);
     const token = await nd.login();
     return nd.sidecarContent(token, mediaFileId, kind);
