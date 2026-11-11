@@ -174,7 +174,7 @@ export default function MediaPage() {
   const enrich = async (id: string, mode: 'lyrics' | 'decode', mediaFileId?: string) => {
     const res = await api.post<any>('/api/navidrome/enrich', {
       mode,
-      ...(mediaFileId ? { mediaFileIds: [mediaFileId] } : { albumId: id }),
+      ...(mediaFileId ? { trackIds: [mediaFileId] } : { albumIds: [id] }),
     });
     if (res.data) addToast({ type: 'success', title: 'Медиа', message: mode === 'lyrics' ? 'Текст: запрошена генерация' : 'Смысл: запрошена генерация' });
     else addToast({ type: 'error', title: 'Медиа', message: res.error || 'Не удалось запустить' });
