@@ -492,6 +492,12 @@ class NavidromeEnrichmentService {
   /** Save a finished job to the history list (keeps last 10). */
   private async saveHistory(userId: number, status: EnrichJobStatus): Promise<void> {
     try {
+      // Idempotent per job: both the worker (on completion) and the enqueue
+      // callback (which wakes up when the worker finishes) may try to persist
+      // the final status. Only the first writer wins, so no duplicate entries.
+      const dedupeKey = `${this.historyKey(userId)}:saved:${status.startedAt}`;
+      const first = await redis.set(dedupeKey, '1', 'EX', 86400, 'NX');
+      if (!first) return;
       const entry = JSON.stringify({
         ...status,
         finishedAt: Date.now(),
