@@ -86,9 +86,10 @@ const JOB_TTL_SECONDS = 86_400; // queue may run for a long time on big librarie
 const STALE_RUNNING_MS = 30_000;
 const CANCEL_TTL_SECONDS = 3_600;
 const QUOTA_BACKOFF_BASE_MS = 30_000; // 30s, 60s, 120s
-// Batch size for translate/decode: each song needs a separate Z.ai call (30-60s
-// each), so BATCH_SIZE=2 keeps total under 120s — well within the 300s timeouts
-// on both the Mixarr fetchAI and navidrome OpenAIProvider sides.
+// Batch size for translate/decode: each song needs a separate Z.ai call
+// (30-220s each with reasoning). The HTTP call is protected by fetchAI's
+// undici agent (600s header/body timeouts — see fetch-with-timeout.ts) and
+// our own 520s abort, so a batch of 2 slow songs (up to ~500s) survives.
 const BATCH_SIZE = 2;
 
 class NavidromeEnrichmentService {
@@ -376,6 +377,7 @@ class NavidromeEnrichmentService {
         for (let i = 0; i < translateTargets.length; i += BATCH_SIZE) {
           if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
           const batch = translateTargets.slice(i, i + BATCH_SIZE);
+          let batchRetried = false;
           // AbortController so cancel can interrupt the Z.ai call mid-flight.
           const ac = new AbortController();
           const cancelPoll = setInterval(async () => {
@@ -410,6 +412,15 @@ class NavidromeEnrichmentService {
               await this.cancelableSleep(backoff, () => this.isCancelled(userId));
               i -= BATCH_SIZE; continue;
             }
+            // Transient network errors (dropped connection, navidrome restart)
+            // get ONE retry before the tracks are marked failed.
+            if (this.looksLikeTransientError(msg) && !batchRetried) {
+              batchRetried = true;
+              log.warn(`[user ${userId}] (translate-batch) transient error, retry once in 5s: ${msg}`);
+              clearInterval(cancelPoll);
+              await this.cancelableSleep(5000, () => this.isCancelled(userId));
+              i -= BATCH_SIZE; continue;
+            }
             log.warn(`[user ${userId}] (translate-batch) failed: ${msg}`);
             for (const t of batch) { failedItems.push({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist, album: item.label, error: msg }); }
             status.failed += batch.length;
@@ -426,6 +437,7 @@ class NavidromeEnrichmentService {
         for (let i = 0; i < targets.length; i += BATCH_SIZE) {
           if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
           const batch = targets.slice(i, i + BATCH_SIZE);
+          let batchRetried = false;
           const ac = new AbortController();
           const cancelPoll = setInterval(async () => {
             if (await this.isCancelled(userId)) ac.abort();
@@ -459,6 +471,15 @@ class NavidromeEnrichmentService {
               log.warn(`[user ${userId}] (decode-batch) quota/overload, retry in ${backoff}ms (${msg})`);
               status.processed -= batch.length;
               await this.cancelableSleep(backoff, () => this.isCancelled(userId));
+              i -= BATCH_SIZE; continue;
+            }
+            // Transient network errors get ONE retry before marking failed.
+            if (this.looksLikeTransientError(msg) && !batchRetried) {
+              batchRetried = true;
+              log.warn(`[user ${userId}] (decode-batch) transient error, retry once in 5s: ${msg}`);
+              status.processed -= batch.length;
+              clearInterval(cancelPoll);
+              await this.cancelableSleep(5000, () => this.isCancelled(userId));
               i -= BATCH_SIZE; continue;
             }
             log.warn(`[user ${userId}] (decode-batch) failed: ${msg}`);
@@ -582,6 +603,25 @@ class NavidromeEnrichmentService {
       m.includes('try again later') ||
       m.includes('status unavailable') ||
       m.includes(' 503')
+    );
+  }
+
+  /**
+   * Transient network failures worth a single retry: the connection to
+   * navidrome dropped mid-request (restart, reset, idle kill). Deliberately
+   * does NOT match "abort"/"timeout" — user cancels and the worker's own
+   * 520s guard must not trigger a retry.
+   */
+  private looksLikeTransientError(msg?: string): boolean {
+    if (!msg) return false;
+    const m = msg.toLowerCase();
+    return (
+      m.includes('fetch failed') ||
+      m.includes('econnreset') ||
+      m.includes('econnrefused') ||
+      m.includes('socket hang up') ||
+      m.includes('epipe') ||
+      m.includes('other side closed')
     );
   }
 }
