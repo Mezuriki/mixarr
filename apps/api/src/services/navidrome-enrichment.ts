@@ -230,6 +230,20 @@ class NavidromeEnrichmentService {
 
   private async updateStatus(userId: number, status: EnrichJobStatus, queue: QueueItem[]): Promise<void> {
     status.updatedAt = Date.now();
+    // The queue in redis is the source of truth for PENDING items: merge in
+    // anything enqueued while we were processing (e.g. decode ALL appended to
+    // a running lyrics job) so a worker write can't silently drop it. Our own
+    // items are already shifted out, so they can't reappear here.
+    const raw = await this.getRawStatus(userId);
+    if (raw?.queue?.length) {
+      const known = new Set(queue.map((q) => q.id).filter(Boolean));
+      for (const q of this.queueFromRaw(raw.queue)) {
+        if (q.id && !known.has(q.id)) {
+          queue.push(q);
+          known.add(q.id);
+        }
+      }
+    }
     await redis.set(
       this.jobKey(userId),
       JSON.stringify({ ...status, queue }),
@@ -283,7 +297,20 @@ class NavidromeEnrichmentService {
     );
     dbLog('info', `Enrichment started: ${queue.length} item(s) in queue`, { userId, queueLength: queue.length });
 
-    while (queue.length > 0) {
+    while (true) {
+      // Pick up items enqueued while we were running: redis is the source of
+      // truth for pending items, our local array only tracks what's left.
+      const fresh = await this.getRawStatus(userId);
+      if (fresh?.queue?.length) {
+        const known = new Set(queue.map((q) => q.id).filter(Boolean));
+        for (const q of this.queueFromRaw(fresh.queue)) {
+          if (q.id && !known.has(q.id)) {
+            queue.push(q);
+            known.add(q.id);
+          }
+        }
+      }
+      if (queue.length === 0) break;
       if (await this.isCancelled(userId)) {
         status.status = 'cancelled';
         await this.updateStatus(userId, status, queue);
@@ -317,13 +344,28 @@ class NavidromeEnrichmentService {
       try {
         targets = await this.resolveTargets(service, token, item);
       } catch (err) {
+        // One retry: transient navidrome errors (restart, 502 from Traefik)
+        // shouldn't silently drop a whole artist from the run.
         const errMsg = err instanceof Error ? err.message : String(err);
-        log.warn(
-          `[user ${userId}] Failed to resolve targets for "${item.label}" (${item.mode}):`,
-          errMsg,
-        );
-        dbLog('error', `Failed to resolve tracks for "${item.label}" (${item.mode}): ${errMsg}`, { userId, item: item.label, mode: item.mode });
-        continue; // drop the item, keep going
+        if (this.looksLikeTransientError(errMsg)) {
+          log.warn(`[user ${userId}] resolve targets transient error for "${item.label}", retry in 5s: ${errMsg}`);
+          await this.cancelableSleep(5000, () => this.isCancelled(userId));
+          try {
+            targets = await this.resolveTargets(service, token, item);
+          } catch (err2) {
+            const msg2 = err2 instanceof Error ? err2.message : String(err2);
+            log.warn(`[user ${userId}] Failed to resolve targets for "${item.label}" (${item.mode}):`, msg2);
+            dbLog('error', `Failed to resolve tracks for "${item.label}" (${item.mode}): ${msg2}`, { userId, item: item.label, mode: item.mode });
+            continue; // drop the item, keep going
+          }
+        } else {
+          log.warn(
+            `[user ${userId}] Failed to resolve targets for "${item.label}" (${item.mode}):`,
+            errMsg,
+          );
+          dbLog('error', `Failed to resolve tracks for "${item.label}" (${item.mode}): ${errMsg}`, { userId, item: item.label, mode: item.mode });
+          continue; // drop the item, keep going
+        }
       }
       log.info(
         `[user ${userId}] "${item.label}" (${item.mode}): ${targets.length} track(s) to process`,
@@ -580,9 +622,12 @@ class NavidromeEnrichmentService {
         : await service.getMissingDecode(token, params);
     // Filter client-side so we DON'T send already-complete tracks to navidrome
     // (which would re-stat the sidecars over the network share for nothing).
-    //  - decode mode: process tracks without .ai.decode.md (!hasLyrics)
-    //  - lyrics mode: process tracks that lack original (.lrc) OR RU (.ru.lrc).
-    //    A track with BOTH hasLyrics and hasTranslation is fully done → skip.
+    // NOTE the field semantics differ per endpoint:
+    //  - /decode/missing returns ALL tracks of the scope, hasLyrics=true means
+    //    "has .ai.decode.md" (see navidrome Service.MissingDecode) → keep the
+    //    tracks WITHOUT a decode sidecar.
+    //  - /lyrics/missing flags hasLyrics/hasTranslation by .lrc / .ru.lrc
+    //    presence → skip tracks that have BOTH (fully done).
     const targets =
       item.mode === 'decode'
         ? missing.filter((m) => !m.hasLyrics)
@@ -607,10 +652,12 @@ class NavidromeEnrichmentService {
   }
 
   /**
-   * Transient network failures worth a single retry: the connection to
-   * navidrome dropped mid-request (restart, reset, idle kill). Deliberately
-   * does NOT match "abort"/"timeout" — user cancels and the worker's own
-   * 520s guard must not trigger a retry.
+   * Transient failures worth a single retry: the connection to navidrome
+   * dropped mid-request (restart, reset, idle kill) or navidrome/Traefik
+   * answered with a retryable gateway error (502/503 happen when a container
+   * is being restarted or briefly unreachable). Deliberately does NOT match
+   * "abort"/"timeout" — user cancels and the worker's own 520s guard must
+   * not trigger a retry.
    */
   private looksLikeTransientError(msg?: string): boolean {
     if (!msg) return false;
@@ -621,7 +668,10 @@ class NavidromeEnrichmentService {
       m.includes('econnrefused') ||
       m.includes('socket hang up') ||
       m.includes('epipe') ||
-      m.includes('other side closed')
+      m.includes('other side closed') ||
+      m.includes('status 502') ||
+      m.includes('502 bad gateway') ||
+      m.includes('status 503')
     );
   }
 }
