@@ -119,42 +119,50 @@ class NavidromeEnrichmentService {
     if (items.length === 0) {
       return this.getIdleStatus();
     }
-    const existing = await this.getRawStatus(userId);
-    // Treat a stale "running" (dead worker) as finished so a new worker can take
-    // over instead of being blocked forever by a crashed predecessor.
-    const wasRunning = existing?.status === 'running' && !this.isStaleRunning(existing);
-    // If the previous run finished (completed/cancelled/idle/stale), start
-    // fresh: clear any stale cancel flag and reset the counters. When appending
-    // to a live running queue, keep the accumulating counters.
-    const queue: QueueItem[] = wasRunning && existing?.queue ? this.queueFromRaw(existing.queue) : [];
     // Assign a stable id to every newly-enqueued item so the UI can cancel it.
     for (const it of items) {
       if (!it.id) it.id = this.genId();
     }
-    queue.push(...items);
-    if (!wasRunning) {
-      await redis.del(this.cancelKey(userId));
-      await redis.del(this.cancelItemsKey(userId));
-    }
+    // The whole read-append-write runs under the same lock the worker uses to
+    // shift items, so appending to a live queue can't lose either side's work.
+    const status: EnrichJobStatus = await this.withQueueLock(userId, async () => {
+      const existing = await this.getRawStatus(userId);
+      // Treat a stale "running" (dead worker) as finished so a new worker can take
+      // over instead of being blocked forever by a crashed predecessor.
+      const wasRunning = existing?.status === 'running' && !this.isStaleRunning(existing);
+      // If the previous run finished (completed/cancelled/idle/stale), start
+      // fresh: clear any stale cancel flag and reset the counters. When appending
+      // to a live running queue, keep the accumulating counters.
+      const queue: QueueItem[] = wasRunning && existing?.queue ? this.queueFromRaw(existing.queue) : [];
+      queue.push(...items);
+      if (!wasRunning) {
+        await redis.del(this.cancelKey(userId));
+        await redis.del(this.cancelItemsKey(userId));
+      }
 
-    // Seed the running status (or keep it running). We don't yet know track
-    // counts for artist/album items; the worker fills total in as it resolves.
-    const status: EnrichJobStatus = {
-      status: wasRunning ? 'running' : 'queued',
-      queue: queue.map((q) => ({ id: q.id || '', label: q.label, mode: q.mode, trackCount: q.trackIds?.length ?? 0 })),
-      total: queue.reduce((n, q) => n + (q.trackIds?.length ?? 0), 0),
-      processed: wasRunning ? (existing?.processed ?? 0) : 0,
-      enriched: wasRunning ? (existing?.enriched ?? 0) : 0,
-      failed: wasRunning ? (existing?.failed ?? 0) : 0,
-      failedItems: wasRunning ? (existing?.failedItems ?? []) : [],
-      startedAt: wasRunning ? (existing?.startedAt ?? Date.now()) : Date.now(),
-    };
-    await redis.set(this.jobKey(userId), JSON.stringify({ ...status, queue }), 'EX', JOB_TTL_SECONDS);
+      // Seed the running status (or keep it running). We don't yet know track
+      // counts for artist/album items; the worker fills total in as it resolves.
+      const st: EnrichJobStatus = {
+        status: wasRunning ? 'running' : 'queued',
+        queue: queue.map((q) => ({ id: q.id || '', label: q.label, mode: q.mode, trackCount: q.trackIds?.length ?? 0 })),
+        // When appending to a live job the resolved track counts live in the
+        // worker's counters — keep them instead of resetting to 0.
+        total: wasRunning ? (existing?.total ?? 0) : queue.reduce((n, q) => n + (q.trackIds?.length ?? 0), 0),
+        processed: wasRunning ? (existing?.processed ?? 0) : 0,
+        enriched: wasRunning ? (existing?.enriched ?? 0) : 0,
+        failed: wasRunning ? (existing?.failed ?? 0) : 0,
+        failedItems: wasRunning ? (existing?.failedItems ?? []) : [],
+        startedAt: wasRunning ? (existing?.startedAt ?? Date.now()) : Date.now(),
+      };
+      await redis.set(this.jobKey(userId), JSON.stringify({ ...st, queue }), 'EX', JOB_TTL_SECONDS);
+      return st;
+    });
+    const queueLen = status.queue?.length ?? 0;
     const enqueueMsg = `Enqueued ${items.length} item(s) [${items
       .map((i) => `${i.label}:${i.mode}`)
-      .join(', ')}] — queue now ${queue.length} item(s), ${wasRunning ? 'appended to running job' : 'starting fresh'}`;
+      .join(', ')}] — queue now ${queueLen} item(s), ${status.status === 'running' ? 'appended to running job' : 'starting fresh'}`;
     log.info(`[user ${userId}] ${enqueueMsg}`);
-    dbLog('info', enqueueMsg, { userId, itemsAdded: items.length, queueLength: queue.length, appended: wasRunning });
+    dbLog('info', enqueueMsg, { userId, itemsAdded: items.length, queueLength: queueLen, appended: status.status === 'running' });
 
     // Fire-and-forget the worker (it's a no-op if already running).
     setImmediate(async () => {
@@ -228,25 +236,62 @@ class NavidromeEnrichmentService {
     return raw as QueueItem[];
   }
 
-  private async updateStatus(userId: number, status: EnrichJobStatus, queue: QueueItem[]): Promise<void> {
-    status.updatedAt = Date.now();
-    // The queue in redis is the source of truth for PENDING items: merge in
-    // anything enqueued while we were processing (e.g. decode ALL appended to
-    // a running lyrics job) so a worker write can't silently drop it. Our own
-    // items are already shifted out, so they can't reappear here.
-    const raw = await this.getRawStatus(userId);
-    if (raw?.queue?.length) {
-      const known = new Set(queue.map((q) => q.id).filter(Boolean));
-      for (const q of this.queueFromRaw(raw.queue)) {
-        if (q.id && !known.has(q.id)) {
-          queue.push(q);
-          known.add(q.id);
+  /**
+   * Serialize queue mutations (worker shift vs. enqueue append) so a
+   * read-modify-write of one side can't silently drop the other's items.
+   */
+  private async withQueueLock<T>(userId: number, fn: () => Promise<T>): Promise<T> {
+    const key = `navidrome-enrich:qlock:${userId}`;
+    for (let i = 0; i < 40; i++) {
+      const ok = await redis.set(key, '1', 'PX', 5000, 'NX');
+      if (ok) {
+        try {
+          return await fn();
+        } finally {
+          await redis.del(key);
         }
       }
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    // Lock contention shouldn't wedge enrichment — proceed unlocked.
+    return fn();
+  }
+
+  /**
+   * Atomically pop the next pending item off the redis queue (source of
+   * truth). The queue is re-read for every item, so anything enqueued while
+   * the worker is running (e.g. decode ALL appended to a running lyrics job)
+   * is picked up automatically — the old snapshot approach silently dropped
+   * those items.
+   */
+  private async nextQueueItem(userId: number, status: EnrichJobStatus): Promise<QueueItem | null> {
+    return this.withQueueLock(userId, async () => {
+      const raw = await this.getRawStatus(userId);
+      const q = this.queueFromRaw(raw?.queue);
+      if (q.length === 0) return null;
+      const next = q.shift()!;
+      status.updatedAt = Date.now();
+      await redis.set(
+        this.jobKey(userId),
+        JSON.stringify({ ...status, queue: q }),
+        'EX',
+        JOB_TTL_SECONDS,
+      );
+      return next;
+    });
+  }
+
+  /**
+   * Persist counters/status WITHOUT touching the pending queue — redis owns
+   * it, and the worker has no authority over it beyond the atomic shift.
+   */
+  private async updateCounters(userId: number, status: EnrichJobStatus): Promise<void> {
+    status.updatedAt = Date.now();
+    const raw = await this.getRawStatus(userId);
+    const q = this.queueFromRaw(raw?.queue);
     await redis.set(
       this.jobKey(userId),
-      JSON.stringify({ ...status, queue }),
+      JSON.stringify({ ...status, queue: q }),
       'EX',
       JOB_TTL_SECONDS,
     );
@@ -283,7 +328,6 @@ class NavidromeEnrichmentService {
     let token = await service.login();
     const failedItems: EnrichJobStatus['failedItems'] = [];
     const enrichedItems: EnrichJobStatus['enrichedItems'] = [];
-    const queue: QueueItem[] = current?.queue ? this.queueFromRaw(current.queue) : [];
     const interTrackDelay = NavidromeService.interTrackDelayMs();
 
     const status: EnrichJobStatus = current
@@ -291,36 +335,31 @@ class NavidromeEnrichmentService {
       : this.getIdleStatus();
     status.status = 'running';
     status.startedAt = status.startedAt ?? Date.now();
-    await this.updateStatus(userId, status, queue);
+    await this.updateCounters(userId, status);
+    const initialQueueLen =
+      this.queueFromRaw((await this.getRawStatus(userId))?.queue).length;
     log.info(
-      `[user ${userId}] Worker started: ${queue.length} item(s) in queue`,
+      `[user ${userId}] Worker started: ${initialQueueLen} item(s) in queue`,
     );
-    dbLog('info', `Enrichment started: ${queue.length} item(s) in queue`, { userId, queueLength: queue.length });
+    dbLog('info', `Enrichment started: ${initialQueueLen} item(s) in queue`, { userId, queueLength: initialQueueLen });
 
     while (true) {
-      // Pick up items enqueued while we were running: redis is the source of
-      // truth for pending items, our local array only tracks what's left.
-      const fresh = await this.getRawStatus(userId);
-      if (fresh?.queue?.length) {
-        const known = new Set(queue.map((q) => q.id).filter(Boolean));
-        for (const q of this.queueFromRaw(fresh.queue)) {
-          if (q.id && !known.has(q.id)) {
-            queue.push(q);
-            known.add(q.id);
-          }
-        }
-      }
-      if (queue.length === 0) break;
       if (await this.isCancelled(userId)) {
         status.status = 'cancelled';
-        await this.updateStatus(userId, status, queue);
-        const cancelMsg = `Cancelled at ${status.processed}/${status.total} (remaining items: ${queue.length})`;
+        await this.updateCounters(userId, status);
+        const remaining =
+          this.queueFromRaw((await this.getRawStatus(userId))?.queue).length;
+        const cancelMsg = `Cancelled at ${status.processed}/${status.total} (remaining items: ${remaining})`;
         log.info(`[user ${userId}] ${cancelMsg}`);
-        dbLog('warn', cancelMsg, { userId, processed: status.processed, total: status.total, remaining: queue.length });
+        dbLog('warn', cancelMsg, { userId, processed: status.processed, total: status.total, remaining });
         return;
       }
 
-      const item = queue.shift()!;
+      // Atomically take the next item off the redis queue. Re-read every
+      // iteration, so items appended to a live job (e.g. decode ALL while
+      // lyrics ALL runs) are picked up instead of silently dropped.
+      const item = await this.nextQueueItem(userId, status);
+      if (!item) break;
       // Per-item cancel: skip items the user cancelled individually without
       // aborting the rest of the queue.
       if (item.id && (await this.isItemCancelled(userId, item.id))) {
@@ -329,14 +368,14 @@ class NavidromeEnrichmentService {
         dbLog('info', skipMsg, { userId, itemId: item.id });
         status.currentItem = undefined;
         status.currentTrack = undefined;
-        await this.updateStatus(userId, status, queue);
+        await this.updateCounters(userId, status);
         continue;
       }
       status.currentItem = item.label;
       status.mode = item.mode;
-      await this.updateStatus(userId, status, queue);
+      await this.updateCounters(userId, status);
       log.info(
-        `[user ${userId}] Next item: "${item.label}" (${item.mode}) — ${queue.length} item(s) still queued`,
+        `[user ${userId}] Next item: "${item.label}" (${item.mode})`,
       );
 
       // Resolve the targets for this item.
@@ -373,7 +412,7 @@ class NavidromeEnrichmentService {
       dbLog('info', `Processing "${item.label}" (${item.mode}): ${targets.length} track(s)`, { userId, item: item.label, mode: item.mode, trackCount: targets.length });
       // Grow the total to include newly discovered tracks.
       status.total += targets.length;
-      await this.updateStatus(userId, status, queue);
+      await this.updateCounters(userId, status);
 
       // ─── 3-phase processing ───
       // For lyrics mode: Phase A (LRCLIB originals, one at a time, no AI) then
@@ -382,9 +421,9 @@ class NavidromeEnrichmentService {
       if (item.mode === 'lyrics') {
         // Phase A: fetch original lyrics (LRCLIB only, 1 track at a time, no AI).
         for (const t of targets) {
-          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateCounters(userId, status); return; }
           status.currentTrack = `${t.title}`;
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
           try {
             const res = await service.fetchOriginalLyrics(token, t.mediaFileId);
             if (res.found) {
@@ -410,14 +449,14 @@ class NavidromeEnrichmentService {
             status.failedItems = failedItems;
             log.warn(`[user ${userId}] (lrclib) "${t.title}" — failed: ${msg}`);
           }
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
         }
 
         // Phase B: translate to RU in batches of BATCH_SIZE.
         // Only translate tracks that have a .lrc original.
         const translateTargets = targets.filter((t) => t.hasLyrics !== false);
         for (let i = 0; i < translateTargets.length; i += BATCH_SIZE) {
-          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateCounters(userId, status); return; }
           const batch = translateTargets.slice(i, i + BATCH_SIZE);
           let batchRetried = false;
           // AbortController so cancel can interrupt the Z.ai call mid-flight.
@@ -426,7 +465,7 @@ class NavidromeEnrichmentService {
             if (await this.isCancelled(userId)) ac.abort();
           }, 3000);
           status.currentTrack = `translating: ${batch.map((t) => t.title).join(' | ')}`;
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', lyrics: '' }));
             const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
@@ -469,7 +508,7 @@ class NavidromeEnrichmentService {
             status.failedItems = failedItems;
           }
           clearInterval(cancelPoll);
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
           if (interTrackDelay > 0 && i + BATCH_SIZE < translateTargets.length) {
             await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
           }
@@ -477,7 +516,7 @@ class NavidromeEnrichmentService {
       } else {
         // Phase C: decode meaning in batches of BATCH_SIZE (one Z.ai call per batch).
         for (let i = 0; i < targets.length; i += BATCH_SIZE) {
-          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateStatus(userId, status, queue); return; }
+          if (await this.isCancelled(userId)) { status.status = 'cancelled'; await this.updateCounters(userId, status); return; }
           const batch = targets.slice(i, i + BATCH_SIZE);
           let batchRetried = false;
           const ac = new AbortController();
@@ -486,7 +525,7 @@ class NavidromeEnrichmentService {
           }, 3000);
           status.currentTrack = `decoding: ${batch.map((t) => t.title).join(' | ')}`;
           status.processed += batch.length;
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
           try {
             const items = batch.map((t) => ({ mediaFileId: t.mediaFileId, title: t.title, artist: t.artist || '', album: item.label, lyrics: '' }));
             const trackMap = new Map(batch.map((t) => [t.mediaFileId, t]));
@@ -530,7 +569,7 @@ class NavidromeEnrichmentService {
             status.failedItems = failedItems;
           }
           clearInterval(cancelPoll);
-          await this.updateStatus(userId, status, queue);
+          await this.updateCounters(userId, status);
           if (interTrackDelay > 0 && i + BATCH_SIZE < targets.length) {
             await this.cancelableSleep(interTrackDelay, () => this.isCancelled(userId));
           }
@@ -541,7 +580,7 @@ class NavidromeEnrichmentService {
     status.status = 'completed';
     status.currentTrack = undefined;
     status.currentItem = undefined;
-    await this.updateStatus(userId, status, queue);
+    await this.updateCounters(userId, status);
     await this.saveHistory(userId, status);
     const doneMsg = `Queue completed: ${status.enriched} enriched, ${status.failed} failed of ${status.total} track(s)`;
     log.info(`[user ${userId}] ${doneMsg}`);
